@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, Wallet, CheckCircle2, Settings, ArrowUpRight, Plus, MessageSquare, Target, Rocket, Clock, ShieldCheck, Sparkles } from "lucide-react";
+import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 import { useSystemStats } from "../hooks/useSystemStats";
-import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip, AreaChart, Area } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
+import { useLayout } from "../components/layout/Layout";
 
 interface Activity {
   id: string;
@@ -19,6 +20,7 @@ interface Activity {
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const stats = useSystemStats();
+  const { toggleSidebar, theme, toggleTheme, isSidebarOpen, isMobile } = useLayout();
   const [activities, setActivities] = useState<Activity[]>([]);
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
@@ -66,13 +68,39 @@ const Dashboard = () => {
       {/* Header Premium */}
       <header className="flex items-end justify-between gap-6">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 opacity-60">
-            <div className={`w-1.5 h-1.5 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
-            <p className="editorial-label !tracking-[0.2em]">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</p>
+          {/* Data + botão de toggle da sidebar */}
+          <div className="flex items-center gap-3">
+            {/* Botão de abrir/fechar sidebar (desktop) */}
+            {!isMobile && (
+              <button
+                onClick={toggleSidebar}
+                title={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
+                className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
+              >
+                <PanelLeft size={16} className={`transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
+              </button>
+            )}
+            <div className="flex items-center gap-2 opacity-60">
+              <div className={`w-1.5 h-1.5 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
+              <p className="editorial-label !tracking-[0.2em]">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</p>
+            </div>
           </div>
-          <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-            Olá, <span className="text-on-surface/30">{firstName}.</span>
-          </h2>
+
+          {/* Toggle de tema logo abaixo */}
+          <div className="flex items-center gap-3">
+            {!isMobile && (
+              <button
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+                className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
+              >
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+            )}
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
+              Olá, <span className="text-on-surface/30">{firstName}.</span>
+            </h2>
+          </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="hidden md:block text-right">
