@@ -12,8 +12,8 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
   
   const menuItems = [
     { id: "/", icon: Home, label: "INÍCIO" },
-    { id: "/finance", icon: Wallet, label: "FINANÇAS" },
     { id: "/tasks", icon: CheckSquare, label: "TAREFAS" },
+    { id: "/finance", icon: Wallet, label: "FINANÇAS" },
     { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
     { id: "/focus", icon: Zap, label: "FOCO" },
   ];
@@ -28,7 +28,7 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
             <Zap className="text-surface" size={20} fill="currentColor" />
           </div>
           <div>
-            <h1 className="editorial-display text-lg leading-tight">Santuário</h1>
+            <h1 className="editorial-display text-lg leading-tight">Sanctum</h1>
             <p className="editorial-label text-[9px] text-primary">MODO PROFUNDO</p>
           </div>
         </div>
@@ -77,6 +77,14 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
             <LogOut size={18} />
             <span className="editorial-label text-[10px]">SAIR</span>
           </button>
+        </div>
+
+        {/* Versão do App */}
+        <div className="pt-4 mt-2 flex items-center gap-2 opacity-30">
+          <div className="w-4 h-4 bg-primary/20 rounded flex items-center justify-center">
+            <Zap size={8} className="text-primary" fill="currentColor" />
+          </div>
+          <span className="text-[9px] font-mono tracking-widest">SANCTUM v2.0 · MODO PROFUNDO</span>
         </div>
       </div>
     </aside>
