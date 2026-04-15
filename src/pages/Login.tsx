@@ -60,6 +60,20 @@ const Login = () => {
     }
   };
 
+  const handleGithubLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-6 relative overflow-hidden bg-surface">
       {/* Background Decorative */}
@@ -147,7 +161,10 @@ const Login = () => {
               <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center text-[8px] font-bold text-black font-serif italic">G</div>
               <span className="text-[10px] font-bold">GOOGLE</span>
             </button>
-            <button className="w-full py-3 rounded-xl bg-on-surface/[0.03] border border-[var(--glass-border)] flex items-center justify-center gap-2 hover:bg-on-surface/[0.06] transition-colors">
+            <button 
+              onClick={handleGithubLogin}
+              className="w-full py-3 rounded-xl bg-on-surface/[0.03] border border-[var(--glass-border)] flex items-center justify-center gap-2 hover:bg-on-surface/[0.06] transition-colors"
+            >
               <Github size={16} />
               <span className="text-[10px] font-bold">GITHUB</span>
             </button>
