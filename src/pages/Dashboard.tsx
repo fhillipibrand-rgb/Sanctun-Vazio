@@ -193,40 +193,69 @@ const Dashboard = () => {
             </GlassCard>
           )}
 
-          {/* Gráfico de Fluxo Semana - Visual Premium */}
+          {/* Gráfico de Tarefas & Projetos */}
           <GlassCard className="p-8">
-            <div className="flex items-center justify-between mb-10">
-               <div>
-                 <h4 className="text-xl font-bold">Pulso Produtivo</h4>
-                 <p className="text-[10px] opacity-40 uppercase tracking-widest mt-1">{stats.isDemo ? "Dados ilustrativos da semana" : "Atividade real dos últimos 7 dias"}</p>
-               </div>
-               <div className="flex gap-6">
-                 <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-primary" /><span className="text-[10px] font-bold opacity-40">TREFAS</span></div>
-                 <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-secondary" /><span className="text-[10px] font-bold opacity-40">FINANÇAS</span></div>
-               </div>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <h4 className="text-xl font-bold">Tarefas & Projetos</h4>
+                </div>
+                <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Atividade real dos últimos 7 dias"}</p>
+              </div>
+              <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
             </div>
-            <div className="h-72 w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={chartDataSource}>
-                   <defs>
-                     <linearGradient id="colorProd" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#5e9eff" stopOpacity={0.3}/>
-                       <stop offset="95%" stopColor="#5e9eff" stopOpacity={0}/>
-                     </linearGradient>
-                     <linearGradient id="colorFin" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2}/>
-                       <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                     </linearGradient>
-                   </defs>
-                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 10 }} dy={10} />
-                   <Tooltip 
-                     cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                     contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
-                   />
-                   <Area type="monotone" dataKey="v" stroke="#5e9eff" strokeWidth={3} fillOpacity={1} fill="url(#colorProd)" />
-                   <Area type="monotone" dataKey="f" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorFin)" strokeDasharray="5 5" />
-                 </AreaChart>
-               </ResponsiveContainer>
+            <div className="h-52 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartDataSource}>
+                  <defs>
+                    <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#5e9eff" stopOpacity={0.35}/>
+                      <stop offset="95%" stopColor="#5e9eff" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 10 }} dy={10} />
+                  <Tooltip
+                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                    contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
+                    formatter={(value: any) => [`${value} tarefas`, 'Concluídas']}
+                  />
+                  <Area type="monotone" dataKey="v" stroke="#5e9eff" strokeWidth={3} fillOpacity={1} fill="url(#colorTasks)" dot={{ r: 4, fill: '#5e9eff', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
+
+          {/* Gráfico de Finanças */}
+          <GlassCard className="p-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-purple-400" />
+                  <h4 className="text-xl font-bold">Fluxo Financeiro</h4>
+                </div>
+                <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Movimentações dos últimos 7 dias"}</p>
+              </div>
+              <Link to="/finance" className="text-[10px] font-bold text-purple-400 hover:underline tracking-widest uppercase">VER TUDO</Link>
+            </div>
+            <div className="h-52 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartDataSource}>
+                  <defs>
+                    <linearGradient id="colorFinance" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 10 }} dy={10} />
+                  <Tooltip
+                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                    contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
+                    formatter={(value: any) => [`R$ ${value}`, 'Fluxo']}
+                  />
+                  <Area type="monotone" dataKey="f" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorFinance)" strokeDasharray="0" dot={{ r: 4, fill: '#a855f7', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </GlassCard>
         </div>
