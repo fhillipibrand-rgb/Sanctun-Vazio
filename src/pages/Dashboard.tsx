@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, MessageSquare, Wallet, CheckSquare, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { Calendar, Zap, MessageSquare, Wallet, CheckSquare, ArrowUpRight, CheckCircle2, Settings } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";

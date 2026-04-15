@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Bell, Settings, Calendar, Circle, Zap, Share2, MoreVertical, Plus, CheckCircle2 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
