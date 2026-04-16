@@ -64,3 +64,24 @@ export const MOCK_HEALTH = {
     { name: "SAMU", phone: "192", relation: "Emergência" }
   ]
 };
+
+export const MOCK_INVESTMENTS = {
+  summary: { total: 125430.20, monthlyYield: 1.2, monthlyEarnings: 1505.16 },
+  allocation: [
+    { name: 'Ações BR', value: 45000, color: '#5e9eff' },
+    { name: 'Ações EUA', value: 35000, color: '#00f5a0' },
+    { name: 'FIIs', value: 25000, color: '#a855f7' },
+    { name: 'Renda Fixa', value: 20430.20, color: '#ff6b6b' },
+  ],
+  assets: [
+    { symbol: 'IVVB11', name: 'S&P 500 ETF', type: 'Ações EUA', amount: 35000, yield: 15.4 },
+    { symbol: 'XPML11', name: 'XP Malls FII', type: 'FIIs', amount: 15000, yield: 0.85 },
+    { symbol: 'VALE3', name: 'Vale S.A.', type: 'Ações BR', amount: 12000, yield: -2.3 },
+  ]
+};
+
+export const MOCK_GOALS = [
+  { id: '1', title: 'Reserva de Emergência', target: 50000, current: 42000, deadline: '2024-12', category: 'Segurança' },
+  { id: '2', title: 'Viagem Europa', target: 30000, current: 15000, deadline: '2025-06', category: 'Lazer' },
+  { id: '3', title: 'Aposentadoria precoce', target: 1000000, current: 85000, deadline: '2035-12', category: 'Liberdade' },
+];

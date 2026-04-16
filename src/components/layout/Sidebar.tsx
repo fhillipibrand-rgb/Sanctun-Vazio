@@ -35,10 +35,23 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
       ]
     },
     {
-      title: "FINANÇAS",
+      title: "CONTROLE FINANCEIRO",
       items: [
-        { id: "/finance", icon: Activity, label: "FLUXO FINANCEIRO" },
-        { id: "/finance/budget", icon: PieChart, label: "ORÇAMENTO" },
+        { id: "/finance", icon: Wallet, label: "BALANÇO MENSAL" },
+        { id: "/finance/transactions", icon: Clock, label: "LANÇAMENTOS" },
+        { id: "/finance/analytics", icon: PieChart, label: "ANÁLISES" },
+      ]
+    },
+    {
+      title: "INVESTIMENTOS",
+      items: [
+        { id: "/investments", icon: TrendingUp, label: "MEUS INVESTIMENTOS" },
+      ]
+    },
+    {
+      title: "GESTÃO DE OBJETIVOS",
+      items: [
+        { id: "/goals", icon: Target, label: "MEUS PLANOS" },
       ]
     }
   ];

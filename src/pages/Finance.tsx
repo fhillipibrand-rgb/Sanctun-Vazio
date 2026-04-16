@@ -178,36 +178,32 @@ const Finance = () => {
 
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <h4 className="text-lg md:text-xl font-bold">Últimas Movimentações</h4>
-            <button className="text-primary editorial-label">Ver tudo</button>
+            <h4 className="text-lg md:text-xl font-bold">Resumo Estratégico</h4>
           </div>
-          <div className="space-y-3">
-            {loading ? (
-              <div className="py-10 text-center editorial-label opacity-20">BUSCANDO...</div>
-            ) : transactions.length === 0 ? (
-              <div className="py-10 text-center border border-dashed border-[var(--glass-border)] rounded-2xl opacity-20 text-[10px]">
-                NENHUMA TRANSAÇÃO REGISTRADA
-              </div>
-            ) : (
-              transactions.slice(0, 4).map((tx, i) => (
-                <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl bg-on-surface/[0.03] hover:bg-on-surface/[0.06] transition-colors cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-on-surface/[0.03] flex items-center justify-center">
-                      {tx.type === 'income' ? <TrendingUp size={16} className="text-secondary" /> : <Wallet size={16} />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">{tx.name}</p>
-                      <p className="text-[10px] text-on-surface-variant uppercase tracking-wider opacity-60">
-                        {tx.category} • {new Date(tx.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`font-bold text-sm md:text-base ${tx.type === 'income' ? 'text-secondary' : 'text-red-400'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tx.amount)}
-                  </span>
-                </div>
-              ))
-            )}
+          <div className="space-y-4">
+             <GlassCard className="p-5 bg-secondary/5 border-secondary/20">
+               <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                   <TrendingUp size={20} />
+                 </div>
+                 <div>
+                   <p className="text-sm font-bold">Saúde Financeira: Alta</p>
+                   <p className="text-[10px] opacity-40">Seu fluxo está 15% acima da média do trimestre.</p>
+                 </div>
+               </div>
+             </GlassCard>
+             
+             <GlassCard className="p-5 bg-primary/5 border-primary/20">
+               <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                   <Target size={20} />
+                 </div>
+                 <div>
+                   <p className="text-sm font-bold">Meta de Reserva: 84%</p>
+                   <p className="text-[10px] opacity-40">Faltam R$ 8.000 para atingir sua meta de segurança.</p>
+                 </div>
+               </div>
+             </GlassCard>
           </div>
         </div>
       </div>

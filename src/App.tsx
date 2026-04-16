@@ -17,6 +17,10 @@ import Projects from "./pages/Projects";
 import Habits from "./pages/Habits";
 import Nutrition from "./pages/Nutrition";
 import Health from "./pages/Health";
+import FinanceTransactions from "./pages/FinanceTransactions";
+import FinanceAnalytics from "./pages/FinanceAnalytics";
+import Investments from "./pages/Investments";
+import Goals from "./pages/Goals";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
@@ -53,8 +57,11 @@ export default function App() {
           <Route path="/tasks/projects" element={<Projects />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/habits" element={<Habits />} />
-          <Route path="/nutrition" element={<Nutrition />} />
-          <Route path="/health" element={<Health />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/finance/transactions" element={<FinanceTransactions />} />
+          <Route path="/finance/analytics" element={<FinanceAnalytics />} />
+          <Route path="/investments" element={<Investments />} />
+          <Route path="/goals" element={<Goals />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/focus" element={
             <div className="flex items-center justify-center h-full">
