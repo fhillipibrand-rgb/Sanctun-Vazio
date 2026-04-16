@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, ChevronRight, Plus, MapPin, Clock } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";

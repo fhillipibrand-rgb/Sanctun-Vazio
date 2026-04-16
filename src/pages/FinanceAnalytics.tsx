@@ -152,15 +152,17 @@ const FinanceAnalytics = () => {
           { label: "Média de Gastos", value: "R$ 2.450", icon: Filter, color: "text-primary" },
           { label: "Saúde Financeira", value: "Excelente", icon: Sparkles, color: "text-purple-400" },
         ].map((stat, i) => (
-          <GlassCard key={i} className="p-6 flex items-center gap-5">
-            <div className={`w-12 h-12 rounded-2xl bg-on-surface/[0.03] flex items-center justify-center ${stat.color}`}>
-              <stat.icon size={22} />
-            </div>
-            <div>
-              <p className="editorial-label text-[9px] opacity-40">{stat.label.toUpperCase()}</p>
-              <h5 className="text-xl font-bold tracking-tight">{stat.value}</h5>
-            </div>
-          </GlassCard>
+          <div key={i}>
+            <GlassCard className="p-6 flex items-center gap-5">
+              <div className={`w-12 h-12 rounded-2xl bg-on-surface/[0.03] flex items-center justify-center ${stat.color}`}>
+                <stat.icon size={22} />
+              </div>
+              <div>
+                <p className="editorial-label text-[9px] opacity-40">{stat.label.toUpperCase()}</p>
+                <h5 className="text-xl font-bold tracking-tight">{stat.value}</h5>
+              </div>
+            </GlassCard>
+          </div>
         ))}
       </div>
     </div>

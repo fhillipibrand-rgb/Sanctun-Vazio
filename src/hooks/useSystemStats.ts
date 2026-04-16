@@ -75,9 +75,9 @@ export const useSystemStats = () => {
     
     // Opcional: Escutar mudanças em tempo real (Realtime)
     const channels = [
-      supabase.channel('stats-tasks').on('postgres_changes', { event: '*', table: 'tasks' }, fetchStats).subscribe(),
-      supabase.channel('stats-finance').on('postgres_changes', { event: '*', table: 'transactions' }, fetchStats).subscribe(),
-      supabase.channel('stats-calendar').on('postgres_changes', { event: '*', table: 'events' }, fetchStats).subscribe()
+      supabase.channel('stats-tasks').on('postgres_changes' as any, { event: '*', table: 'tasks' }, fetchStats).subscribe(),
+      supabase.channel('stats-finance').on('postgres_changes' as any, { event: '*', table: 'transactions' }, fetchStats).subscribe(),
+      supabase.channel('stats-calendar').on('postgres_changes' as any, { event: '*', table: 'events' }, fetchStats).subscribe()
     ];
 
     return () => {

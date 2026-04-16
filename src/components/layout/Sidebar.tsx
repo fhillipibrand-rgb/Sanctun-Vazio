@@ -1,4 +1,4 @@
-import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, Clock, Utensils } from "lucide-react";
+import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, Clock, Utensils, TrendingUp } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 interface SidebarProps {
