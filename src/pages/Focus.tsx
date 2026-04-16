@@ -145,10 +145,17 @@ const Focus = () => {
     try {
       if (!url) return "";
       if (url.includes('embed')) return url;
-      const parts = url.split('/');
-      const type = parts[parts.indexOf('open.spotify.com') + 1];
-      const id = parts[parts.indexOf(type) + 1].split('?')[0];
-      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+      
+      // Regex robusto para capturar o tipo (playlist|track|album|artist) e o ID
+      const match = url.match(/\/(playlist|track|album|artist)\/([a-zA-Z0-9]+)/);
+      
+      if (match) {
+        const type = match[1];
+        const id = match[2];
+        return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+      }
+      
+      return url;
     } catch (e) {
       return url;
     }
