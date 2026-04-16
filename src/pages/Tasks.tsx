@@ -20,7 +20,7 @@ export interface Task {
 }
 
 type Filter = "all" | "active" | "completed" | "critical";
-type ViewMode = "list" | "kanban" | "table";
+type ViewMode = "list" | "kanban" | "table" | "calendar";
 
 const ENERGY_LABELS = { high: "Alta", medium: "Média", low: "Baixa" };
 const ENERGY_COLORS = {
@@ -35,6 +35,7 @@ const Tasks = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [viewDate, setViewDate] = useState(new Date());
 
   const [newTitle, setNewTitle] = useState("");
   const [newEnergy, setNewEnergy] = useState<"high" | "medium" | "low">("medium");
@@ -263,8 +264,75 @@ const Tasks = () => {
   const viewModes: { key: ViewMode; icon: any; label: string }[] = [
     { key: "list", icon: LayoutList, label: "Lista" },
     { key: "kanban", icon: Columns, label: "Kanban" },
-    { key: "table", icon: Table, label: "Tabela" }
+    { key: "table", icon: Table, label: "Tabela" },
+    { key: "calendar", icon: Calendar, label: "Calendário" }
   ];
+
+  const renderCalendar = () => {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const daysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
+    const startDayOfMonth = (y: number, m: number) => new Date(y, m, 1).getDay();
+    
+    const daysCount = daysInMonth(year, month);
+    const firstDay = startDayOfMonth(year, month);
+    const cells = [];
+    
+    for (let i = 0; i < firstDay; i++) {
+      cells.push(<div key={`empty-${i}`} className="h-28 bg-on-surface/[0.01] border border-[var(--glass-border)] opacity-20" />);
+    }
+    
+    for (let day = 1; day <= daysCount; day++) {
+      const dateStr = new Date(year, month, day).toDateString();
+      const isToday = new Date().toDateString() === dateStr;
+      const dayTasks = filteredTasks.filter(t => t.due_date && new Date(t.due_date).toDateString() === dateStr);
+      
+      cells.push(
+        <div key={day} className="h-28 border border-[var(--glass-border)] p-2 hover:bg-on-surface/[0.02] transition-colors overflow-hidden">
+          <span className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-primary text-surface' : 'opacity-30'}`}>
+            {day}
+          </span>
+          <div className="mt-1 space-y-1">
+            {dayTasks.map(task => (
+              <div 
+                key={task.id} 
+                className={`text-[9px] px-1.5 py-0.5 rounded truncate font-bold border ${
+                  task.is_completed ? 'bg-green-500/10 text-green-400 border-green-500/20 grayscale opacity-40' : 
+                  task.is_critical ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
+                  'bg-primary/10 text-primary border-primary/20'
+                }`}
+              >
+                {task.title}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <GlassCard className="p-0 overflow-hidden border border-[var(--glass-border)]">
+        <div className="p-4 border-b border-[var(--glass-border)] flex items-center justify-between bg-on-surface/[0.02]">
+           <h3 className="text-sm font-bold uppercase tracking-wider">
+             {viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+           </h3>
+           <div className="flex items-center gap-1">
+             <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 hover:bg-on-surface/5 rounded-lg"><Table size={14} /></button>
+             <button onClick={() => setViewDate(new Date())} className="px-2 py-1 text-[9px] font-bold border border-[var(--glass-border)] rounded">HOJE</button>
+             <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 hover:bg-on-surface/5 rounded-lg"><Table size={14} className="rotate-180" /></button>
+           </div>
+        </div>
+        <div className="grid grid-cols-7 border-b border-[var(--glass-border)] bg-on-surface/[0.01]">
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+            <div key={d} className="py-2 text-center text-[9px] font-bold opacity-30 uppercase">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {cells}
+        </div>
+      </GlassCard>
+    );
+  };
   
   const renderTaskCard = (task: Task) => (
     <GlassCard
@@ -512,6 +580,7 @@ const Tasks = () => {
         <div className="mt-8">
           {viewMode === "list" && <div className="space-y-3"><AnimatePresence initial={false}>{filteredTasks.map(task => <motion.div key={task.id} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>{renderTaskCard(task)}</motion.div>)}</AnimatePresence></div>}
           {viewMode === "kanban" && renderKanban()}
+          {viewMode === "calendar" && renderCalendar()}
           {viewMode === "table" && <div className="p-8 text-center bg-surface/50 rounded-3xl border border-[var(--glass-border)] opacity-50 editorial-label">Tabela em construção com projetos...</div>}
         </div>
       )}
