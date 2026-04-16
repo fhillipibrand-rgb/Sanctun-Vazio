@@ -255,39 +255,84 @@ const Focus = () => {
                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                       <Music size={16} className="text-secondary" />
-                      <h4 className="text-sm font-bold uppercase tracking-widest">Música Ambiente</h4>
+                      <h4 className="text-sm font-bold uppercase tracking-widest">Fonte de Áudio</h4>
                     </div>
-                    <div className="flex items-center gap-4">
-                       <div className="flex items-center gap-2 group/vol">
-                         <Volume2 size={14} className="opacity-40 group-hover/vol:opacity-100 transition-opacity" />
-                         <input 
-                           type="range" 
-                           min="0" 
-                           max="1" 
-                           step="0.01" 
-                           value={volume} 
-                           onChange={(e) => setVolume(parseFloat(e.target.value))}
-                           className="w-20 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
-                         />
-                       </div>
-                       <button onClick={() => setIsMuted(!isMuted)} className="opacity-50 hover:opacity-100 transition-opacity">
-                         {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                       </button>
-                       <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                    <div className="flex bg-on-surface/5 p-1 rounded-full border border-[var(--glass-border)]">
+                      <button 
+                        onClick={() => setMusicSource('ambient')}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-full transition-all ${musicSource === 'ambient' ? 'bg-primary text-surface' : 'opacity-40 hover:opacity-100'}`}
+                      >
+                        AMBIENTE
+                      </button>
+                      <button 
+                        onClick={() => setMusicSource('spotify')}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-full transition-all ${musicSource === 'spotify' ? 'bg-[#1DB954] text-white' : 'opacity-40 hover:opacity-100'}`}
+                      >
+                        SPOTIFY
+                      </button>
                     </div>
                  </div>
-                 <div className="p-4 rounded-2xl bg-on-surface/5 flex items-center gap-4 group cursor-pointer hover:bg-on-surface/10 transition-all">
-                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
-                       <Music size={20} />
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                       <p className="text-sm font-bold truncate group-hover:text-secondary transition-colors">{activeMode.defaultMusic}</p>
-                       <p className="text-[10px] opacity-40 uppercase tracking-tighter">Fluxo: Ativo</p>
-                    </div>
-                    <button onClick={() => setIsPlaying(!isPlaying)} className="p-2">
-                       {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-                    </button>
-                 </div>
+
+                 {musicSource === 'ambient' ? (
+                   <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                           <div className="flex items-center gap-2 group/vol">
+                             <Volume2 size={14} className="opacity-40 group-hover/vol:opacity-100 transition-opacity" />
+                             <input 
+                               type="range" 
+                               min="0" 
+                               max="1" 
+                               step="0.01" 
+                               value={volume} 
+                               onChange={(e) => setVolume(parseFloat(e.target.value))}
+                               className="w-20 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
+                             />
+                           </div>
+                           <button onClick={() => setIsMuted(!isMuted)} className="opacity-50 hover:opacity-100 transition-opacity">
+                             {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                           </button>
+                           <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                        </div>
+                     </div>
+                     <div className="p-4 rounded-2xl bg-on-surface/5 flex items-center gap-4 group cursor-pointer hover:bg-on-surface/10 transition-all">
+                        <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                           <Music size={20} />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                           <p className="text-sm font-bold truncate group-hover:text-secondary transition-colors">{activeMode.defaultMusic}</p>
+                           <p className="text-[10px] opacity-40 uppercase tracking-tighter">Fluxo: Ativo</p>
+                        </div>
+                        <button onClick={() => setIsPlaying(!isPlaying)} className="p-2">
+                           {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                        </button>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="space-y-4">
+                     <div className="flex flex-col gap-2">
+                        <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Link da Playlist/Álbum</label>
+                        <input 
+                          type="text" 
+                          value={spotifyUrl}
+                          onChange={(e) => setSpotifyUrl(e.target.value)}
+                          placeholder="Cole o link do Spotify aqui..."
+                          className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-2 px-3 text-[10px] outline-none focus:border-[#1DB954]/50 transition-all font-mono"
+                        />
+                     </div>
+                     <div className="rounded-2xl overflow-hidden bg-black/40 h-40">
+                        <iframe 
+                          src={formatSpotifyUrl(spotifyUrl)} 
+                          width="100%" 
+                          height="100%" 
+                          frameBorder="0" 
+                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                          loading="lazy"
+                        ></iframe>
+                     </div>
+                     <p className="text-[8px] opacity-20 text-center italic">Nota: Use sua conta Spotify no navegador para ouvir a música completa.</p>
+                   </div>
+                 )}
               </GlassCard>
             </div>
           </div>
@@ -305,65 +350,72 @@ const Focus = () => {
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="space-y-4 mb-16"
+            className="space-y-4 mb-12"
           >
             <div className="flex items-center justify-center gap-3 text-on-surface/40 uppercase tracking-[0.5em] font-bold text-xs">
               <activeMode.icon size={16} />
               {activeMode.name} Ativo
             </div>
             <h1 className="text-9xl md:text-[12rem] font-bold tracking-tighter font-mono">{formatTime(timeLeft)}</h1>
-            <div className="h-1 w-64 bg-on-surface/5 rounded-full mx-auto overflow-hidden">
-               <motion.div 
-                 className="h-full bg-primary"
-                 initial={{ width: 0 }}
-                 animate={{ width: `${(timeLeft / (pomodoroConfig.work * 60)) * 100}%` }}
-               />
-            </div>
           </motion.div>
 
-          {/* Pomodoro Progress Visualization */}
-          <div className="flex items-center gap-12 text-on-surface/60">
-             <div className="space-y-2">
-               <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">TAREFA ATUAL</p>
-               <h3 className="text-xl font-bold">Respirar e Focar</h3>
+          {/* Integration View (Ambient vs Spotify) */}
+          <div className="w-full max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+             <div className="text-left space-y-6">
+                <div className="space-y-2">
+                  <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">MODO DE IMERSÃO</p>
+                  <h3 className="text-2xl font-bold opacity-60">Santuário v2.0</h3>
+                </div>
+                
+                {musicSource === 'ambient' ? (
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-12">
+                      <button onClick={() => setIsPlaying(!isPlaying)} className="w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all outline-none">
+                         {isPlaying ? <Pause size={32} /> : <Play size={32} />}
+                      </button>
+                      <div className="space-y-2 flex-1">
+                         <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold opacity-40 uppercase tracking-[0.2em]">{activeMode.defaultMusic}</h4>
+                            <Volume2 size={12} className="opacity-20" />
+                         </div>
+                         <input 
+                           type="range" 
+                           min="0" 
+                           max="1" 
+                           step="0.01" 
+                           value={volume} 
+                           onChange={(e) => setVolume(parseFloat(e.target.value))}
+                           className="w-full h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
+                         />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl overflow-hidden border border-on-surface/10 shadow-2xl h-48 group">
+                    <iframe 
+                        src={formatSpotifyUrl(spotifyUrl)} 
+                        width="100%" 
+                        height="100%" 
+                        frameBorder="0" 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                        loading="lazy"
+                    ></iframe>
+                  </div>
+                )}
              </div>
-             <div className="h-12 w-[1px] bg-on-surface/10" />
-             <div className="space-y-2">
-               <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">MÚSICA</p>
-               <h3 className="text-xl font-bold flex items-center gap-2 justify-center">
-                 {activeMode.defaultMusic}
-                 {isPlaying && <div className="flex items-center gap-0.5 h-3"><div className="w-0.5 bg-secondary animate-[wave_1s_infinite]" style={{height: '60%'}}></div><div className="w-0.5 bg-secondary animate-[wave_1s_infinite_0.1s]" style={{height: '100%'}}></div><div className="w-0.5 bg-secondary animate-[wave_1s_infinite_0.2s]" style={{height: '80%'}}></div></div>}
-               </h3>
-             </div>
-          </div>
 
-          <div className="mt-20 flex items-center justify-center gap-12">
-             <div className="flex flex-col items-center gap-4">
-               <button onClick={() => setIsPlaying(!isPlaying)} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
-                  {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+             <div className="flex flex-col items-center gap-6">
+               <button 
+                 onClick={toggleTimer}
+                 className="w-32 h-32 rounded-full border-2 border-primary flex items-center justify-center hover:bg-primary/5 transition-all text-primary group"
+               >
+                 {isTimerRunning ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" className="ml-2" />}
                </button>
-               <input 
-                 type="range" 
-                 min="0" 
-                 max="1" 
-                 step="0.01" 
-                 value={volume} 
-                 onChange={(e) => setVolume(parseFloat(e.target.value))}
-                 className="w-24 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
-               />
+               <button onClick={resetTimer} className="text-[10px] opacity-30 hover:opacity-100 transition-opacity uppercase tracking-[0.3em] font-bold">Reiniciar Timer</button>
              </div>
-             <button 
-               onClick={toggleTimer}
-               className="w-24 h-24 rounded-full border-2 border-primary flex items-center justify-center hover:bg-primary/5 transition-all text-primary"
-             >
-               {isTimerRunning ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-1" />}
-             </button>
-             <button onClick={resetTimer} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
-                <RotateCcw size={24} />
-             </button>
           </div>
 
-          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em]">Santuário v2.0 · Foco Profundo</p>
+          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em] font-mono">Respirar · Focar · Executar</p>
         </div>
       )}
       <style>{`
