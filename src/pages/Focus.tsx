@@ -12,6 +12,7 @@ type FocusMode = {
   icon: any;
   allowNotifications: boolean;
   defaultMusic: string;
+  audioUrl: string;
 };
 
 const FOCUS_MODES: FocusMode[] = [
@@ -23,7 +24,8 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-purple-900/40 via-black to-black",
     icon: Zap,
     allowNotifications: false,
-    defaultMusic: "Lofi Focus"
+    defaultMusic: "Lofi Focus Beats",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
   },
   {
     id: "personal",
@@ -33,7 +35,8 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-blue-900/40 via-black to-black",
     icon: Moon,
     allowNotifications: true,
-    defaultMusic: "Ambient Nature"
+    defaultMusic: "Nature Ambient",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
   },
   {
     id: "health",
@@ -43,9 +46,41 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-emerald-900/40 via-black to-black",
     icon: ShieldCheck,
     allowNotifications: true,
-    defaultMusic: "Zen Meditation"
+    defaultMusic: "Zen Meditation",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
   }
 ];
+
+const FocusBackgroundEffects = ({ color }: { color: string }) => {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full blur-[100px]"
+          style={{
+            backgroundColor: color,
+            width: Math.random() * 400 + 200,
+            height: Math.random() * 400 + 200,
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+          }}
+          animate={{
+            x: [0, Math.random() * 100 - 50, 0],
+            y: [0, Math.random() * 100 - 50, 0],
+            scale: [1, 1.2, 1],
+            opacity: [0.1, 0.3, 0.1],
+          }}
+          transition={{
+            duration: Math.random() * 10 + 10,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const Focus = () => {
   const [activeMode, setActiveMode] = useState<FocusMode>(FOCUS_MODES[0]);
@@ -59,6 +94,23 @@ const Focus = () => {
   const [pomodoroConfig, setPomodoroConfig] = useState({ work: 25, break: 5 });
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, activeMode]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {
@@ -68,7 +120,6 @@ const Focus = () => {
     } else if (timeLeft === 0) {
       setIsTimerRunning(false);
       if (timerRef.current) clearInterval(timerRef.current);
-      // Play sound here
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -92,7 +143,14 @@ const Focus = () => {
   return (
     <div className={`min-h-screen transition-colors duration-1000 ${isFullscreen ? 'fixed inset-0 z-[100] bg-black p-10 flex flex-col items-center justify-center' : 'space-y-10'}`}>
       
-      {/* Background Gradient for Fullscreen */}
+      {/* Hidden Audio Element */}
+      <audio 
+        ref={audioRef}
+        src={activeMode.audioUrl}
+        loop
+      />
+
+      {/* Background Effects */}
       <AnimatePresence>
         {isFullscreen && (
           <motion.div 
@@ -100,7 +158,9 @@ const Focus = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={`absolute inset-0 bg-gradient-to-tr ${activeMode.bgGradient} transition-all duration-1000`}
-          />
+          >
+            <FocusBackgroundEffects color={activeMode.color} />
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -132,7 +192,10 @@ const Focus = () => {
                 {FOCUS_MODES.map((mode) => (
                   <GlassCard 
                     key={mode.id}
-                    onClick={() => setActiveMode(mode)}
+                    onClick={() => {
+                        setActiveMode(mode);
+                        // If it's already playing, keep it playing with new source
+                    }}
                     className={`p-6 cursor-pointer border-2 transition-all ${
                       activeMode.id === mode.id ? 'border-primary' : 'border-transparent'
                     }`}
@@ -200,7 +263,7 @@ const Focus = () => {
                     </div>
                     <div className="flex-1 overflow-hidden">
                        <p className="text-sm font-bold truncate group-hover:text-secondary transition-colors">{activeMode.defaultMusic}</p>
-                       <p className="text-[10px] opacity-40 uppercase tracking-tighter">Estilo: Imersão profunda</p>
+                       <p className="text-[10px] opacity-40 uppercase tracking-tighter">Fluxo: Ativo</p>
                     </div>
                     <button onClick={() => setIsPlaying(!isPlaying)} className="p-2">
                        {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
@@ -239,43 +302,46 @@ const Focus = () => {
             </div>
           </motion.div>
 
-          <div className="flex items-center gap-12">
+          {/* Pomodoro Progress Visualization */}
+          <div className="flex items-center gap-12 text-on-surface/60">
              <div className="space-y-2">
                <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">TAREFA ATUAL</p>
-               <h3 className="text-xl font-bold opacity-60">Configurar Ecossistema Foco</h3>
+               <h3 className="text-xl font-bold">Respirar e Focar</h3>
              </div>
              <div className="h-12 w-[1px] bg-on-surface/10" />
              <div className="space-y-2">
-               <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">PRÓXIMA PAUSA</p>
-               <h3 className="text-xl font-bold opacity-60">+15 MINUTOS</h3>
+               <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">MÚSICA</p>
+               <h3 className="text-xl font-bold flex items-center gap-2 justify-center">
+                 {activeMode.defaultMusic}
+                 {isPlaying && <div className="flex items-center gap-0.5 h-3"><div className="w-0.5 bg-secondary animate-[wave_1s_infinite]" style={{height: '60%'}}></div><div className="w-0.5 bg-secondary animate-[wave_1s_infinite_0.1s]" style={{height: '100%'}}></div><div className="w-0.5 bg-secondary animate-[wave_1s_infinite_0.2s]" style={{height: '80%'}}></div></div>}
+               </h3>
              </div>
           </div>
 
-          <div className="mt-20 flex items-center justify-center gap-8">
-             <button 
-               onClick={toggleTimer}
-               className="w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all"
-             >
-               {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+          <div className="mt-20 flex items-center justify-center gap-12">
+             <button onClick={() => setIsPlaying(!isPlaying)} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
+                {isPlaying ? <Pause size={24} /> : <Play size={24} />}
              </button>
              <button 
-               className="w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all"
+               onClick={toggleTimer}
+               className="w-24 h-24 rounded-full border-2 border-primary flex items-center justify-center hover:bg-primary/5 transition-all text-primary"
              >
-               <RotateCcw size={32} onClick={resetTimer} />
+               {isTimerRunning ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-1" />}
+             </button>
+             <button onClick={resetTimer} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
+                <RotateCcw size={24} />
              </button>
           </div>
 
-          {!isTimerRunning && (
-             <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-12 text-xs opacity-20 flex items-center gap-2"
-             >
-               Pressione ESC para sair ou use o botão X no topo
-             </motion.p>
-          )}
+          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em]">Santuário v2.0 · Foco Profundo</p>
         </div>
       )}
+      <style>{`
+        @keyframes wave {
+          0%, 100% { transform: scaleY(0.5); }
+          50% { transform: scaleY(1); }
+        }
+      `}</style>
     </div>
   );
 };
