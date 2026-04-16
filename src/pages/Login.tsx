@@ -91,7 +91,7 @@ const Login = () => {
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
             <Zap className="text-surface" size={32} fill="currentColor" />
           </div>
-          <h1 className="display-lg text-4xl mb-2">Santuário</h1>
+          <h1 className="display-lg text-4xl mb-2">Sanctum</h1>
           <p className="editorial-label opacity-60 tracking-[0.2em]">MODO PROFUNDO • AUTENTICAÇÃO</p>
         </div>
 

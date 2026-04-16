@@ -1,4 +1,4 @@
-import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft } from "lucide-react";
+import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, Clock, Utensils } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 interface SidebarProps {
@@ -10,15 +10,44 @@ interface SidebarProps {
 const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
   const location = useLocation();
   
-  const menuItems = [
-    { id: "/", icon: Home, label: "INÍCIO" },
-    { id: "/tasks", icon: CheckSquare, label: "TAREFAS" },
-    { id: "/finance", icon: Wallet, label: "FINANÇAS" },
-    { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
-    { id: "/focus", icon: Zap, label: "FOCO" },
+  const menuSections = [
+    {
+      title: "PRINCIPAL",
+      items: [
+        { id: "/", icon: Home, label: "INÍCIO" },
+        { id: "/focus", icon: Zap, label: "FOCO" },
+        { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
+      ]
+    },
+    {
+      title: "PRODUTIVIDADE",
+      items: [
+        { id: "/tasks", icon: CheckSquare, label: "TODAS TAREFAS" },
+        { id: "/tasks/projects", icon: FolderKanban, label: "PROJETOS" },
+      ]
+    },
+    {
+      title: "DESENVOLVIMENTO",
+      items: [
+        { id: "/habits", icon: Target, label: "HÁBITOS" },
+        { id: "/nutrition", icon: Utensils, label: "DIETA & NUTRIÇÃO" },
+        { id: "/health", icon: Activity, label: "GESTÃO DE SAÚDE" },
+      ]
+    },
+    {
+      title: "FINANÇAS",
+      items: [
+        { id: "/finance", icon: Activity, label: "FLUXO FINANCEIRO" },
+        { id: "/finance/budget", icon: PieChart, label: "ORÇAMENTO" },
+      ]
+    }
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    // Exact match for home, or starts with path for others (to keep section active when in subpage)
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <aside className="w-[320px] h-full flex flex-col p-8 border-r border-[var(--glass-border)] bg-surface/90 backdrop-blur-2xl shrink-0 shadow-2xl relative">
@@ -40,18 +69,22 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-2">
-        <p className="editorial-label mb-4 px-6 opacity-50">NAVEGAÇÃO</p>
-        {menuItems.map((item) => (
-          <Link 
-            key={item.id}
-            to={item.id}
-            onClick={!isCollapsible ? onClose : undefined}
-            className={`sidebar-item ${isActive(item.id) ? "active" : ""}`}
-          >
-            <item.icon size={20} strokeWidth={isActive(item.id) ? 2.5 : 2} />
-            <span className="editorial-label tracking-widest">{item.label}</span>
-          </Link>
+      <nav className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-thin">
+        {menuSections.map((section, idx) => (
+          <div key={idx} className="space-y-2">
+            <p className="editorial-label px-6 opacity-50 tracking-widest text-[9px] mb-2">{section.title}</p>
+            {section.items.map((item) => (
+              <Link 
+                key={item.id}
+                to={item.id}
+                onClick={!isCollapsible ? onClose : undefined}
+                className={`sidebar-item ${isActive(item.id) ? "active" : ""}`}
+              >
+                <item.icon size={20} strokeWidth={isActive(item.id) ? 2.5 : 2} />
+                <span className="editorial-label tracking-widest">{item.label}</span>
+              </Link>
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -61,21 +94,21 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
           CAPTURA RÁPIDA
         </button>
         
-        <div className="pt-6 border-t border-[var(--glass-border)] space-y-2">
-          <Link to="/settings" onClick={!isCollapsible ? onClose : undefined} className="sidebar-item !py-2">
-            <Settings size={18} />
-            <span className="editorial-label text-[10px]">CONFIGURAÇÕES</span>
+        <div className="pt-4 border-t border-[var(--glass-border)] space-y-1">
+          <Link to="/settings" onClick={!isCollapsible ? onClose : undefined} className="sidebar-item !py-1.5 opacity-60 hover:opacity-100">
+            <Settings size={14} />
+            <span className="editorial-label text-[9px]">CONFIGURAÇÕES</span>
           </Link>
-          <div className="sidebar-item !py-2">
-            <HelpCircle size={18} />
-            <span className="editorial-label text-[10px]">AJUDA</span>
+          <div className="sidebar-item !py-1.5 opacity-60 hover:opacity-100">
+            <HelpCircle size={14} />
+            <span className="editorial-label text-[9px]">AJUDA</span>
           </div>
           <button 
             onClick={onSignOut}
-            className="sidebar-item !py-2 w-full text-left"
+            className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100 text-red-400 hover:text-red-500"
           >
-            <LogOut size={18} />
-            <span className="editorial-label text-[10px]">SAIR</span>
+            <LogOut size={14} />
+            <span className="editorial-label text-[9px]">SAIR</span>
           </button>
         </div>
 

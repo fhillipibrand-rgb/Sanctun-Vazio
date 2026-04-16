@@ -4,6 +4,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, PieChart, Pie, Cell } from "
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { MOCK_FINANCE } from "../lib/mockData";
 
 interface Transaction {
   id: string;
@@ -32,8 +33,10 @@ const Finance = () => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       setTransactions(data);
+    } else {
+      setTransactions(MOCK_FINANCE as Transaction[]);
     }
     setLoading(false);
   };

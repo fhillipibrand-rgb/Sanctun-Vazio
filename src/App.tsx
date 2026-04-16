@@ -13,6 +13,10 @@ import CalendarPage from "./pages/CalendarPage";
 import Login from "./pages/Login";
 import Settings from "./pages/Settings";
 import { useAuth } from "./hooks/useAuth";
+import Projects from "./pages/Projects";
+import Habits from "./pages/Habits";
+import Nutrition from "./pages/Nutrition";
+import Health from "./pages/Health";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
@@ -46,7 +50,11 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/finance" element={<Finance />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/tasks/projects" element={<Projects />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/habits" element={<Habits />} />
+          <Route path="/nutrition" element={<Nutrition />} />
+          <Route path="/health" element={<Health />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/focus" element={
             <div className="flex items-center justify-center h-full">
