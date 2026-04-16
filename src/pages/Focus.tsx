@@ -87,6 +87,7 @@ const Focus = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.5);
   
   // Pomodoro State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -111,6 +112,12 @@ const Focus = () => {
       audioRef.current.muted = isMuted;
     }
   }, [isMuted]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {
@@ -251,8 +258,20 @@ const Focus = () => {
                       <h4 className="text-sm font-bold uppercase tracking-widest">Música Ambiente</h4>
                     </div>
                     <div className="flex items-center gap-4">
+                       <div className="flex items-center gap-2 group/vol">
+                         <Volume2 size={14} className="opacity-40 group-hover/vol:opacity-100 transition-opacity" />
+                         <input 
+                           type="range" 
+                           min="0" 
+                           max="1" 
+                           step="0.01" 
+                           value={volume} 
+                           onChange={(e) => setVolume(parseFloat(e.target.value))}
+                           className="w-20 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
+                         />
+                       </div>
                        <button onClick={() => setIsMuted(!isMuted)} className="opacity-50 hover:opacity-100 transition-opacity">
-                         {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                         {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                        </button>
                        <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
                     </div>
@@ -319,9 +338,20 @@ const Focus = () => {
           </div>
 
           <div className="mt-20 flex items-center justify-center gap-12">
-             <button onClick={() => setIsPlaying(!isPlaying)} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
-                {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-             </button>
+             <div className="flex flex-col items-center gap-4">
+               <button onClick={() => setIsPlaying(!isPlaying)} className="p-4 rounded-full border border-on-surface/10 hover:bg-on-surface/5 transition-all">
+                  {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+               </button>
+               <input 
+                 type="range" 
+                 min="0" 
+                 max="1" 
+                 step="0.01" 
+                 value={volume} 
+                 onChange={(e) => setVolume(parseFloat(e.target.value))}
+                 className="w-24 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
+               />
+             </div>
              <button 
                onClick={toggleTimer}
                className="w-24 h-24 rounded-full border-2 border-primary flex items-center justify-center hover:bg-primary/5 transition-all text-primary"
