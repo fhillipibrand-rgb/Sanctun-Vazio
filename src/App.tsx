@@ -17,6 +17,7 @@ import Projects from "./pages/Projects";
 import Habits from "./pages/Habits";
 import Nutrition from "./pages/Nutrition";
 import Health from "./pages/Health";
+import Focus from "./pages/Focus";
 import FinanceTransactions from "./pages/FinanceTransactions";
 import FinanceAnalytics from "./pages/FinanceAnalytics";
 import Investments from "./pages/Investments";
@@ -62,11 +63,9 @@ export default function App() {
           <Route path="/investments" element={<Investments />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/focus" element={
-            <div className="flex items-center justify-center h-full">
-              <h2 className="display-lg opacity-20">Modo Foco</h2>
-            </div>
-          } />
+          <Route path="/focus" element={<Focus />} />
+          <Route path="/nutrition" element={<Nutrition />} />
+          <Route path="/health" element={<Health />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -333,20 +333,20 @@ const Dashboard = () => {
           </div>
 
           {/* Deep Work / Focus Status */}
-          <Link to="/dashboard" className="block transform hover:translate-y-[-4px] transition-all">
-            <GlassCard className="p-7 bg-gradient-to-br from-purple-500/15 to-transparent border-purple-500/30 group relative overflow-hidden">
-               <div className="absolute right-0 top-0 w-32 h-32 bg-purple-500/10 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-500/20 transition-all" />
+          <Link to="/focus" className="block transform hover:translate-y-[-4px] transition-all">
+            <GlassCard className="p-7 bg-gradient-to-br from-primary/10 to-transparent border-primary/30 group relative overflow-hidden h-full">
+               <div className="absolute right-0 top-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-all" />
                <div className="flex items-center justify-between relative z-10">
                  <div>
-                   <div className="flex items-center gap-2 text-purple-400 mb-2">
-                     <Clock size={14} />
+                   <div className="flex items-center gap-2 text-primary mb-2">
+                     <Zap size={14} fill="currentColor" />
                      <p className="editorial-label text-[10px] tracking-widest font-bold uppercase">ESTADO DE FOCO</p>
                    </div>
-                   <p className="text-sm font-bold">DEEP WORK</p>
-                   <p className="text-[9px] opacity-40 mt-1 uppercase">INICIAR SESSÃO AGORA</p>
+                   <p className="text-sm font-bold">DISPONÍVEL</p>
+                   <p className="text-[9px] opacity-40 mt-1 uppercase">INICIAR MODO PROFUNDO</p>
                  </div>
-                 <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:animate-pulse">
-                   <Zap size={20} fill="currentColor" />
+                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                   <Zap size={24} fill="currentColor" />
                  </div>
                </div>
             </GlassCard>
