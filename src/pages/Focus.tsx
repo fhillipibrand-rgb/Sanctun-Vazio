@@ -24,8 +24,8 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-purple-900/40 via-black to-black",
     icon: Zap,
     allowNotifications: false,
-    defaultMusic: "Lofi Focus Beats",
-    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    defaultMusic: "Lofi Chill Beats",
+    audioUrl: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Ketsa/Raising_Frequency/Ketsa_-_04_-_Day_Trip.mp3"
   },
   {
     id: "personal",
@@ -35,8 +35,8 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-blue-900/40 via-black to-black",
     icon: Moon,
     allowNotifications: true,
-    defaultMusic: "Nature Ambient",
-    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+    defaultMusic: "Ambient Minimalist",
+    audioUrl: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Chad_Crouch/Arps/Chad_Crouch_-_Algorithms.mp3"
   },
   {
     id: "health",
@@ -46,8 +46,8 @@ const FOCUS_MODES: FocusMode[] = [
     bgGradient: "from-emerald-900/40 via-black to-black",
     icon: ShieldCheck,
     allowNotifications: true,
-    defaultMusic: "Zen Meditation",
-    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
+    defaultMusic: "Zen Meditation Ambient",
+    audioUrl: "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/P_C_III/Ad_Astra_Vol_1/P_C_III_-_01_-_Ad_Astra_-_Part_1.mp3"
   }
 ];
 
