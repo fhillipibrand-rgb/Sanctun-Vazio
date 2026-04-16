@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import { PieChart as PieIcon, TrendingUp, TrendingDown, BarChart3, Calendar, Filter, Sparkles, PieChart } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart as RePieChart, Pie, Cell, BarChart, Bar, CartesianGrid } from "recharts";
 import GlassCard from "../components/ui/GlassCard";

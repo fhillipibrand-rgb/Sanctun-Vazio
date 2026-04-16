@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Settings, TrendingUp, Utensils, Wallet, Coffee, Plane, Plus } from "lucide-react";
+import { Calendar, Settings, TrendingUp, Utensils, Wallet, Coffee, Plane, Plus, Target } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, PieChart, Pie, Cell } from "recharts";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
