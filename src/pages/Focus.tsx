@@ -88,8 +88,12 @@ const Focus = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.5);
-  const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>('ambient');
-  const [spotifyUrl, setSpotifyUrl] = useState('https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS');
+  const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>(() => {
+    return (localStorage.getItem('sanctum_music_source') as 'ambient' | 'spotify') || 'ambient';
+  });
+  const [spotifyUrl, setSpotifyUrl] = useState(() => {
+    return localStorage.getItem('sanctum_spotify_url') || 'https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS';
+  });
   
   // Pomodoro State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -114,6 +118,11 @@ const Focus = () => {
       audioRef.current.muted = isMuted;
     }
   }, [isMuted]);
+
+  useEffect(() => {
+    localStorage.setItem('sanctum_music_source', musicSource);
+    localStorage.setItem('sanctum_spotify_url', spotifyUrl);
+  }, [musicSource, spotifyUrl]);
 
   useEffect(() => {
     if (audioRef.current) {
