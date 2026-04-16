@@ -16,7 +16,6 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
       items: [
         { id: "/", icon: Home, label: "INÍCIO" },
         { id: "/focus", icon: Zap, label: "FOCO" },
-        { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
       ]
     },
     {
@@ -24,6 +23,7 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
       items: [
         { id: "/tasks", icon: CheckSquare, label: "TODAS TAREFAS" },
         { id: "/tasks/projects", icon: FolderKanban, label: "PROJETOS" },
+        { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
       ]
     },
     {
