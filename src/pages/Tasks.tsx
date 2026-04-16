@@ -233,6 +233,13 @@ const Tasks = () => {
     setTasks(prevTasks => prevTasks.map(t => 
       t.id === taskId ? { ...t, status: newStatus, is_completed: isCompletedNow } : t
     ));
+
+    if (!task.is_mock) {
+      await supabase
+        .from("tasks")
+        .update({ status: newStatus, is_completed: isCompletedNow })
+        .eq("id", taskId);
+    }
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -318,7 +325,7 @@ const Tasks = () => {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start select-none">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
         {cols.map(col => {
           const colTasks = filteredTasks.filter(t => (t.status || (t.is_completed ? "done" : "todo")) === col.id);
           const isDropActive = activeDropCol === col.id;
