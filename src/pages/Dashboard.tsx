@@ -115,6 +115,42 @@ const Dashboard = () => {
 
       {/* Grid de KPIs - 4 Colunas High-Impact */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* 1. BEM-VINDO AO SANCTUM */}
+        <GlassCard className="p-6 bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+          <div className="flex items-center gap-2 text-primary mb-3">
+            <Rocket size={14} />
+            <p className="editorial-label text-[10px] opacity-80 uppercase tracking-widest font-bold">BEM-VINDO AO SANCTUM</p>
+          </div>
+          <p className="text-xs font-medium leading-relaxed opacity-70 italic min-h-[4em]">
+            {(() => {
+              const quotes = [
+                "Você é o foco. A sua gestão pessoal é o suprassumo da existência.",
+                "O seu santuário pessoal, onde a clareza encontra o progresso.",
+                "Não é sobre fazer mais, é sobre ser melhor naquilo que importa.",
+                "A disciplina é a ponte entre metas e realizações.",
+                "Um homem que domina a si mesmo é mais forte que um que domina cidades."
+              ];
+              const day = new Date().getDate();
+              return quotes[day % quotes.length];
+            })()}
+          </p>
+        </GlassCard>
+
+        {/* 2. PRÓXIMO COMPROMISSO */}
+        <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
+          <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={40} /></div>
+            <p className="editorial-label text-[10px] opacity-50 mb-4 text-purple-400 font-bold">PRÓXIMO COMPROMISSO</p>
+            <h4 className="text-sm font-bold truncate mb-1">{stats.calendar.nextEvent?.title || "Horizonte Livre"}</h4>
+            <p className="text-[10px] opacity-50 font-medium font-mono">
+               {stats.calendar.nextEvent 
+                 ? new Date(stats.calendar.nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                 : "Sem eventos em pauta"}
+            </p>
+          </GlassCard>
+        </Link>
+
+        {/* 3. PRODUTIVIDADE */}
         <Link to="/tasks" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Target size={40} /></div>
@@ -129,6 +165,7 @@ const Dashboard = () => {
           </GlassCard>
         </Link>
 
+        {/* 4. ECONOMIA */}
         <Link to="/finance" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={40} /></div>
@@ -139,40 +176,6 @@ const Dashboard = () => {
             <p className="text-[9px] font-medium opacity-40 mt-3 uppercase tracking-wider">SALDO CONSOLIDADO</p>
           </GlassCard>
         </Link>
-
-        <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
-          <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={40} /></div>
-            <p className="editorial-label text-[10px] opacity-50 mb-4 text-purple-400 font-bold">PRÓXIMO COMPROMISSO</p>
-            <h4 className="text-sm font-bold truncate mb-1">{stats.calendar.nextEvent?.title || "Horizonte Livre"}</h4>
-            <p className="text-[10px] opacity-50 font-medium font-mono">
-               {stats.calendar.nextEvent 
-                 ? new Date(stats.calendar.nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                 : "Sem eventos em pauta"}
-            </p>
-          </GlassCard>
-        </Link>
-
-        <GlassCard className="p-6 bg-gradient-to-br from-primary/10 to-transparent border-primary/20 hidden lg:block">
-          <div className="flex items-center gap-2 text-primary mb-3">
-            <Rocket size={14} />
-            <p className="editorial-label text-[10px] opacity-80 uppercase tracking-widest font-bold">BEM-VINDO AO SANCTUM</p>
-          </div>
-          <p className="text-xs font-medium leading-relaxed opacity-70 italic min-h-[4em]">
-            {(() => {
-              const quotes = [
-                "Você é o foco. A sua gestão pessoal é o suprassumo da existência.",
-                "O seu santuário pessoal, onde a clareza encontra o progresso.",
-                "Não é sobre fazer mais, é sobre ser melhor naquilo que importa.",
-                "A disciplina é a ponte entre metas e realizações.",
-                "Um homem que domina a si mesmo é mais forte que um que domina cidades."
-              ];
-              // Use a simple seed based on the day to keep the quote consistent throughout the day
-              const day = new Date().getDate();
-              return quotes[day % quotes.length];
-            })()}
-          </p>
-        </GlassCard>
       </div>
 
       {/* Grid Principal - 2 Colunas */}
