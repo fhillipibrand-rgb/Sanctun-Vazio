@@ -53,28 +53,28 @@ const FOCUS_MODES: FocusMode[] = [
 
 const FocusBackgroundEffects = ({ color }: { color: string }) => {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-      {[...Array(5)].map((_, i) => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30 group-hover:opacity-40 transition-opacity duration-1000">
+      {[...Array(4)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full blur-[100px]"
+          className="absolute rounded-full blur-[200px]"
           style={{
             backgroundColor: color,
-            width: Math.random() * 400 + 200,
-            height: Math.random() * 400 + 200,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            width: Math.random() * 600 + 400,
+            height: Math.random() * 600 + 400,
+            left: `${Math.random() * 100 - 20}%`,
+            top: `${Math.random() * 100 - 20}%`,
           }}
           animate={{
-            x: [0, Math.random() * 100 - 50, 0],
-            y: [0, Math.random() * 100 - 50, 0],
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.3, 0.1],
+            x: [0, Math.random() * 200 - 100, 0],
+            y: [0, Math.random() * 200 - 100, 0],
+            scale: [1, 1.15, 1],
+            opacity: [0.05, 0.15, 0.05],
           }}
           transition={{
-            duration: Math.random() * 10 + 10,
+            duration: Math.random() * 20 + 30, // Much slower: 30s to 50s
             repeat: Infinity,
-            ease: "linear",
+            ease: "easeInOut",
           }}
         />
       ))}
