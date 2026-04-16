@@ -88,6 +88,8 @@ const Focus = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.5);
+  const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>('ambient');
+  const [spotifyUrl, setSpotifyUrl] = useState('https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS');
   
   // Pomodoro State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -137,6 +139,19 @@ const Focus = () => {
   const resetTimer = () => {
     setIsTimerRunning(false);
     setTimeLeft(pomodoroConfig.work * 60);
+  };
+
+  const formatSpotifyUrl = (url: string) => {
+    try {
+      if (!url) return "";
+      if (url.includes('embed')) return url;
+      const parts = url.split('/');
+      const type = parts[parts.indexOf('open.spotify.com') + 1];
+      const id = parts[parts.indexOf(type) + 1].split('?')[0];
+      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    } catch (e) {
+      return url;
+    }
   };
 
   const formatTime = (seconds: number) => {
