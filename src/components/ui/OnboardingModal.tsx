@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, Zap, Target, Wallet, 
@@ -8,7 +8,8 @@ import {
 import GlassCard from "./GlassCard";
 
 interface OnboardingModalProps {
-  onComplete: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const slides = [
@@ -49,17 +50,8 @@ const slides = [
   }
 ];
 
-const OnboardingModal = ({ onComplete }: OnboardingModalProps) => {
+const OnboardingModal = ({ isOpen, onClose }: OnboardingModalProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const hasSeenOnboarding = localStorage.getItem("sanctuary_onboarding_done");
-    if (!hasSeenOnboarding) {
-      const timer = setTimeout(() => setIsVisible(true), 1500); // Delay suave para entrar após o dashboard carregar
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   const handleNext = () => {
     if (currentSlide < slides.length - 1) {
@@ -70,12 +62,12 @@ const OnboardingModal = ({ onComplete }: OnboardingModalProps) => {
   };
 
   const handleFinish = () => {
-    setIsVisible(false);
     localStorage.setItem("sanctuary_onboarding_done", "true");
-    onComplete();
+    setCurrentSlide(0);
+    onClose();
   };
 
-  if (!isVisible) return null;
+  if (!isOpen) return null;
 
   const current = slides[currentSlide];
   const Icon = current.icon;
@@ -92,6 +84,13 @@ const OnboardingModal = ({ onComplete }: OnboardingModalProps) => {
           className="w-full max-w-2xl"
         >
           <GlassCard className="p-10 md:p-14 border-primary/20 bg-surface/40 overflow-hidden relative">
+            <button 
+              onClick={handleFinish}
+              className="absolute top-6 right-6 p-2 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-colors z-20"
+            >
+              <X size={18} className="opacity-40" />
+            </button>
+
             {/* Background Accent */}
             <div className={`absolute top-0 right-0 w-64 h-64 ${current.bg} blur-[100px] rounded-full -mr-20 -mt-20 transition-colors duration-500`} />
             
@@ -109,7 +108,8 @@ const OnboardingModal = ({ onComplete }: OnboardingModalProps) => {
                 {slides.map((_, i) => (
                   <div 
                     key={i} 
-                    className={`h-1.5 rounded-full transition-all duration-300 ${i === currentSlide ? `w-8 ${current.color} bg-current` : 'w-2 bg-on-surface/10'}`} 
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === currentSlide ? `w-8 ${current.color} bg-current` : 'w-2 bg-on-surface/10'}`} 
+                    onClick={() => setCurrentSlide(i)}
                   />
                 ))}
               </div>

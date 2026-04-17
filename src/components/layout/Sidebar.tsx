@@ -8,8 +8,11 @@ interface SidebarProps {
   isCollapsible?: boolean;
 }
 
+import { useLayout } from "./Layout";
+
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
+  const { openOnboarding } = useLayout();
   
   const menuSections = [
     {
@@ -105,10 +108,16 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
             <Settings size={14} />
             <span className="editorial-label text-[9px]">CONFIGURAÇÕES</span>
           </Link>
-          <div className="sidebar-item !py-1.5 opacity-60 hover:opacity-100">
+          <button 
+            onClick={() => {
+              openOnboarding();
+              if (!isCollapsible) onClose();
+            }}
+            className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100"
+          >
             <HelpCircle size={14} />
-            <span className="editorial-label text-[9px]">AJUDA</span>
-          </div>
+            <span className="editorial-label text-[9px]">GUIA DE USO</span>
+          </button>
           <button 
             onClick={onSignOut}
             className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100 text-red-400 hover:text-red-500"

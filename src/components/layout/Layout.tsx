@@ -15,6 +15,7 @@ export interface LayoutContextType {
   toggleTheme: () => void;
   isMobile: boolean;
   openQuickCapture: () => void;
+  openOnboarding: () => void;
 }
 
 export const LayoutContext = createContext<LayoutContextType>({
@@ -24,6 +25,7 @@ export const LayoutContext = createContext<LayoutContextType>({
   toggleTheme: () => {},
   isMobile: false,
   openQuickCapture: () => {},
+  openOnboarding: () => {},
 });
 
 export const useLayout = () => useContext(LayoutContext);
@@ -33,10 +35,12 @@ const Layout = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const { signOut } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
+    // Check mobile
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
@@ -45,7 +49,19 @@ const Layout = () => {
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+
+    // Auto-show Onboarding on first visit
+    const timer = setTimeout(() => {
+      const hasSeenOnboarding = localStorage.getItem("sanctuary_onboarding_done");
+      if (!hasSeenOnboarding) {
+        setIsOnboardingOpen(true);
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -61,9 +77,13 @@ const Layout = () => {
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const openQuickCapture = () => setIsQuickCaptureOpen(true);
+  const openOnboarding = () => setIsOnboardingOpen(true);
 
   return (
-    <LayoutContext.Provider value={{ isSidebarOpen, toggleSidebar, theme, toggleTheme, isMobile, openQuickCapture }}>
+    <LayoutContext.Provider value={{ 
+      isSidebarOpen, toggleSidebar, theme, toggleTheme, 
+      isMobile, openQuickCapture, openOnboarding 
+    }}>
       <div className="flex h-screen w-full overflow-hidden relative bg-surface">
         
         {/* Quick Capture Modal Global */}
@@ -73,7 +93,10 @@ const Layout = () => {
         />
 
         {/* Onboarding Guide */}
-        <OnboardingModal onComplete={() => console.log("Onboarding complete")} />
+        <OnboardingModal 
+          isOpen={isOnboardingOpen} 
+          onClose={() => setIsOnboardingOpen(false)} 
+        />
 
         {/* Decorative Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
