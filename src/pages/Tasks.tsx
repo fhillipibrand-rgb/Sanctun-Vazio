@@ -273,7 +273,7 @@ const Tasks = () => {
   const filteredTasks = tasks.filter(t => {
     if (filter === "active") return !t.is_completed;
     if (filter === "completed") return t.is_completed;
-    if (filter === "critical") return t.is_critical && !t.is_completed;
+    if (filter === "critical") return (t.is_critical || isOverdue(t)) && !t.is_completed;
     return true;
   });
 
@@ -281,10 +281,18 @@ const Tasks = () => {
   const totalCount = tasks.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
+  // Helper: tarefa atrasada = prazo vencido e não concluída
+  const isOverdue = (task: Task) => {
+    if (task.is_completed || !task.due_date) return false;
+    return new Date(task.due_date) < new Date();
+  };
+
+  const overdueCount = tasks.filter(isOverdue).length;
+
   const filterTabs: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "Todas", count: tasks.length },
     { key: "active", label: "Ativas", count: tasks.filter(t => !t.is_completed).length },
-    { key: "critical", label: "Críticas", count: tasks.filter(t => t.is_critical && !t.is_completed).length },
+    { key: "critical", label: "Críticas", count: tasks.filter(t => (t.is_critical || isOverdue(t)) && !t.is_completed).length },
     { key: "completed", label: "Concluídas", count: tasks.filter(t => t.is_completed).length },
   ];
 
@@ -320,18 +328,21 @@ const Tasks = () => {
             {day}
           </span>
           <div className="mt-1 space-y-1">
-            {dayTasks.map(task => (
+            {dayTasks.map(task => {
+              const overdue = isOverdue(task);
+              return (
               <div 
                 key={task.id} 
                 className={`text-[9px] px-1.5 py-0.5 rounded truncate font-bold border ${
                   task.is_completed ? 'bg-green-500/10 text-green-400 border-green-500/20 grayscale opacity-40' : 
+                  overdue ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
                   task.is_critical ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
                   'bg-primary/10 text-primary border-primary/20'
                 }`}
               >
-                {task.title}
+                {overdue ? '⚠ ' : ''}{task.title}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       );
@@ -361,12 +372,16 @@ const Tasks = () => {
     );
   };
   
-  const renderTaskCard = (task: Task) => (
+  const renderTaskCard = (task: Task) => {
+    const overdue = isOverdue(task);
+    return (
     <GlassCard
       key={task.id}
       className={`px-5 py-4 flex items-center gap-4 group transition-all border-l-4 ${
         task.is_completed
           ? "opacity-40 grayscale border-l-transparent"
+          : overdue
+          ? "border-l-orange-500 bg-orange-500/[0.03]"
           : task.is_critical
           ? "border-l-red-500"
           : "border-l-primary/30 hover:border-l-primary"
@@ -384,9 +399,16 @@ const Tasks = () => {
             {ENERGY_LABELS[task.energy_level].toUpperCase()} ENERGIA
           </span>
           {task.due_date && (
-            <span className="flex items-center gap-1 text-[10px] opacity-50 font-medium">
+            <span className={`flex items-center gap-1 text-[10px] font-medium ${
+              overdue ? 'text-orange-400 font-bold' : 'opacity-50'
+            }`}>
               <Calendar size={10} />
               {new Date(task.due_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+            </span>
+          )}
+          {overdue && (
+            <span className="text-[9px] font-bold text-orange-400 flex items-center gap-1 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-400/20 animate-pulse">
+              <Clock size={9} /> ATRASADA
             </span>
           )}
           {task.is_critical && (
@@ -411,6 +433,7 @@ const Tasks = () => {
       </div>
     </GlassCard>
   );
+  };
 
   const renderKanban = () => {
     const cols = [
@@ -440,6 +463,7 @@ const Tasks = () => {
               <AnimatePresence>
                 {colTasks.map(task => {
                   const proj = MOCK_PROJECTS.find(p => p.id === task.project_id);
+                  const overdue = isOverdue(task);
                   return (
                     <motion.div key={task.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
                       <GlassCard 
@@ -447,8 +471,12 @@ const Tasks = () => {
                         draggable
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onDragEnd={(e) => handleDragEnd(e, task.id)}
-                        className={`p-4 flex flex-col gap-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all group ${proj ? 'border-l-4' : ''}`}
-                        style={{ borderLeftColor: proj?.color }}
+                        className={`p-4 flex flex-col gap-3 cursor-grab active:cursor-grabbing transition-all group border-l-4 ${
+                          overdue ? 'border-l-orange-500 hover:border-orange-500/50' :
+                          task.is_critical ? 'border-l-red-500 hover:border-red-500/50' :
+                          proj ? '' : 'hover:border-primary/50'
+                        }`}
+                        style={{ borderLeftColor: !overdue && !task.is_critical && proj ? proj.color : undefined }}
                       >
                         <div className="flex justify-between items-start gap-2">
                           <p className={`font-bold text-sm ${task.is_completed ? 'line-through opacity-50' : ''}`}>{task.title}</p>
@@ -469,6 +497,11 @@ const Tasks = () => {
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${ENERGY_COLORS[task.energy_level]}`}>
                             {ENERGY_LABELS[task.energy_level].toUpperCase()}
                           </span>
+                          {overdue && (
+                            <span className="text-[9px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded border border-orange-500/20 font-bold flex items-center gap-1 animate-pulse">
+                              <Clock size={8} /> ATRASADA
+                            </span>
+                          )}
                           {task.is_critical && <span className="text-[9px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded border border-red-500/20">CRÍTICA</span>}
                         </div>
                       </GlassCard>
