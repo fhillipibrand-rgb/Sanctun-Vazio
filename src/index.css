@@ -122,10 +122,10 @@
     @apply flex items-start gap-4 mb-2;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label {
-    @apply flex items-center justify-center shrink-0 mt-[1.5px] cursor-pointer select-none relative !important;
+    @apply flex items-center justify-center shrink-0 mt-1 cursor-pointer select-none !relative;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"] {
-    @apply appearance-none w-5 h-5 rounded border-2 border-[var(--glass-border)] bg-on-surface/[0.05] checked:bg-primary checked:border-primary transition-all cursor-pointer relative !important;
+    @apply appearance-none w-5 h-5 rounded-lg border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer !relative;
   }
   /* Mark for the checkbox */
   .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"]:checked::after {
@@ -154,7 +154,7 @@
   /* Heading sizes */
   .custom-tiptap-content h1 { @apply text-2xl font-bold mb-4 mt-6; }
   .custom-tiptap-content h2 { @apply text-xl font-bold mb-3 mt-5; }
-  .prose-editor .ProseMirror { @apply outline-none !important; }
+  .prose-editor .ProseMirror { @apply !outline-none; }
   .custom-tiptap-content li p {
     @apply mb-0 inline;
   }
