@@ -95,9 +95,3 @@ export const MOCK_INVESTMENTS = {
     { symbol: 'VALE3', name: 'Vale S.A.', type: 'Ações BR', amount: 12000, yield: -2.3 },
   ]
 };
-
-export const MOCK_GOALS = [
-  { id: '1', title: 'Reserva de Emergência', target: 50000, current: 42000, deadline: '2024-12', category: 'Segurança' },
-  { id: '2', title: 'Viagem Europa', target: 30000, current: 15000, deadline: '2025-06', category: 'Lazer' },
-  { id: '3', title: 'Aposentadoria precoce', target: 1000000, current: 85000, deadline: '2035-12', category: 'Liberdade' },
-];
