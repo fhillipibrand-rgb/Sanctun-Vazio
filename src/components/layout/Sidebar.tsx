@@ -4,10 +4,11 @@ import { Link, useLocation } from "react-router-dom";
 interface SidebarProps {
   onClose: () => void;
   onSignOut: () => void;
+  onQuickCapture?: () => void;
   isCollapsible?: boolean;
 }
 
-const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
+const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
   
   const menuSections = [
@@ -47,7 +48,6 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
   ];
 
   const isActive = (path: string) => {
-    // Exact match for home, or starts with path for others (to keep section active when in subpage)
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
@@ -92,7 +92,10 @@ const Sidebar = ({ onClose, onSignOut, isCollapsible }: SidebarProps) => {
       </nav>
 
       <div className="mt-auto space-y-6">
-        <button className="w-full py-4 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-surface editorial-label tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+        <button 
+          onClick={onQuickCapture}
+          className="w-full py-4 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-surface editorial-label tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+        >
           <Plus size={18} />
           CAPTURA RÁPIDA
         </button>

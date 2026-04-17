@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Zap, Sun, Moon, Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
+import QuickCaptureModal from "../ui/QuickCaptureModal";
 
 // Contexto para compartilhar controles de layout com páginas filhas
 export interface LayoutContextType {
@@ -12,6 +13,7 @@ export interface LayoutContextType {
   theme: "dark" | "light";
   toggleTheme: () => void;
   isMobile: boolean;
+  openQuickCapture: () => void;
 }
 
 export const LayoutContext = createContext<LayoutContextType>({
@@ -20,6 +22,7 @@ export const LayoutContext = createContext<LayoutContextType>({
   theme: "dark",
   toggleTheme: () => {},
   isMobile: false,
+  openQuickCapture: () => {},
 });
 
 export const useLayout = () => useContext(LayoutContext);
@@ -28,6 +31,7 @@ const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const { signOut } = useAuth();
   const location = useLocation();
 
@@ -55,10 +59,18 @@ const Layout = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const openQuickCapture = () => setIsQuickCaptureOpen(true);
 
   return (
-    <LayoutContext.Provider value={{ isSidebarOpen, toggleSidebar, theme, toggleTheme, isMobile }}>
+    <LayoutContext.Provider value={{ isSidebarOpen, toggleSidebar, theme, toggleTheme, isMobile, openQuickCapture }}>
       <div className="flex h-screen w-full overflow-hidden relative bg-surface">
+        
+        {/* Quick Capture Modal Global */}
+        <QuickCaptureModal 
+          isOpen={isQuickCaptureOpen} 
+          onClose={() => setIsQuickCaptureOpen(false)} 
+        />
+
         {/* Decorative Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
@@ -66,7 +78,7 @@ const Layout = () => {
           <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-500/10 blur-[100px] rounded-full" />
         </div>
 
-        {/* Mobile Menu Button (bottom-right) */}
+        {/* Mobile Menu Button */}
         {isMobile && !isSidebarOpen && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
@@ -80,11 +92,9 @@ const Layout = () => {
           </motion.button>
         )}
 
-        {/* Sidebar - Desktop (Static) and Mobile (Drawer) */}
         <AnimatePresence>
           {isSidebarOpen && (
             <>
-              {/* Background Overlay (Mobile only) */}
               {isMobile && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -95,7 +105,6 @@ const Layout = () => {
                 />
               )}
 
-              {/* Sidebar Container */}
               <motion.div
                 initial={isMobile ? { x: -320 } : { width: 0, opacity: 0 }}
                 animate={isMobile ? { x: 0 } : { width: 320, opacity: 1 }}
@@ -107,6 +116,7 @@ const Layout = () => {
                   onClose={() => setIsSidebarOpen(false)}
                   onSignOut={signOut}
                   isCollapsible={!isMobile}
+                  onQuickCapture={openQuickCapture}
                 />
               </motion.div>
             </>
@@ -114,7 +124,6 @@ const Layout = () => {
         </AnimatePresence>
 
         <main className="flex-1 overflow-y-auto p-6 md:p-12 relative h-full">
-          {/* Background Orbs */}
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10" />
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
 
