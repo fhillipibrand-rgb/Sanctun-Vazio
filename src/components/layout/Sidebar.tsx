@@ -103,28 +103,28 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
           CAPTURA RÁPIDA
         </button>
         
-        <div className="pt-4 border-t border-[var(--glass-border)] space-y-1">
-          <Link to="/settings" onClick={!isCollapsible ? onClose : undefined} className="sidebar-item !py-1.5 opacity-60 hover:opacity-100">
-            <Settings size={14} />
-            <span className="editorial-label text-[9px]">CONFIGURAÇÕES</span>
-          </Link>
+        <div className="pt-6 border-t border-[var(--glass-border)] space-y-3">
           <button 
-            onClick={() => {
-              openOnboarding();
-              if (!isCollapsible) onClose();
-            }}
-            className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100"
+            onClick={openOnboarding}
+            className="w-full py-3 px-6 rounded-xl bg-on-surface/5 hover:bg-on-surface/10 transition-all flex items-center gap-3 group"
           >
-            <HelpCircle size={14} />
-            <span className="editorial-label text-[9px]">GUIA DE USO</span>
+            <HelpCircle size={18} className="text-primary group-hover:scale-110 transition-transform" />
+            <span className="editorial-label text-[11px] tracking-widest font-bold">GUIA DE USO</span>
           </button>
-          <button 
-            onClick={onSignOut}
-            className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100 text-red-400 hover:text-red-500"
-          >
-            <LogOut size={14} />
-            <span className="editorial-label text-[9px]">SAIR</span>
-          </button>
+
+          <div className="space-y-1">
+            <Link to="/settings" onClick={!isCollapsible ? onClose : undefined} className="sidebar-item !py-1.5 opacity-60 hover:opacity-100">
+              <Settings size={14} />
+              <span className="editorial-label text-[9px]">CONFIGURAÇÕES</span>
+            </Link>
+            <button 
+              onClick={onSignOut}
+              className="sidebar-item !py-1.5 w-full text-left opacity-60 hover:opacity-100 text-red-400 hover:text-red-500"
+            >
+              <LogOut size={14} />
+              <span className="editorial-label text-[9px]">SAIR</span>
+            </button>
+          </div>
         </div>
 
         {/* Versão do App */}

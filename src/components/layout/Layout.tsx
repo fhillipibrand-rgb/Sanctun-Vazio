@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Zap, Sun, Moon, Menu } from "lucide-react";
+import { Zap, Sun, Moon, Menu, HelpCircle } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 import QuickCaptureModal from "../ui/QuickCaptureModal";
@@ -166,6 +166,19 @@ const Layout = () => {
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Global Floating Help Button */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.5, y: 50 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          whileHover={{ scale: 1.1, rotate: 10 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={openOnboarding}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-surface/40 backdrop-blur-xl border border-primary/20 rounded-2xl flex items-center justify-center shadow-2xl transition-all text-primary group"
+          title="Guia de Uso"
+        >
+          <HelpCircle size={28} className="group-hover:scale-110 transition-transform" />
+        </motion.button>
       </div>
     </LayoutContext.Provider>
   );
