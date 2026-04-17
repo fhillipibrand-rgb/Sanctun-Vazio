@@ -11,7 +11,18 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem("sanctum_remember_email");
+    const savedPwd = localStorage.getItem("sanctum_remember_pwd");
+    if (savedEmail && savedPwd) {
+      setEmail(savedEmail);
+      setPassword(savedPwd);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +48,15 @@ const Login = () => {
           password,
         });
         if (error) throw error;
+        
+        if (rememberMe) {
+          localStorage.setItem("sanctum_remember_email", email);
+          localStorage.setItem("sanctum_remember_pwd", password);
+        } else {
+          localStorage.removeItem("sanctum_remember_email");
+          localStorage.removeItem("sanctum_remember_pwd");
+        }
+        
         navigate("/");
       }
     } catch (err: any) {
@@ -135,6 +155,21 @@ const Login = () => {
               >
                 {error}
               </motion.p>
+            )}
+
+            {!isSignUp && (
+              <div className="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  id="remember" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-[var(--glass-border)] bg-on-surface/[0.03] text-primary focus:ring-primary/50 cursor-pointer"
+                />
+                <label htmlFor="remember" className="text-[11px] opacity-60 font-medium cursor-pointer hover:opacity-100 transition-opacity">
+                  Lembrar minhas credenciais
+                </label>
+              </div>
             )}
 
             <button 
