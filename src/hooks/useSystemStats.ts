@@ -10,7 +10,14 @@ export interface DailyData {
 }
 
 export interface SystemStats {
-  tasks: { total: number; completed: number; percentage: number; criticalPending: number; criticalTaskTitle?: string; };
+  tasks: { 
+    total: number; 
+    completed: number; 
+    percentage: number; 
+    criticalPending: number; 
+    criticalTaskTitle?: string;
+    urgentTasks: { id: string; title: string; reason: 'critical' | 'overdue'; due_date?: string }[];
+  };
   finance: { balance: number; income: number; expenses: number; savingsRate: number; };
   calendar: { nextEvent: any | null; totalUpcoming: number; };
   health: { lowStockMeds: number; };
@@ -25,7 +32,7 @@ const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export const useSystemStats = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<SystemStats>({
-    tasks: { total: 0, completed: 0, percentage: 0, criticalPending: 0, criticalTaskTitle: "" },
+    tasks: { total: 0, completed: 0, percentage: 0, criticalPending: 0, criticalTaskTitle: "", urgentTasks: [] },
     finance: { balance: 0, income: 0, expenses: 0, savingsRate: 0 },
     calendar: { nextEvent: null, totalUpcoming: 0 },
     health: { lowStockMeds: 0 },
@@ -41,13 +48,25 @@ export const useSystemStats = () => {
     try {
       setStats(prev => ({ ...prev, loading: true }));
 
-      // 1. TAREFAS - Consulta segura (sem travar se a coluna não existir)
+      // 1. TAREFAS - Consulta segura
       const { data: rawTasks } = await supabase.from('tasks').select('*');
       const tasksData = rawTasks || [];
       const totalTasks = tasksData.length;
       const completedTasks = tasksData.filter((t: any) => t.is_completed).length;
-      const criticalTask = tasksData.find((t: any) => t.is_critical && !t.is_completed);
       const tasksPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+      const now = new Date();
+      const pendingTasks = tasksData.filter((t: any) => !t.is_completed);
+
+      // Tarefas urgentes: críticas + atrasadas
+      const urgentTasks: SystemStats['tasks']['urgentTasks'] = [];
+      pendingTasks.forEach((t: any) => {
+        const isOverdue = t.due_date && new Date(t.due_date) < now;
+        if (t.is_critical) urgentTasks.push({ id: t.id, title: t.title, reason: 'critical', due_date: t.due_date });
+        else if (isOverdue) urgentTasks.push({ id: t.id, title: t.title, reason: 'overdue', due_date: t.due_date });
+      });
+
+      const criticalTask = urgentTasks[0];
 
       // 2. FINANÇAS
       const { data: rawFinance } = await supabase.from('transactions').select('*');
@@ -121,7 +140,7 @@ export const useSystemStats = () => {
         });
       } else {
         setStats({
-          tasks: { total: totalTasks, completed: completedTasks, percentage: tasksPercentage, criticalPending: 0, criticalTaskTitle: criticalTask?.title || "" },
+          tasks: { total: totalTasks, completed: completedTasks, percentage: tasksPercentage, criticalPending: urgentTasks.length, criticalTaskTitle: criticalTask?.title || "", urgentTasks },
           finance: { balance, income, expenses, savingsRate },
           calendar: { nextEvent, totalUpcoming },
           health: { lowStockMeds: lowStockCount },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets } from "lucide-react";
+import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -185,34 +185,75 @@ const Dashboard = () => {
       {/* Grid Principal - 2 Colunas */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-8">
         <div className="space-y-8">
-          {/* Sapo do Dia / Destaque de Impacto */}
-          {stats.tasks.criticalTaskTitle ? (
-            <GlassCard orb className="p-8 border-l-4 border-l-secondary overflow-hidden group relative">
-              <div className="absolute -right-10 -bottom-10 opacity-5 group-hover:scale-110 transition-transform duration-1000">
-                <Zap size={240} className="text-secondary" />
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-secondary">
-                    <Zap size={14} fill="currentColor" />
-                    <span className="editorial-label text-[10px] tracking-[0.2em] font-bold">SAPO DO DIA: PRIORIDADE</span>
+          {/* Painel de Urgências: Críticas + Atrasadas */}
+          {stats.tasks.urgentTasks && stats.tasks.urgentTasks.length > 0 ? (
+            <GlassCard className="p-6 border-red-500/20 border overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-orange-500/5 pointer-events-none" />
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center">
+                    <AlertTriangle size={16} className="text-red-400" />
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-bold tracking-tight max-w-xl line-clamp-2">{stats.tasks.criticalTaskTitle}</h3>
-                  <p className="text-sm md:text-base text-on-surface-variant opacity-70 max-w-lg leading-relaxed">
-                    {stats.isDemo ? "Este espaço exibirá sua tarefa mais crítica assim que você marcá-la como 'Importante' na lista de tarefas." : "Esta ação gerará o maior impacto hoje. Não se deixe distrair por menos."}
-                  </p>
+                  <div>
+                    <p className="editorial-label text-[10px] tracking-[0.2em] font-bold text-red-400">ATENÇÃO IMEDIATA</p>
+                    <p className="text-[9px] opacity-40 uppercase tracking-wider mt-0.5">{stats.tasks.urgentTasks.length} {stats.tasks.urgentTasks.length === 1 ? 'item urgente' : 'itens urgentes'}</p>
+                  </div>
                 </div>
-                <Link to="/tasks" className="px-8 py-4 rounded-full bg-on-surface text-surface font-bold text-sm hover:translate-y-[-4px] transition-all shadow-xl shadow-on-surface/10 whitespace-nowrap">
-                  RESOLVER AGORA
-                </Link>
+                <Link to="/tasks?filter=critical" className="text-[9px] font-bold text-red-400 hover:underline tracking-widest uppercase opacity-70 hover:opacity-100">VER TODAS</Link>
               </div>
+              <div className="space-y-3 relative z-10">
+                {stats.tasks.urgentTasks.slice(0, 4).map((t, i) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border ${
+                      t.reason === 'critical'
+                        ? 'bg-red-500/[0.06] border-red-500/20'
+                        : 'bg-orange-500/[0.06] border-orange-500/20'
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                      t.reason === 'critical' ? 'bg-red-500/20' : 'bg-orange-500/20'
+                    }`}>
+                      {t.reason === 'critical'
+                        ? <Zap size={11} className="text-red-400" fill="currentColor" />
+                        : <Clock size={11} className="text-orange-400" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate">{t.title}</p>
+                      {t.due_date && (
+                        <p className={`text-[9px] font-bold mt-0.5 ${
+                          t.reason === 'overdue' ? 'text-orange-400' : 'opacity-40'
+                        }`}>
+                          {t.reason === 'overdue' ? '⚠ Prazo: ' : 'Prazo: '}
+                          {new Date(t.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                      t.reason === 'critical'
+                        ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                        : 'text-orange-400 border-orange-500/30 bg-orange-500/10'
+                    }`}>
+                      {t.reason === 'critical' ? 'CRÍTICA' : 'ATRASADA'}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+              <Link to="/tasks" className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-on-surface/5 hover:bg-red-500/10 border border-[var(--glass-border)] hover:border-red-500/20 text-[10px] font-bold tracking-widest transition-all relative z-10">
+                <Zap size={12} className="text-red-400" />
+                RESOLVER AGORA
+              </Link>
             </GlassCard>
           ) : (
             <GlassCard className="p-8 border-dashed border-2 border-on-surface/10 flex flex-col items-center justify-center text-center gap-4 py-12">
                <div className="w-16 h-16 rounded-full bg-on-surface/5 flex items-center justify-center opacity-20"><ShieldCheck size={32} /></div>
                <div>
                  <p className="editorial-label text-xs opacity-40 mb-1">LIMITES ESTRATÉGICOS LIMPOS</p>
-                 <p className="text-sm font-medium opacity-60">Nenhuma tarefa crítica pendente. Você está no controle do seu fluxo.</p>
+                 <p className="text-sm font-medium opacity-60">Nenhuma tarefa crítica ou atrasada. Você está no controle do seu fluxo.</p>
                </div>
             </GlassCard>
           )}
