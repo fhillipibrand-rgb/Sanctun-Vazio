@@ -101,4 +101,61 @@
   .nav-pill.active {
     @apply bg-on-surface/[0.08] border-on-surface/10;
   }
+
+  /* Tiptap / Rich Text Editor Styles */
+  .custom-tiptap-content p {
+    @apply mb-4 leading-relaxed;
+  }
+  .custom-tiptap-content p.is-editor-empty:first-child::before {
+    color: theme('colors.gray.400');
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+  .custom-tiptap-content strong {
+    @apply font-bold text-on-surface;
+  }
+  .custom-tiptap-content em {
+    @apply italic;
+  }
+  .custom-tiptap-content s {
+    @apply line-through opacity-60;
+  }
+  .custom-tiptap-content ul {
+    @apply list-disc pl-6 mb-4 space-y-1;
+  }
+  .custom-tiptap-content ul[data-type="taskList"] {
+    @apply list-none pl-0;
+  }
+  .custom-tiptap-content li[data-type="taskItem"] {
+    @apply flex items-start gap-2 mb-1 p-1 rounded-lg;
+  }
+  .custom-tiptap-content li[data-type="taskItem"] > label {
+    @apply flex-shrink-0 mt-1 cursor-pointer select-none;
+  }
+  .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"] {
+    @apply w-4 h-4 rounded border-[var(--glass-border)] bg-on-surface/[0.05] text-primary focus:ring-primary/50 cursor-pointer;
+  }
+  .custom-tiptap-content li[data-type="taskItem"] > div {
+    @apply flex-1 min-w-0;
+  }
+  .custom-tiptap-content li[data-type="taskItem"][data-checked="true"] > div {
+    @apply opacity-50 line-through;
+  }
+  .custom-tiptap-content ol {
+    @apply list-decimal pl-6 mb-4 space-y-1;
+  }
+  .custom-tiptap-content li p {
+    @apply mb-0 inline;
+  }
+  .custom-tiptap-content h1 {
+    @apply text-3xl font-bold mb-4 mt-6 leading-tight;
+  }
+  .custom-tiptap-content h2 {
+    @apply text-2xl font-bold mb-3 mt-5 leading-tight;
+  }
+  .custom-tiptap-content blockquote {
+    @apply border-l-4 border-primary pl-4 italic opacity-80 my-4;
+  }
 }

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle, Plus, AlignLeft, CheckSquare, Square, CheckCircle2, Circle } from "lucide-react";
 import GlassCard from "./GlassCard";
+import RichTextEditor from "./RichTextEditor";
 import { Task } from "../../pages/Tasks";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
@@ -174,14 +175,13 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
             <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
                {/* Description Section */}
                <div className="space-y-3">
-                 <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label">
-                   <AlignLeft size={14} /> Notas Internas
+                 <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label mb-2">
+                   <AlignLeft size={14} /> Notas Internas Formatadas
                  </label>
-                 <textarea
-                   value={description}
-                   onChange={e => setDescription(e.target.value)}
-                   placeholder="Adicione informações detalhadas sobre o que precisa ser feito..."
-                   className="w-full min-h-[150px] bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-2xl p-4 outline-none focus:border-primary/50 focus:bg-on-surface/[0.05] transition-all resize-y"
+                 <RichTextEditor 
+                   content={description}
+                   onChange={setDescription}
+                   className="min-h-[250px]"
                  />
                </div>
 
