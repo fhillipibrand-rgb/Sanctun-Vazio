@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft } from "lucide-react";
+import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -12,7 +12,7 @@ interface Activity {
   id: string;
   title: string;
   time: string;
-  category: 'Finanças' | 'Tarefas' | 'Calendário';
+  category: 'Finanças' | 'Tarefas' | 'Calendário' | 'Saúde';
   icon: any;
   color: string;
 }
@@ -52,7 +52,7 @@ const Dashboard = () => {
   const chartDataSource = stats.isDemo ? [
     { name: 'Seg', v: 40, f: 30 }, { name: 'Ter', v: 70, f: 50 }, { name: 'Qua', v: 50, f: 45 }, { name: 'Qui', v: 90, f: 80 }, { name: 'Sex', v: 65, f: 60 }, { name: 'Sab', v: 30, f: 20 }, { name: 'Dom', v: 10, f: 5 }
   ] : [
-    { name: 'Seg', v: 0, f: 0 }, { name: 'Ter', v: 0, f: 0 }, { name: 'Qua', v: 0, f: 0 }, { name: 'Qui', v: 0, f: 0 }, { name: 'Sex', v: 0, f: 0 }, { name: 'Sab', v: 30, f: 0 }, { name: 'Dom', v: stats.tasks.completed * 10, f: stats.finance.income / 100 }
+    { name: 'Seg', v: 5, f: 2 }, { name: 'Ter', v: 12, f: 8 }, { name: 'Qua', v: 8, f: 4 }, { name: 'Qui', v: 20, f: 15 }, { name: 'Sex', v: 15, f: 10 }, { name: 'Sab', v: 30, f: 20 }, { name: 'Dom', v: stats.tasks.completed * 2, f: stats.finance.income / 100 }
   ];
 
   return (
@@ -68,13 +68,10 @@ const Dashboard = () => {
       {/* Header Premium */}
       <header className="flex items-end justify-between gap-6">
         <div className="space-y-2">
-          {/* Data + botão de toggle da sidebar */}
           <div className="flex items-center gap-3">
-            {/* Botão de abrir/fechar sidebar (desktop) */}
             {!isMobile && (
               <button
                 onClick={toggleSidebar}
-                title={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
                 className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
               >
                 <PanelLeft size={16} className={`transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
@@ -86,12 +83,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Toggle de tema logo abaixo */}
           <div className="flex items-center gap-3">
             {!isMobile && (
               <button
                 onClick={toggleTheme}
-                title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
                 className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
               >
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -115,28 +110,7 @@ const Dashboard = () => {
 
       {/* Grid de KPIs - 4 Colunas High-Impact */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {/* 1. BEM-VINDO AO SANCTUM */}
-        <GlassCard className="p-6 bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-          <div className="flex items-center gap-2 text-primary mb-3">
-            <Rocket size={14} />
-            <p className="editorial-label text-[10px] opacity-80 uppercase tracking-widest font-bold">BEM-VINDO AO SANCTUM</p>
-          </div>
-          <p className="text-xs font-medium leading-relaxed opacity-70 italic min-h-[4em]">
-            {(() => {
-              const quotes = [
-                "Você é o foco. A sua gestão pessoal é o suprassumo da existência.",
-                "O seu santuário pessoal, onde a clareza encontra o progresso.",
-                "Não é sobre fazer mais, é sobre ser melhor naquilo que importa.",
-                "A disciplina é a ponte entre metas e realizações.",
-                "Um homem que domina a si mesmo é mais forte que um que domina cidades."
-              ];
-              const day = new Date().getDate();
-              return quotes[day % quotes.length];
-            })()}
-          </p>
-        </GlassCard>
-
-        {/* 2. PRÓXIMO COMPROMISSO */}
+        {/* PRÓXIMO COMPROMISSO */}
         <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={40} /></div>
@@ -150,14 +124,14 @@ const Dashboard = () => {
           </GlassCard>
         </Link>
 
-        {/* 3. PRODUTIVIDADE */}
+        {/* PRODUTIVIDADE */}
         <Link to="/tasks" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Target size={40} /></div>
             <p className="editorial-label text-[10px] opacity-50 mb-4 text-primary font-bold">PRODUTIVIDADE</p>
             <div className="flex items-end gap-3">
               <h3 className="text-3xl font-bold font-mono">{Math.round(stats.tasks.percentage)}%</h3>
-              <span className="text-[10px] font-bold text-secondary mb-1">+{stats.tasks.completed} ATIVOS</span>
+              <span className="text-[10px] font-bold text-secondary mb-1">+{stats.tasks.completed} CONCLUÍDAS</span>
             </div>
             <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
               <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${stats.tasks.percentage}%` }} />
@@ -165,7 +139,22 @@ const Dashboard = () => {
           </GlassCard>
         </Link>
 
-        {/* 4. ECONOMIA */}
+        {/* HIDRATAÇÃO */}
+        <Link to="/nutrition" className="block transform hover:scale-[1.02] transition-all">
+          <GlassCard className="p-6 relative overflow-hidden group h-full">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Droplets size={40} /></div>
+            <p className="editorial-label text-[10px] opacity-50 mb-4 text-cyan-400 font-bold">HIDRATAÇÃO</p>
+            <div className="flex items-end gap-3">
+              <h3 className="text-3xl font-bold font-mono">{Math.round(stats.nutrition.waterProgress)}%</h3>
+              <span className="text-[10px] font-bold text-cyan-500 mb-1">META DIÁRIA</span>
+            </div>
+            <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
+              <div className="h-full bg-cyan-400 transition-all duration-1000" style={{ width: `${stats.nutrition.waterProgress}%` }} />
+            </div>
+          </GlassCard>
+        </Link>
+
+        {/* ECONOMIA */}
         <Link to="/finance" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={40} /></div>
@@ -177,6 +166,24 @@ const Dashboard = () => {
           </GlassCard>
         </Link>
       </div>
+
+      {/* Alertas Críticos */}
+      {stats.health.lowStockMeds > 0 && (
+        <Link to="/health">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-red-400/10 border border-red-400/20 p-4 rounded-3xl flex items-center justify-between group hover:bg-red-400/20 transition-all">
+             <div className="flex items-center gap-4">
+               <div className="w-10 h-10 rounded-2xl bg-red-400 text-surface flex items-center justify-center shadow-lg shadow-red-400/20">
+                 <Pill size={20} />
+               </div>
+               <div>
+                 <p className="text-xs font-bold uppercase tracking-widest text-red-400">Reposição Urgente</p>
+                 <p className="text-[11px] opacity-60">Você tem {stats.health.lowStockMeds} medicamento(s) com estoque baixo.</p>
+               </div>
+             </div>
+             <ArrowUpRight size={20} className="text-red-400 opacity-40 group-hover:opacity-100 transition-all" />
+          </motion.div>
+        </Link>
+      )}
 
       {/* Grid Principal - 2 Colunas */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-8">
@@ -199,7 +206,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <Link to="/tasks" className="px-8 py-4 rounded-full bg-on-surface text-surface font-bold text-sm hover:translate-y-[-4px] transition-all shadow-xl shadow-on-surface/10 whitespace-nowrap">
-                  {stats.isDemo ? "VER EXEMPLO" : "RESOLVER AGORA"}
+                  RESOLVER AGORA
                 </Link>
               </div>
             </GlassCard>
@@ -213,9 +220,7 @@ const Dashboard = () => {
             </GlassCard>
           )}
 
-          {/* Gráficos lado a lado */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Gráfico de Tarefas & Projetos */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -223,7 +228,7 @@ const Dashboard = () => {
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     <h4 className="text-base font-bold">Tarefas & Projetos</h4>
                   </div>
-                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Últimos 7 dias"}</p>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Status Atual"}</p>
                 </div>
                 <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>
@@ -240,7 +245,6 @@ const Dashboard = () => {
                     <Tooltip
                       cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
-                      formatter={(value: any) => [`${value} tarefas`, 'Concluídas']}
                     />
                     <Area type="monotone" dataKey="v" stroke="#5e9eff" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTasks)" dot={{ r: 3, fill: '#5e9eff', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
@@ -248,7 +252,6 @@ const Dashboard = () => {
               </div>
             </GlassCard>
 
-            {/* Gráfico de Finanças */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -256,7 +259,7 @@ const Dashboard = () => {
                     <div className="w-2 h-2 rounded-full bg-purple-400" />
                     <h4 className="text-base font-bold">Fluxo Financeiro</h4>
                   </div>
-                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Últimos 7 dias"}</p>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Fluxo de Saldo"}</p>
                 </div>
                 <Link to="/finance" className="text-[10px] font-bold text-purple-400 hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>
@@ -273,7 +276,6 @@ const Dashboard = () => {
                     <Tooltip
                       cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
-                      formatter={(value: any) => [`R$ ${value}`, 'Fluxo']}
                     />
                     <Area type="monotone" dataKey="f" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFinance)" dot={{ r: 3, fill: '#a855f7', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
@@ -283,13 +285,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Coluna Direita - Feed e Ações */}
         <div className="space-y-8">
-          {/* Feed de Atividade - Mix de Dados */}
           <GlassCard className="p-6">
             <div className="flex items-center justify-between mb-8">
               <h4 className="text-lg font-bold">Linha do Tempo</h4>
-              <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">{stats.isDemo ? "EXEMPLO" : "VER TUDO"}</Link>
+              <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
             </div>
             <div className="space-y-7">
               {activities.length > 0 ? activities.map((act) => (
@@ -312,7 +312,6 @@ const Dashboard = () => {
             </div>
           </GlassCard>
 
-          {/* Quick Actions - Design Minimalista */}
           <div className="grid grid-cols-2 gap-4">
             <Link to="/tasks" className="group">
               <GlassCard className="p-5 flex flex-col items-center justify-center text-center gap-3 hover:bg-primary/5 transition-all border-dashed border-primary/20 hover:border-solid hover:scale-102">
@@ -332,7 +331,6 @@ const Dashboard = () => {
             </Link>
           </div>
 
-          {/* Deep Work / Focus Status */}
           <Link to="/focus" className="block transform hover:translate-y-[-4px] transition-all">
             <GlassCard className="p-7 bg-gradient-to-br from-primary/10 to-transparent border-primary/30 group relative overflow-hidden h-full">
                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-all" />

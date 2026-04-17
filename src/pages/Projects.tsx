@@ -1,23 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { FolderKanban, Plus, MoreHorizontal, AlignLeft, CheckCircle2, Circle } from "lucide-react";
+import { FolderKanban, Plus, MoreHorizontal, AlignLeft, CheckCircle2, Circle, Trash2 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
-import { MOCK_PROJECTS, generateMockTasks } from "../lib/mockData";
+import { generateMockTasks } from "../lib/mockData";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
 
 interface Task {
   id: string;
   title: string;
   is_completed: boolean;
   project_id?: string;
-  is_mock?: boolean;
 }
 
 const Projects = () => {
   const { user } = useAuth();
-  const [projects, setProjects] = useState(MOCK_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newColor, setNewColor] = useState("#5e9eff");
@@ -25,41 +32,68 @@ const Projects = () => {
   const colors = ["#5e9eff", "#a855f7", "#00f5a0", "#ff6b6b", "#f5a623"];
 
   useEffect(() => {
-    if (user) fetchTasks();
+    if (user) {
+      fetchProjects();
+      fetchTasks();
+    }
   }, [user]);
 
-  const fetchTasks = async () => {
+  const fetchProjects = async () => {
+    setLoading(true);
     const { data, error } = await supabase
+      .from("projects")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setProjects(data);
+    }
+    setLoading(false);
+  };
+
+  const fetchTasks = async () => {
+    const { data } = await supabase
       .from("tasks")
       .select("id, title, is_completed, project_id")
       .order("created_at", { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      setTasks(data);
-    } else {
-      setTasks(generateMockTasks() as Task[]);
+    if (data) setTasks(data);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !user) return;
+
+    const { data, error } = await supabase
+      .from("projects")
+      .insert([{
+        name: newTitle.trim(),
+        color: newColor,
+        user_id: user.id
+      }])
+      .select()
+      .single();
+
+    if (!error && data) {
+      setProjects([data, ...projects]);
+      setNewTitle("");
+      setShowForm(false);
     }
   };
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id);
 
-    const newProj = {
-      id: `proj-${Date.now()}`,
-      name: newTitle.trim(),
-      color: newColor,
-      progress: 0,
-      created_at: new Date().toISOString()
-    };
-    
-    setProjects([newProj, ...projects]);
-    setNewTitle("");
-    setShowForm(false);
+    if (!error) {
+      setProjects(projects.filter(p => p.id !== id));
+    }
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20">
+    <div className="space-y-8 max-w-6xl mx-auto pb-20 pt-4">
       <header className="space-y-4">
         <div className="flex items-center gap-2 opacity-60">
           <AlignLeft size={12} className="text-primary" />
@@ -118,64 +152,72 @@ const Projects = () => {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((proj, idx) => {
-          // Filtrar dinamicamente as tarefas que pertencem a este projeto específico
-          const projectTasks = tasks.filter(t => t.project_id === proj.id);
-          const totalTasks = projectTasks.length;
-          const completedTasks = projectTasks.filter(t => t.is_completed).length;
-          
-          // Calcula progresso dinâmico Real-time
-          const dynamicProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      {loading ? (
+        <div className="flex items-center justify-center py-20 opacity-30 editorial-label animate-pulse">CARREGANDO PROJETOS...</div>
+      ) : projects.length === 0 ? (
+        <GlassCard className="p-20 flex flex-col items-center justify-center text-center gap-4 opacity-50 border-dashed border-2">
+          <FolderKanban size={48} className="opacity-20" />
+          <div>
+            <p className="font-bold text-lg">Nenhum projeto ainda</p>
+            <p className="text-sm">Comece criando um projeto para organizar suas metas.</p>
+          </div>
+        </GlassCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map((proj, idx) => {
+            const projectTasks = tasks.filter(t => t.project_id === proj.id);
+            const totalTasks = projectTasks.length;
+            const completedTasks = projectTasks.filter(t => t.is_completed).length;
+            const dynamicProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-          return (
-            <motion.div key={proj.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
-              <GlassCard className="p-0 border-t-4 overflow-hidden group flex flex-col h-full hover:border-[var(--glass-border)] transition-colors" style={{ borderTopColor: proj.color }}>
-                <div className="p-6 pb-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="w-10 h-10 rounded-xl bg-on-surface/5 flex items-center justify-center">
-                      <FolderKanban size={18} style={{ color: proj.color }} />
-                    </div>
-                    <button className="text-on-surface/30 hover:text-on-surface transition-colors p-1"><MoreHorizontal size={16} /></button>
-                  </div>
-                  <h3 className="font-bold text-lg leading-tight mt-4">{proj.name}</h3>
-                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">
-                    {totalTasks === 0 ? "VAZIO" : `${completedTasks} CONCLUÍDAS DE ${totalTasks}`}
-                  </p>
-                </div>
-                
-                {/* Lista dinâmica de tarefas encapsulada no card */}
-                {totalTasks > 0 && (
-                  <div className="px-6 py-2 flex flex-col gap-2 mb-4">
-                    {projectTasks.slice(0, 3).map(task => (
-                      <div key={task.id} className="flex items-center gap-2">
-                        {task.is_completed ? <CheckCircle2 size={12} className="text-primary opacity-50 shrink-0" /> : <Circle size={12} className="opacity-30 shrink-0" />}
-                        <span className={`text-xs truncate ${task.is_completed ? 'line-through opacity-40' : 'opacity-80'}`}>{task.title}</span>
+            return (
+              <motion.div key={proj.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
+                <GlassCard className="p-0 border-t-4 overflow-hidden group flex flex-col h-full hover:border-[var(--glass-border)] transition-colors" style={{ borderTopColor: proj.color }}>
+                  <div className="p-6 pb-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-on-surface/5 flex items-center justify-center">
+                        <FolderKanban size={18} style={{ color: proj.color }} />
                       </div>
-                    ))}
-                    {totalTasks > 3 && (
-                      <span className="text-[10px] items-center italic opacity-40">+ {totalTasks - 3} tarefas ocultas</span>
-                    )}
+                      <button onClick={() => handleDelete(proj.id)} className="text-on-surface/30 hover:text-red-400 transition-colors p-1"><Trash2 size={16} /></button>
+                    </div>
+                    <h3 className="font-bold text-lg leading-tight mt-4">{proj.name}</h3>
+                    <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">
+                      {totalTasks === 0 ? "VAZIO" : `${completedTasks} CONCLUÍDAS DE ${totalTasks}`}
+                    </p>
                   </div>
-                )}
+                  
+                  {totalTasks > 0 && (
+                    <div className="px-6 py-2 flex flex-col gap-2 mb-4">
+                      {projectTasks.slice(0, 3).map(task => (
+                        <div key={task.id} className="flex items-center gap-2">
+                          {task.is_completed ? <CheckCircle2 size={12} className="text-primary opacity-50 shrink-0" /> : <Circle size={12} className="opacity-30 shrink-0" />}
+                          <span className={`text-xs truncate ${task.is_completed ? 'line-through opacity-40' : 'opacity-80'}`}>{task.title}</span>
+                        </div>
+                      ))}
+                      {totalTasks > 3 && (
+                        <span className="text-[10px] items-center italic opacity-40">+ {totalTasks - 3} tarefas ocultas</span>
+                      )}
+                    </div>
+                  )}
 
-                <div className="mt-auto bg-on-surface/[0.02] p-6 pt-4 border-t border-[var(--glass-border)]">
-                  <div className="flex justify-between text-[10px] font-bold mb-2">
-                    <span className="opacity-50">PROGRESSO</span>
-                    <span style={{ color: proj.color }}>{dynamicProgress}%</span>
+                  <div className="mt-auto bg-on-surface/[0.02] p-6 pt-4 border-t border-[var(--glass-border)]">
+                    <div className="flex justify-between text-[10px] font-bold mb-2">
+                      <span className="opacity-50">PROGRESSO</span>
+                      <span style={{ color: proj.color }}>{dynamicProgress}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out" 
+                        style={{ backgroundColor: proj.color, width: `${dynamicProgress}%` }} 
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-1000 ease-out" 
-                      style={{ backgroundColor: proj.color, width: `${dynamicProgress}%` }} 
-                    />
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-          )
-        })}
-      </div>
+                </GlassCard>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
     </div>
   );
 };
