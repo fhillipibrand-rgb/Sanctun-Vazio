@@ -162,17 +162,18 @@ const Tasks = () => {
       return;
     }
 
-    // Atualização otimista: a UI responde imediatamente
+    // Atualização otimista: UI responde imediatamente
     setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: newStatus } : t));
 
+    // Atualiza apenas is_completed (campo garantido no banco)
     const { error } = await supabase
       .from("tasks")
-      .update({ is_completed: isNowCompleted, status: newStatus })
+      .update({ is_completed: isNowCompleted })
       .eq("id", id);
     
     if (error) {
-      // Rollback silencioso somente em caso de falha real
       console.error("Erro ao atualizar tarefa:", error);
+      // Rollback local da tarefa específica
       setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: current, status: current ? "done" : "todo" } : t));
     }
   };
@@ -242,7 +243,7 @@ const Tasks = () => {
 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    if (task.status === newStatus) return; // Sem mudança, ignorar
+    if (task.status === newStatus) return;
 
     const isCompletedNow = newStatus === "done";
     const prevStatus = task.status;
@@ -254,14 +255,14 @@ const Tasks = () => {
     ));
 
     if (!task.is_mock) {
+      // Atualiza apenas is_completed (campo garantido no banco)
       const { error } = await supabase
         .from("tasks")
-        .update({ status: newStatus, is_completed: isCompletedNow })
+        .update({ is_completed: isCompletedNow })
         .eq("id", taskId);
         
       if (error) {
         console.error("Erro ao mover tarefa:", error);
-        // Rollback via estado local - sem chamar fetchTasks que recarregaria tudo
         setTasks(prev => prev.map(t =>
           t.id === taskId ? { ...t, status: prevStatus, is_completed: prevCompleted } : t
         ));
