@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useSystemStats } from "../hooks/useSystemStats";
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { useLayout } from "../components/layout/Layout";
+import { motion } from "motion/react";
 
 interface Activity {
   id: string;

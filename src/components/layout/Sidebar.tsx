@@ -1,5 +1,7 @@
 import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, Clock, Utensils, TrendingUp } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { motion } from "motion/react";
+import { useLayout } from "./Layout";
 
 interface SidebarProps {
   onClose: () => void;
@@ -7,8 +9,6 @@ interface SidebarProps {
   onQuickCapture?: () => void;
   isCollapsible?: boolean;
 }
-
-import { useLayout } from "./Layout";
 
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
