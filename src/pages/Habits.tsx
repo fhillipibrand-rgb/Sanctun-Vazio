@@ -24,6 +24,11 @@ const Habits = () => {
   const [gratitude, setGratitude] = useState("");
   const [sleepTimes, setSleepTimes] = useState({ wake: "07:00", sleep: "23:00", quality: 85 });
   const [reading, setReading] = useState({ title: "Meditações - Marco Aurélio", progress: 45, total: 320 });
+  const [history, setHistory] = useState<Record<string, boolean[]>>({
+    sleep: [true, true, false, true, true, true, true],
+    exercise: [false, true, true, true, false, true, false],
+    reading: [true, false, true, true, true, true, true]
+  });
 
   const readingProgress = (reading.progress / reading.total) * 100;
 
@@ -34,28 +39,75 @@ const Habits = () => {
   const fetchHabits = async () => {
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase.from('habits_logs').select('*').eq('date', today);
     
-    if (data) {
-      data.forEach(log => {
+    // Busca logs de hoje
+    const { data: todayLogs } = await supabase.from('habits_logs').select('*').eq('date', today);
+    if (todayLogs) {
+      todayLogs.forEach(log => {
         if (log.type === 'sleep') setSleepTimes(log.value);
         if (log.type === 'reading') setReading(log.value);
         if (log.type === 'gratitude') setGratitude(log.value.text);
         if (log.type === 'exercise') setExerciseDone(log.value.done);
       });
     }
+
+    // Busca histórico dos últimos 7 dias para a grid de consistência
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { data: histLogs } = await supabase
+      .from('habits_logs')
+      .select('type, date, value')
+      .gte('date', sevenDaysAgo.toISOString().split('T')[0]);
+
+    if (histLogs) {
+      const newHist: Record<string, boolean[]> = { sleep: [], exercise: [], reading: [] };
+      const types = ['sleep', 'exercise', 'reading'];
+      
+      types.forEach(type => {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split('T')[0];
+          const found = histLogs.find(l => l.type === type && l.date === dStr);
+          
+          if (type === 'exercise') newHist[type].push(!!found?.value?.done);
+          else newHist[type].push(!!found);
+        }
+      });
+      setHistory(newHist);
+    }
+
     setLoading(false);
   };
 
   const saveHabit = async (type: string, value: any) => {
     const today = new Date().toISOString().split('T')[0];
-    await supabase.from('habits_logs').upsert({
+    const { error } = await supabase.from('habits_logs').upsert({
       user_id: user?.id,
       type,
       value,
       date: today
     }, { onConflict: 'user_id,type,date' });
+
+    if (!error) fetchHabits(); // Recarregar para atualizar a grid
   };
+
+  const ConsistencyGrid = ({ data, color }: { data: boolean[], color: string }) => (
+    <div className="flex gap-1.5 mt-4">
+      {data.map((done, i) => (
+        <div 
+          key={i} 
+          className={`w-2.5 h-2.5 rounded-sm transition-all duration-500 ${done ? '' : 'bg-on-surface/10'}`}
+          style={{ 
+            backgroundColor: done ? color : undefined,
+            boxShadow: done ? `0 0 8px ${color}40` : 'none',
+            opacity: 0.3 + (i * 0.1) // Mais opaco conforme chega no hoje
+          }}
+          title={done ? "Concluído" : "Pendente"}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 pt-4">
@@ -82,9 +134,12 @@ const Habits = () => {
               <Moon size={140} className="text-primary" />
             </div>
             <div className="relative z-10">
-              <div className="flex items-center gap-3 text-primary mb-8">
-                <div className="p-2 bg-primary/10 rounded-xl"><Moon size={20} /></div>
-                <span className="editorial-label font-bold tracking-widest text-[10px]">ROTINA DE SONO</span>
+              <div className="flex items-center justify-between text-primary mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-xl"><Moon size={20} /></div>
+                  <span className="editorial-label font-bold tracking-widest text-[10px]">ROTINA DE SONO</span>
+                </div>
+                <ConsistencyGrid data={history.sleep} color="var(--color-primary)" />
               </div>
               
               <div className="space-y-6">
@@ -153,14 +208,17 @@ const Habits = () => {
                 <ExerciseIcon size={120} className="text-primary" />
               </div>
               <div className="relative z-10 h-full flex flex-col">
-                <div className="flex items-center gap-3 text-primary mb-6">
-                  <div className="p-3 rounded-2xl bg-primary text-surface shadow-lg shadow-primary/20">
-                    <ExerciseIcon size={20} />
+                <div className="flex items-center justify-between text-primary mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-2xl bg-primary text-surface shadow-lg shadow-primary/20">
+                      <ExerciseIcon size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-0.5">VITALIDADE</p>
+                      <p className="font-bold text-sm tracking-tight">EXERCÍCIO DO DIA</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-0.5">VITALIDADE</p>
-                    <p className="font-bold text-sm tracking-tight">EXERCÍCIO DO DIA</p>
-                  </div>
+                  <ConsistencyGrid data={history.exercise} color="var(--color-primary)" />
                 </div>
                 
                 <div className="flex-1 flex flex-col justify-center text-center py-6">
@@ -177,9 +235,12 @@ const Habits = () => {
               <Book size={140} className="text-secondary" />
             </div>
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center gap-3 text-secondary mb-8">
-                <div className="p-2 bg-secondary/10 rounded-xl"><Book size={20} /></div>
-                <span className="editorial-label font-bold tracking-widest text-[10px]">LEITURA & CONHECIMENTO</span>
+              <div className="flex items-center justify-between text-secondary mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-secondary/10 rounded-xl"><Book size={20} /></div>
+                  <span className="editorial-label font-bold tracking-widest text-[10px]">LEITURA & CONHECIMENTO</span>
+                </div>
+                <ConsistencyGrid data={history.reading} color="var(--color-secondary)" />
               </div>
 
               <div className="mb-6">

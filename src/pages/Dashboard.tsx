@@ -41,6 +41,7 @@ const Dashboard = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [focusState, setFocusState] = useState<FocusState | null>(null);
   const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
@@ -126,13 +127,39 @@ const Dashboard = () => {
   const chartDataSource = stats.weeklyHistory;
 
   const iconOptions = [
-    { name: 'Rocket', icon: Rocket }, { name: 'Target', icon: Target }, { name: 'Briefcase', icon: Briefcase },
-    { name: 'Code', icon: Code }, { name: 'Sparkles', icon: Sparkles }, { name: 'Zap', icon: Zap },
-    { name: 'Layout', icon: Layout }, { name: 'Globe', icon: Globe }, { name: 'Star', icon: Star },
-    { name: 'Heart', icon: Heart }, { name: 'Cloud', icon: Cloud }, { name: 'Camera', icon: Camera },
-    { name: 'Music', icon: Music }, { name: 'Book', icon: Book }, { name: 'Trophy', icon: Trophy },
-    { name: 'Shield', icon: Shield }, { name: 'Coffee', icon: Coffee }, { name: 'Lightbulb', icon: Lightbulb },
     { name: 'Bell', icon: Bell }, { name: 'Search', icon: Search }, { name: 'FolderKanban', icon: FolderKanban }
+  ];
+
+  // Lógica de Notificações Pró-ativas
+  const notifications = [
+    ...(stats.tasks.urgentTasks?.map(t => ({ 
+      id: `task-${t.id}`, 
+      type: 'critical', 
+      title: t.title, 
+      desc: t.reason === 'overdue' ? 'Tarefa está atrasada' : 'Tarefa marcada como Crítica',
+      icon: AlertTriangle,
+      color: 'text-red-400'
+    })) || []),
+    ...(stats.projects.active.filter((p: any) => {
+      if (!p.deadline) return false;
+      const days = Math.ceil((new Date(p.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 7;
+    }).map((p: any) => ({
+      id: `proj-${p.id}`,
+      type: 'deadline',
+      title: `Entrega: ${p.name}`,
+      desc: 'Prazo vencendo em menos de uma semana',
+      icon: Rocket,
+      color: 'text-primary'
+    }))),
+    ...(stats.health.lowStockMeds > 0 ? [{
+      id: 'med-alert',
+      type: 'health',
+      title: 'Reposição de Medicamentos',
+      desc: `Existem ${stats.health.lowStockMeds} itens com estoque baixo`,
+      icon: Pill,
+      color: 'text-orange-400'
+    }] : [])
   ];
 
   return (
@@ -182,10 +209,21 @@ const Dashboard = () => {
              <p className="text-[10px] editorial-label opacity-40">RESUMO DO FLUXO</p>
              <p className="text-sm font-bold text-secondary uppercase tracking-tighter">{stats.isDemo ? "Visualização Inicial" : "Dados em Tempo Real"}</p>
            </div>
-           <Link to="/settings" className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl hover:scale-105 transition-all rotate-2 hover:rotate-0">
-             <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-           </Link>
-        </div>
+            <Link to="/settings" className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl hover:scale-105 transition-all rotate-2 hover:rotate-0">
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </Link>
+            <button 
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative w-12 h-12 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all group"
+            >
+              <Bell size={20} className="group-hover:rotate-12 transition-transform" />
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-background animate-bounce">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+         </div>
       </header>
 
       {/* Grid de KPIs - 4 Colunas High-Impact */}
@@ -591,6 +629,75 @@ const Dashboard = () => {
           </Link>
         </div>
       </div>
+
+      {/* Drawer de Notificações / Central de Ações */}
+      <AnimatePresence>
+        {isNotificationsOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsNotificationsOpen(false)}
+              className="fixed inset-0 bg-background/60 backdrop-blur-md z-[100]"
+            />
+            <motion.div 
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full max-w-sm bg-surface/95 border-l border-[var(--glass-border)] shadow-2xl z-[101] p-8 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-primary/10 rounded-xl text-primary"><Bell size={20} /></div>
+                   <div>
+                     <h3 className="text-xl font-bold tracking-tight">Central de Ações</h3>
+                     <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">{notifications.length} ALERTAS ATIVOS</p>
+                   </div>
+                </div>
+                <button onClick={() => setIsNotificationsOpen(false)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors opacity-50"><Plus className="rotate-45" size={24} /></button>
+              </div>
+
+              <div className="space-y-6">
+                {notifications.length > 0 ? (
+                  notifications.map((n, i) => (
+                    <motion.div 
+                      key={n.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <GlassCard className="p-5 border-none bg-on-surface/[0.03] hover:bg-on-surface/[0.06] transition-all group">
+                        <div className="flex gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-on-surface/5 ${n.color}`}>
+                            <n.icon size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold mb-1 group-hover:text-primary transition-colors">{n.title}</h4>
+                            <p className="text-xs opacity-50 leading-relaxed">{n.desc}</p>
+                            <button className="mt-3 text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 group/btn">
+                              RESOLVER AGORA <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                            </button>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="py-20 text-center opacity-20 flex flex-col items-center gap-4">
+                    <ShieldCheck size={48} />
+                    <p className="editorial-label text-xs">SISTEMA EM ESTADO DE HARMONIA</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-12 p-6 rounded-3xl bg-secondary/10 border border-secondary/20 border-dashed">
+                 <p className="text-xs font-bold text-secondary mb-2 uppercase tracking-tight">Dica de Produtividade</p>
+                 <p className="text-[11px] opacity-70 leading-relaxed italic">
+                   "A disciplina de revisar sua central de ações garante que nada escape do seu horizonte estratégico."
+                 </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
