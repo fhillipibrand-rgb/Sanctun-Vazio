@@ -231,37 +231,49 @@ const Projects = () => {
                     className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[80px] resize-none"
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div className="space-y-4">
                       <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2"><TagIcon size={12} /> COR DE IDENTIFICAÇÃO</label>
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-4">
                         {colors.map(c => (
                           <button 
                             key={c} type="button" onClick={() => setColor(c)}
-                            className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'scale-110 border-surface shadow-xl shadow-primary/20' : 'border-transparent opacity-40 hover:opacity-100 hover:scale-105'}`}
+                            className={`w-12 h-12 rounded-full border-4 transition-all flex items-center justify-center ${
+                              color === c 
+                              ? 'scale-110 border-white shadow-xl shadow-white/10 ring-4 ring-white/10' 
+                              : 'border-transparent opacity-40 hover:opacity-100'
+                            }`}
                             style={{ backgroundColor: c }}
-                          />
+                          >
+                            {color === c && <CheckCircle2 size={18} className="text-surface drop-shadow-md" />}
+                          </button>
                         ))}
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2"><Calendar size={12} /> PRAZO DE ENTREGA (OPCIONAL)</label>
-                      <div className="grid grid-cols-2 gap-3">
-                         <div className="relative">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-[9px] font-bold opacity-30 uppercase tracking-widest pl-1">
+                               <Calendar size={10} /> DATA
+                            </div>
                             <input 
                               type="date" 
                               value={deadlineDate} 
                               onChange={e => setDeadlineDate(e.target.value)}
-                              className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl p-3 text-xs outline-none focus:border-primary/50 font-bold"
+                              className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-xs outline-none focus:border-primary/50 font-bold transition-all"
                             />
                          </div>
-                         <div className="relative">
+                         <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-[9px] font-bold opacity-30 uppercase tracking-widest pl-1">
+                               <Clock size={10} /> HORA
+                            </div>
                             <input 
                               type="time" 
                               value={deadlineTime} 
                               onChange={e => setDeadlineTime(e.target.value)}
-                              className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl p-3 text-xs outline-none focus:border-primary/50 font-bold"
+                              className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-xs outline-none focus:border-primary/50 font-bold transition-all"
                             />
                          </div>
                       </div>
