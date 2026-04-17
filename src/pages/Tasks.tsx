@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMockTasks, MOCK_PROJECTS } from "../lib/mockData";
+import TaskDetailsModal from "../components/ui/TaskDetailsModal";
 
 export interface Task {
   id: string;
@@ -17,6 +18,8 @@ export interface Task {
   project_id?: string;
   created_at: string;
   is_mock?: boolean;
+  description?: string;
+  attachments?: { name: string; url: string; path: string; type: string }[];
 }
 
 type Filter = "all" | "active" | "completed" | "critical";
@@ -47,6 +50,7 @@ const Tasks = () => {
   const [usingMockData, setUsingMockData] = useState(false);
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [expandedTask, setExpandedTask] = useState<Task | null>(null);
 
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [activeDropCol, setActiveDropCol] = useState<string | null>(null);
@@ -139,6 +143,27 @@ const Tasks = () => {
       setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
     }
     setEditingTask(null);
+  };
+
+  const updateTaskMetadata = async (id: string, updates: Partial<Task>) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (task.is_mock) {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+      return;
+    }
+
+    const { error } = await supabase.from("tasks").update({
+      description: updates.description,
+      attachments: updates.attachments,
+    }).eq("id", id);
+
+    if (!error) {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    } else {
+      console.error("Erro ao atualizar metadados da tarefa:", error);
+    }
   };
 
   const resetForm = () => {
@@ -374,65 +399,87 @@ const Tasks = () => {
   
   const renderTaskCard = (task: Task) => {
     const overdue = isOverdue(task);
+
+    const project = MOCK_PROJECTS.find(p => p.id === task.project_id);
+    const hoverClass = task.is_completed ? "" : "hover:shadow-lg hover:shadow-primary/5";
     return (
-    <GlassCard
-      key={task.id}
-      className={`px-5 py-4 flex items-center gap-4 group transition-all border-l-4 ${
-        task.is_completed
-          ? "opacity-40 grayscale border-l-transparent"
-          : overdue
-          ? "border-l-orange-500 bg-orange-500/[0.03]"
-          : task.is_critical
-          ? "border-l-red-500"
-          : "border-l-primary/30 hover:border-l-primary"
-      }`}
-    >
-      <button onClick={() => toggleTask(task.id, task.is_completed)} className="shrink-0 text-on-surface-variant hover:text-primary transition-colors">
-        {task.is_completed ? <CheckCircle2 size={22} className="text-primary" /> : <Circle size={22} className="group-hover:text-primary transition-colors" />}
-      </button>
-      <div className="flex-1 min-w-0">
-        <p className={`font-bold text-sm md:text-base leading-snug ${task.is_completed ? "line-through" : ""}`}>
-          {task.title}
-        </p>
-        <div className="flex flex-wrap items-center gap-3 mt-1.5">
-          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${ENERGY_COLORS[task.energy_level]}`}>
-            {ENERGY_LABELS[task.energy_level].toUpperCase()} ENERGIA
-          </span>
-          {task.due_date && (
-            <span className={`flex items-center gap-1 text-[10px] font-medium ${
-              overdue ? 'text-orange-400 font-bold' : 'opacity-50'
-            }`}>
-              <Calendar size={10} />
-              {new Date(task.due_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-            </span>
-          )}
-          {overdue && (
-            <span className="text-[9px] font-bold text-orange-400 flex items-center gap-1 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-400/20 animate-pulse">
-              <Clock size={9} /> ATRASADA
-            </span>
-          )}
-          {task.is_critical && (
-            <span className="text-[9px] font-bold text-red-400 flex items-center gap-1">
-              <Zap size={9} fill="currentColor" /> CRÍTICA
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        {!task.is_completed && (
-          <button onClick={() => toggleCritical(task.id, task.is_critical)} className={`p-2 rounded-xl transition-all hover:bg-on-surface/5`}>
-            <Star size={15} fill={task.is_critical ? "red" : "none"} className={task.is_critical ? "text-red-400" : "text-on-surface-variant"} />
-          </button>
-        )}
-        <button onClick={() => setEditingTask(task)} className="p-2 rounded-xl hover:bg-primary/10 hover:text-primary text-on-surface-variant transition-all">
-          <Edit2 size={15} />
-        </button>
-        <button onClick={() => deleteTask(task.id)} className="p-2 rounded-xl hover:bg-red-400/10 hover:text-red-400 text-on-surface-variant transition-all">
-          <Trash2 size={15} />
-        </button>
-      </div>
-    </GlassCard>
-  );
+      <motion.div
+        layoutId={`card-${task.id}`}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        onClick={() => setExpandedTask(task)}
+        className={`relative z-10 group cursor-pointer ${task.is_completed ? "opacity-50" : ""} hover:scale-[1.02] transition-transform`}
+      >
+        <GlassCard 
+          className={`p-3 md:p-4 rounded-2xl relative overflow-hidden transition-all duration-300 ${overdue ? "border-orange-500/50 bg-orange-500/5" : "border-primary/20 hover:border-primary/50"} ${hoverClass}`}
+        >
+          {/* Background Gradient base na energia */}
+          <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 blur-3xl opacity-20 transition-all group-hover:scale-150 ${
+            task.energy_level === "high" ? "bg-red-500" :
+            task.energy_level === "medium" ? "bg-yellow-500" :
+            "bg-green-500"
+          }`} />
+          
+          <div className="flex items-start gap-3 md:gap-4 relative z-10">
+            <button 
+              onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.is_completed); }}
+              className={`mt-1 shrink-0 transition-colors ${task.is_completed ? "text-primary" : "text-primary/30 hover:text-primary/60"}`}
+            >
+              {task.is_completed ? <CheckCircle2 size={24} className="fill-primary/20" /> : <Circle size={24} />}
+            </button>
+            
+            <div className="flex-1 min-w-0 pr-16 md:pr-20">
+              <h3 className={`font-bold text-sm md:text-base leading-tight md:leading-snug tracking-wide transition-all ${task.is_completed ? "line-through opacity-50" : ""} group-hover:text-primary mb-1 md:mb-1.5 line-clamp-2 md:line-clamp-none`}>
+                {task.title}
+              </h3>
+              <div className="flex items-center gap-3 flex-wrap opacity-60">
+                {project && (
+                  <span className="flex items-center gap-1.5 text-[9px] md:text-[10px] bg-on-surface/[0.05] border border-on-surface/[0.05] px-2 py-0.5 rounded-md uppercase font-bold tracking-widest truncate max-w-[120px]" title={project.name} style={{ color: project.color }}>
+                    <FolderKanban size={10} /> {project.name}
+                  </span>
+                )}
+                {task.due_date && (
+                  <span className={`flex items-center gap-1 text-[10px] md:text-xs font-medium tracking-wide ${overdue ? "text-orange-400 font-bold" : ""}`}>
+                    <Calendar size={12} className={overdue ? "text-orange-400" : "opacity-50"} />
+                    <span>{new Date(task.due_date).toLocaleDateString()}</span>
+                  </span>
+                )}
+                {(task.attachments && task.attachments.length > 0) && (
+                  <span className="flex items-center gap-1 text-[10px] md:text-xs font-medium tracking-wide text-primary" title="Possui anexo(s)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="absolute top-3 md:top-4 right-3 md:right-4 flex flex-col md:flex-row gap-1.5 md:gap-2">
+               <button
+                 onClick={(e) => { e.stopPropagation(); setEditingTask(task); }}
+                 className="p-1.5 md:p-2 bg-on-surface/5 text-on-surface hover:text-blue-400 border border-[var(--glass-border)] rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-on-surface/10 hover:-translate-y-0.5"
+                 title="Editar"
+               >
+                  <Edit2 size={14} className="md:w-4 md:h-4" />
+               </button>
+               <button 
+                 onClick={(e) => { e.stopPropagation(); toggleCritical(task.id, task.is_critical); }}
+                 className={`p-1.5 md:p-2 border rounded-lg md:rounded-xl transition-all hover:scale-105 ${task.is_critical ? "bg-red-500/10 text-red-500 border-red-500/30" : "bg-on-surface/5 text-on-surface hover:text-red-400 border-[var(--glass-border)] opacity-0 group-hover:opacity-100"}`}
+                 title={task.is_critical ? "Remover crítico" : "Marcar crítico"}
+               >
+                 <Star size={14} className="md:w-4 md:h-4" fill={task.is_critical ? "currentColor" : "none"} />
+               </button>
+               <button 
+                 onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
+                 className="p-1.5 md:p-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg md:rounded-xl hover:bg-red-500 hover:text-surface transition-all opacity-0 group-hover:opacity-100"
+                 title="Excluir"
+               >
+                 <Trash2 size={14} className="md:w-4 md:h-4" />
+               </button>
+            </div>
+          </div> 
+        </GlassCard>
+      </motion.div>
+    );
   };
 
   const renderKanban = () => {
@@ -471,6 +518,7 @@ const Tasks = () => {
                         draggable
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onDragEnd={(e) => handleDragEnd(e, task.id)}
+                        onClick={() => setExpandedTask(task)}
                         className={`p-4 flex flex-col gap-3 cursor-grab active:cursor-grabbing transition-all group border-l-4 ${
                           overdue ? 'border-l-orange-500 hover:border-orange-500/50' :
                           task.is_critical ? 'border-l-red-500 hover:border-red-500/50' :
@@ -481,8 +529,8 @@ const Tasks = () => {
                         <div className="flex justify-between items-start gap-2">
                           <p className={`font-bold text-sm ${task.is_completed ? 'line-through opacity-50' : ''}`}>{task.title}</p>
                           <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-                            <button onClick={() => setEditingTask(task)} className="p-1 text-on-surface/50 hover:text-primary transition-colors"><Edit2 size={12} /></button>
-                            <button onClick={() => deleteTask(task.id)} className="p-1 text-on-surface/50 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingTask(task); }} className="p-1 text-on-surface/50 hover:text-primary transition-colors"><Edit2 size={12} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="p-1 text-on-surface/50 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
                           </div>
                         </div>
                         
@@ -638,7 +686,7 @@ const Tasks = () => {
         </div>
       ) : (
         <div className="mt-8">
-          {viewMode === "list" && <div className="space-y-3"><AnimatePresence initial={false}>{filteredTasks.map(task => <motion.div key={task.id} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>{renderTaskCard(task)}</motion.div>)}</AnimatePresence></div>}
+          {viewMode === "list" && <div className="space-y-3"><AnimatePresence initial={false}>{filteredTasks.map(task => renderTaskCard(task))}</AnimatePresence></div>}
           {viewMode === "kanban" && renderKanban()}
           {viewMode === "calendar" && renderCalendar()}
           {viewMode === "table" && <div className="p-8 text-center bg-surface/50 rounded-3xl border border-[var(--glass-border)] opacity-50 editorial-label">Tabela em construção com projetos...</div>}
@@ -720,6 +768,16 @@ const Tasks = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* MODAL DE DETALHES E ANEXOS */}
+      {expandedTask && (
+        <TaskDetailsModal 
+           task={expandedTask} 
+           onClose={() => setExpandedTask(null)}
+           onUpdate={updateTaskMetadata}
+           isMock={expandedTask.is_mock}
+        />
+      )}
 
     </div>
   );
