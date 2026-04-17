@@ -70,6 +70,16 @@ const Tasks = () => {
     if (user) {
       fetchTasks();
       fetchProjects();
+
+      // Real-time listener para Sincronização de Projetos e Tarefas
+      const tasksChannel = supabase.channel('tasks-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => fetchProjects())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(tasksChannel);
+      };
     }
   }, [user]);
 

@@ -25,9 +25,9 @@ const Habits = () => {
   const [sleepTimes, setSleepTimes] = useState({ wake: "07:00", sleep: "23:00", quality: 85 });
   const [reading, setReading] = useState({ title: "Meditações - Marco Aurélio", progress: 45, total: 320 });
   const [history, setHistory] = useState<Record<string, boolean[]>>({
-    sleep: [true, true, false, true, true, true, true],
-    exercise: [false, true, true, true, false, true, false],
-    reading: [true, false, true, true, true, true, true]
+    sleep: [false, false, false, false, false, false, false],
+    exercise: [false, false, false, false, false, false, false],
+    reading: [false, false, false, false, false, false, false]
   });
 
   const readingProgress = (reading.progress / reading.total) * 100;
@@ -101,9 +101,10 @@ const Habits = () => {
           style={{ 
             backgroundColor: done ? color : undefined,
             boxShadow: done ? `0 0 8px ${color}40` : 'none',
-            opacity: 0.3 + (i * 0.1) // Mais opaco conforme chega no hoje
+            opacity: 0.2 + (i * 0.13), // Mais opaco conforme chega no hoje
+            border: i === 6 ? `1px solid ${color}` : 'none' // Destaque para o dia de hoje
           }}
-          title={done ? "Concluído" : "Pendente"}
+          title={i === 6 ? "Hoje" : `${6-i} dias atrás`}
         />
       ))}
     </div>

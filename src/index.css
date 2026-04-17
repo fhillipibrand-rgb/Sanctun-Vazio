@@ -119,20 +119,20 @@
     @apply list-none pl-0 my-4 space-y-2;
   }
   .custom-tiptap-content li[data-type="taskItem"] {
-    @apply flex items-start gap-4 mb-2;
+    @apply flex items-start gap-3 mb-2.5;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label {
-    @apply flex items-center justify-center shrink-0 mt-1 cursor-pointer select-none !relative;
+    @apply flex items-center justify-center shrink-0 mt-[3px] cursor-pointer select-none !relative;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"] {
-    @apply appearance-none w-5 h-5 rounded-lg border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer !relative;
+    @apply appearance-none w-5 h-5 rounded-md border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer !relative hover:border-primary/50;
   }
   /* Mark for the checkbox */
   .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
     left: 5px;
-    top: 1px;
+    top: 2px;
     width: 6px;
     height: 10px;
     border: solid var(--surface);

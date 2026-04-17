@@ -214,13 +214,20 @@ const Dashboard = () => {
             </Link>
             <button 
               onClick={() => setIsNotificationsOpen(true)}
-              className="relative w-12 h-12 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all group"
+              className={`relative w-12 h-12 rounded-2xl border flex items-center justify-center transition-all group ${
+                notifications.length > 0 
+                ? 'bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/20' 
+                : 'bg-on-surface/5 border-[var(--glass-border)]'
+              }`}
             >
-              <Bell size={20} className="group-hover:rotate-12 transition-transform" />
+              <Bell size={20} className={`${notifications.length > 0 ? 'animate-none' : 'group-hover:rotate-12 transition-transform'}`} />
               {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-background animate-bounce">
-                  {notifications.length}
-                </span>
+                <>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-background z-10">
+                    {notifications.length}
+                  </span>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping opacity-75" />
+                </>
               )}
             </button>
          </div>

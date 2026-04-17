@@ -86,6 +86,16 @@ const Finance = () => {
     color: ['#5e9eff', '#a855f7', '#00f5a0', '#ff6b6b'][i % 4]
   })).sort((a, b) => b.value - a.value).slice(0, 4);
 
+  // Cálculo de variação mensal real
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0,0,0,0);
+  
+  const monthlyTransactions = transactions.filter(t => new Date(t.created_at) >= startOfMonth);
+  const monthlyIncome = monthlyTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
+  const monthlyExpense = monthlyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + Number(curr.amount), 0);
+  const monthlyChange = monthlyIncome - monthlyExpense;
+
   if (pieData.length === 0) {
     pieData.push({ name: 'Sem gastos', value: 1, color: 'rgba(255,255,255,0.05)' });
   }
@@ -119,9 +129,9 @@ const Finance = () => {
                 <h3 className="text-5xl md:text-7xl font-bold tracking-tighter">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(netWorth)}
                 </h3>
-                <div className={`flex items-center gap-1.5 font-bold px-3 py-1 rounded-full text-xs ${netWorth >= 0 ? 'bg-secondary/10 text-secondary' : 'bg-red-400/10 text-red-400'}`}>
-                  {netWorth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  <span>{netWorth >= 0 ? '+R$ 1.250 este mês' : 'Fluxo negativo'}</span>
+                <div className={`flex items-center gap-1.5 font-bold px-3 py-1 rounded-full text-xs ${monthlyChange >= 0 ? 'bg-secondary/10 text-secondary' : 'bg-red-400/10 text-red-400'}`}>
+                  {monthlyChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', signDisplay: 'always' }).format(monthlyChange)} este mês</span>
                 </div>
               </div>
 

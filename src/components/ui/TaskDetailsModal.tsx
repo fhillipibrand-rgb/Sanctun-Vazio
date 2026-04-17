@@ -36,14 +36,24 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Persistindo no Supabase ou Local (Mock) através do pai
-    await onUpdate(task.id, { description, attachments });
-    setIsSaving(false);
-    onClose();
+    try {
+      // Persistindo no Supabase ou Local (Mock) através do pai
+      await onUpdate(task.id, { description, attachments });
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        onClose();
+      }, 800);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
@@ -260,13 +270,29 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
 
             {/* Footer */}
             <div className="p-6 md:p-8 bg-surface/50 border-t border-[var(--glass-border)] flex justify-end shrink-0 relative z-10 sticky bottom-0">
-               <button 
-                 onClick={handleSave}
-                 disabled={isSaving}
-                 className="px-8 py-3 bg-primary text-surface font-bold text-sm tracking-wide rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all outline-none"
-               >
-                 {isSaving ? "SALVANDO..." : "SALVAR ALTERAÇÕES"}
-               </button>
+                <button 
+                  onClick={handleSave}
+                  disabled={isSaving || saveSuccess}
+                  className={`px-8 py-3 font-bold text-sm tracking-wide rounded-full shadow-lg transition-all outline-none flex items-center gap-2 ${
+                    saveSuccess 
+                      ? "bg-secondary text-surface shadow-secondary/20" 
+                      : "bg-primary text-surface shadow-primary/20 hover:scale-105 active:scale-95"
+                  }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      SALVANDO...
+                    </>
+                  ) : saveSuccess ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      SALVO!
+                    </>
+                  ) : (
+                    "SALVAR ALTERAÇÕES"
+                  )}
+                </button>
             </div>
           </GlassCard>
         </motion.div>
