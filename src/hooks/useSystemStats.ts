@@ -22,6 +22,7 @@ export interface SystemStats {
   calendar: { nextEvent: any | null; totalUpcoming: number; };
   health: { lowStockMeds: number; };
   nutrition: { waterProgress: number; };
+  projects: { active: any[]; total: number; };
   weeklyHistory: DailyData[];
   isDemo: boolean;
   loading: boolean;
@@ -37,6 +38,7 @@ export const useSystemStats = () => {
     calendar: { nextEvent: null, totalUpcoming: 0 },
     health: { lowStockMeds: 0 },
     nutrition: { waterProgress: 0 },
+    projects: { active: [], total: 0 },
     weeklyHistory: [],
     isDemo: false,
     loading: true,
@@ -119,9 +121,19 @@ export const useSystemStats = () => {
         });
       }
 
+      // 7. PROJETOS - Com cálculo de progresso integrado
+      const { data: rawProjects } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+      const projectsData = (rawProjects || []).map(p => {
+        const pTasks = tasksData.filter((t: any) => t.project_id === p.id);
+        const pCompleted = pTasks.filter((t: any) => t.is_completed).length;
+        const pProgress = pTasks.length > 0 ? Math.round((pCompleted / pTasks.length) * 100) : 0;
+        return { ...p, progress: pProgress, taskCount: pTasks.length };
+      });
+      const totalProjects = projectsData.length;
+
       // CHECAR MODO LIVE VS EMPTY
       const isLiveMode = localStorage.getItem("sanctuary_live_mode") === "true";
-      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && medsData.length === 0;
+      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && projectsData.length === 0;
       const showDemo = !isLiveMode && isEmpty;
 
       if (showDemo) {
@@ -131,6 +143,13 @@ export const useSystemStats = () => {
           calendar: { nextEvent: { title: "Mentoria de Performance", start_time: new Date(Date.now() + 86400000).toISOString() }, totalUpcoming: 3 },
           health: { lowStockMeds: 1 },
           nutrition: { waterProgress: 45 },
+          projects: { 
+            active: [
+              { id: '1', name: 'Expansão Digital', icon: 'Rocket', color: '#5e9eff', description: 'Exemplo de projeto' },
+              { id: '2', name: 'Marca Pessoal', icon: 'Sparkles', color: '#a855f7', description: 'Exemplo de projeto' }
+            ], 
+            total: 2 
+          },
           weeklyHistory: [
             { name: 'Seg', v: 40, f: 30, date: '1' }, { name: 'Ter', v: 70, f: 50, date: '2' }, { name: 'Qua', v: 50, f: 45, date: '3' }, 
             { name: 'Qui', v: 90, f: 80, date: '4' }, { name: 'Sex', v: 65, f: 60, date: '5' }, { name: 'Sab', v: 30, f: 20, date: '6' }, { name: 'Dom', v: 10, f: 5, date: '7' }
@@ -145,6 +164,7 @@ export const useSystemStats = () => {
           calendar: { nextEvent, totalUpcoming },
           health: { lowStockMeds: lowStockCount },
           nutrition: { waterProgress },
+          projects: { active: projectsData, total: totalProjects },
           weeklyHistory: history,
           isDemo: false,
           loading: false
@@ -165,7 +185,8 @@ export const useSystemStats = () => {
       supabase.channel('stats-finance').on('postgres_changes' as any, { event: '*', table: 'transactions' }, fetchStats).subscribe(),
       supabase.channel('stats-calendar').on('postgres_changes' as any, { event: '*', table: 'events' }, fetchStats).subscribe(),
       supabase.channel('stats-health').on('postgres_changes' as any, { event: '*', table: 'health_meds' }, fetchStats).subscribe(),
-      supabase.channel('stats-nutrition').on('postgres_changes' as any, { event: '*', table: 'nutrition_water' }, fetchStats).subscribe()
+      supabase.channel('stats-nutrition').on('postgres_changes' as any, { event: '*', table: 'nutrition_water' }, fetchStats).subscribe(),
+      supabase.channel('stats-projects').on('postgres_changes' as any, { event: '*', table: 'projects' }, fetchStats).subscribe()
     ];
 
     return () => {

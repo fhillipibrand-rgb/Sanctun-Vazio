@@ -22,15 +22,31 @@ const CalendarPage = () => {
 
   const fetchEvents = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    // Busca eventos normais
+    const { data: eventsData, error: eventsError } = await supabase
       .from('events')
       .select('*')
       .order('start_time', { ascending: true });
 
-    if (error) {
-      console.error("Erro ao buscar eventos:", error);
-    } else if (data) {
-      setEvents(data);
+    // Busca projetos para extrair deadlines
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .not('deadline', 'is', null);
+
+    if (eventsError || projectsError) {
+      console.error("Erro ao buscar dados do calendário:", eventsError || projectsError);
+    } else {
+      // Converte projetos em eventos virtuais
+      const projectEvents = (projectsData || []).map(p => ({
+        id: `proj-${p.id}`,
+        title: `ENTREGA: ${p.name}`,
+        start_time: p.deadline,
+        isProjectDeadline: true,
+        color: p.color
+      }));
+
+      setEvents([...(eventsData || []), ...projectEvents]);
     }
     setLoading(false);
   };
@@ -102,8 +118,14 @@ const CalendarPage = () => {
           
           <div className="mt-2 space-y-1 overflow-hidden">
             {dayEvents.slice(0, 2).map((event, idx) => (
-              <div key={idx} className="text-[9px] bg-primary/20 text-primary truncate px-1.5 py-0.5 rounded font-bold">
-                {event.title}
+              <div 
+                key={idx} 
+                className={`text-[9px] truncate px-1.5 py-0.5 rounded font-bold ${
+                  event.isProjectDeadline ? 'bg-secondary/20 text-secondary border border-secondary/30' : 'bg-primary/20 text-primary'
+                }`}
+                style={event.isProjectDeadline ? { color: event.color, backgroundColor: `${event.color}20`, borderColor: `${event.color}40` } : {}}
+              >
+                {event.isProjectDeadline && "🚀 "}{event.title}
               </div>
             ))}
             {dayEvents.length > 2 && (
@@ -215,14 +237,20 @@ const CalendarPage = () => {
             <div className="space-y-4">
               {events.filter(e => new Date(e.start_time).toDateString() === selectedDate.toDateString()).length > 0 ? (
                 events.filter(e => new Date(e.start_time).toDateString() === selectedDate.toDateString()).map((event, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-on-surface/[0.03] border border-[var(--glass-border)] space-y-3 group hover:bg-primary/5 transition-all">
+                  <div key={i} className={`p-4 rounded-2xl border space-y-3 group transition-all ${
+                    event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30 hover:bg-secondary/10' : 'bg-on-surface/[0.03] border-[var(--glass-border)] hover:bg-primary/5'
+                  }`}>
                     <div className="flex items-start justify-between">
-                       <h5 className="font-bold text-sm leading-tight">{event.title}</h5>
+                       <h5 className="font-bold text-sm leading-tight">
+                         {event.isProjectDeadline && <span className="text-[10px] text-secondary mr-2">PROJETO</span>}
+                         {event.title}
+                       </h5>
                        <Clock size={14} className="opacity-20 flex-shrink-0" />
                     </div>
                     <div className="flex items-center gap-3 opacity-60 text-[10px] font-medium">
                        <span className="flex items-center gap-1.5"><Clock size={12} /> {new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                        {event.location && <span className="flex items-center gap-1.5"><MapPin size={12} /> {event.location}</span>}
+                       {event.isProjectDeadline && <span className="text-secondary font-bold">MARCO ESTRATÉGICO</span>}
                     </div>
                   </div>
                 ))

@@ -533,7 +533,11 @@ const Tasks = () => {
               onDragOver={(e) => handleDragOver(e, col.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, col.id)}
-              className={`bg-surface/50 border rounded-3xl p-4 flex flex-col gap-3 min-h-[400px] transition-all duration-300 ${isDropActive ? 'border-primary shadow-lg shadow-primary/10' : 'border-[var(--glass-border)]'}`}
+              className={`bg-surface/50 border rounded-[2rem] p-5 flex flex-col gap-4 min-h-[450px] transition-all duration-500 ${
+                isDropActive 
+                ? 'border-primary ring-4 ring-primary/5 shadow-[0_0_30px_rgba(94,158,255,0.15)] bg-primary/5' 
+                : 'border-[var(--glass-border)]'
+              }`}
             >
               <div className="flex items-center justify-between mb-2 px-2">
                 <span className={`editorial-label text-xs font-bold transition-colors ${isDropActive ? 'text-primary' : ''}`}>{col.label.toUpperCase()}</span>
@@ -544,17 +548,24 @@ const Tasks = () => {
                   const proj = projects.find(p => p.id === task.project_id);
                   const overdue = isOverdue(task);
                   return (
-                    <motion.div key={task.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                    <motion.div 
+                      key={task.id} 
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }} 
+                      animate={{ opacity: 1, scale: 1 }} 
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      whileDrag={{ scale: 1.05, rotate: 2 }}
+                    >
                       <GlassCard 
                         id={task.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onDragEnd={(e) => handleDragEnd(e, task.id)}
                         onClick={() => setExpandedTask(task)}
-                        className={`p-4 flex flex-col gap-3 cursor-grab active:cursor-grabbing transition-all group border-l-4 ${
-                          overdue ? 'border-l-orange-500 hover:border-orange-500/50' :
-                          task.is_critical ? 'border-l-red-500 hover:border-red-500/50' :
-                          proj ? '' : 'hover:border-primary/50'
+                        className={`p-5 flex flex-col gap-4 cursor-grab active:cursor-grabbing transition-all group border-l-4 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] hover:-translate-y-1 ${
+                          overdue ? 'border-l-orange-500 hover:shadow-orange-500/10' :
+                          task.is_critical ? 'border-l-red-500 hover:shadow-red-500/10' :
+                          proj ? 'hover:shadow-primary/10' : 'hover:border-primary/50'
                         }`}
                         style={{ borderLeftColor: !overdue && !task.is_critical && proj ? proj.color : undefined }}
                       >

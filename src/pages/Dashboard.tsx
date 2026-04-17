@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle, Play, Pause } from "lucide-react";
+import { 
+  Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Clock, 
+  ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle, 
+  Play, Pause, Rocket, Briefcase, Code, Layout, Globe, Star, Heart, Cloud, 
+  Camera, Music, Book, Trophy, Shield, Coffee, Lightbulb, Bell, Search, FolderKanban,
+  ChevronRight
+} from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -119,6 +125,16 @@ const Dashboard = () => {
 
   const chartDataSource = stats.weeklyHistory;
 
+  const iconOptions = [
+    { name: 'Rocket', icon: Rocket }, { name: 'Target', icon: Target }, { name: 'Briefcase', icon: Briefcase },
+    { name: 'Code', icon: Code }, { name: 'Sparkles', icon: Sparkles }, { name: 'Zap', icon: Zap },
+    { name: 'Layout', icon: Layout }, { name: 'Globe', icon: Globe }, { name: 'Star', icon: Star },
+    { name: 'Heart', icon: Heart }, { name: 'Cloud', icon: Cloud }, { name: 'Camera', icon: Camera },
+    { name: 'Music', icon: Music }, { name: 'Book', icon: Book }, { name: 'Trophy', icon: Trophy },
+    { name: 'Shield', icon: Shield }, { name: 'Coffee', icon: Coffee }, { name: 'Lightbulb', icon: Lightbulb },
+    { name: 'Bell', icon: Bell }, { name: 'Search', icon: Search }, { name: 'FolderKanban', icon: FolderKanban }
+  ];
+
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">
       {/* Banner de Boas-vindas / Demo Mode */}
@@ -229,6 +245,72 @@ const Dashboard = () => {
             <p className="text-[9px] font-medium opacity-40 mt-3 uppercase tracking-wider">SALDO CONSOLIDADO</p>
           </GlassCard>
         </Link>
+      </div>
+
+      {/* Seção de Projetos em Foco */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+           <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-primary rounded-full" />
+              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-40 uppercase">Projetos em Foco</h3>
+           </div>
+           <Link to="/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
+             GERENCIAR <ChevronRight size={12} />
+           </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.projects.active.slice(0, 4).map((proj: any, idx: number) => {
+            const IconComp = iconOptions.find(i => i.name === proj.icon)?.icon || FolderKanban;
+            return (
+              <motion.div 
+                key={proj.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <Link to="/projects">
+                  <GlassCard className="p-5 group hover:border-primary/40 transition-all relative overflow-hidden h-full">
+                    <div className="absolute -right-2 -top-2 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                       <IconComp size={80} style={{ color: proj.color }} />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 mb-4">
+                       <div className="w-10 h-10 rounded-xl bg-on-surface/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                          <IconComp size={20} style={{ color: proj.color }} />
+                       </div>
+                       <div className="min-w-0">
+                          <h4 className="text-sm font-bold truncate tracking-tight">{proj.name}</h4>
+                          <p className="text-[9px] opacity-40 uppercase font-bold tracking-widest">{proj.taskCount || 0} Atividades</p>
+                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                       <div className="flex justify-between items-end text-[9px] font-bold">
+                          <span className="opacity-30 uppercase">Status</span>
+                          <span style={{ color: proj.color }}>{proj.progress}%</span>
+                       </div>
+                       <div className="h-1 w-full bg-on-surface/5 rounded-full overflow-hidden">
+                          <motion.div 
+                            className="h-full rounded-full" 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${proj.progress}%` }}
+                            transition={{ duration: 1.5, ease: "circOut" }}
+                            style={{ backgroundColor: proj.color }}
+                          />
+                       </div>
+                    </div>
+                  </GlassCard>
+                </Link>
+              </motion.div>
+            );
+          })}
+          {stats.projects.active.length === 0 && !stats.loading && (
+            <div className="col-span-full py-12 text-center border-2 border-dashed border-on-surface/5 rounded-3xl opacity-20">
+               <p className="editorial-label text-[10px] tracking-widest uppercase">Nenhum projeto ativo para exibir</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Alertas Críticos */}
