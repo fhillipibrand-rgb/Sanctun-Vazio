@@ -469,6 +469,7 @@ const Projects = () => {
                       )}
                     </div>
                   </div>
+                </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-[var(--glass-border)]">
                   <button type="button" onClick={resetForm} className="px-8 py-3 rounded-full font-bold text-sm opacity-40 hover:opacity-100 transition-all">CANCELAR</button>
