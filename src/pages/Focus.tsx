@@ -3,6 +3,13 @@ import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 
+declare global {
+  interface Window {
+    onSpotifyWebPlaybackSDKReady: () => void;
+    Spotify: any;
+  }
+}
+
 type FocusMode = {
   id: string;
   name: string;
@@ -56,26 +63,26 @@ const FocusBackgroundEffects = ({ color }: { color: string }) => {
     <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30 group-hover:opacity-40 transition-opacity duration-1000">
       {[...Array(4)].map((_, i) => (
         <motion.div
-          key={i}
-          className="absolute rounded-full blur-[200px]"
-          style={{
-            backgroundColor: color,
-            width: Math.random() * 600 + 400,
-            height: Math.random() * 600 + 400,
-            left: `${Math.random() * 100 - 20}%`,
-            top: `${Math.random() * 100 - 20}%`,
-          }}
-          animate={{
-            x: [0, Math.random() * 200 - 100, 0],
-            y: [0, Math.random() * 200 - 100, 0],
-            scale: [1, 1.15, 1],
-            opacity: [0.05, 0.15, 0.05],
-          }}
-          transition={{
-            duration: Math.random() * 20 + 30, // Much slower: 30s to 50s
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+            key={i}
+            className="absolute rounded-full blur-[200px]"
+            style={{
+              backgroundColor: color,
+              width: Math.random() * 600 + 400,
+              height: Math.random() * 600 + 400,
+              left: `${Math.random() * 100 - 20}%`,
+              top: `${Math.random() * 100 - 20}%`,
+            }}
+            animate={{
+              x: [0, Math.random() * 200 - 100, 0],
+              y: [0, Math.random() * 200 - 100, 0],
+              scale: [1, 1.15, 1],
+              opacity: [0.05, 0.15, 0.05],
+            }}
+            transition={{
+              duration: Math.random() * 20 + 30,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
         />
       ))}
     </div>
@@ -94,14 +101,19 @@ const Focus = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>(() => {
+    if (typeof window === 'undefined') return 'ambient';
     return (localStorage.getItem('sanctum_music_source') as 'ambient' | 'spotify') || 'ambient';
   });
   const [spotifyUrl, setSpotifyUrl] = useState(() => {
+    if (typeof window === 'undefined') return '';
     return localStorage.getItem('sanctum_spotify_url') || 'https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS';
   });
 
   // Spotify SDK State
-  const [spotifyToken, setSpotifyToken] = useState<string | null>(localStorage.getItem("spotify_access_token"));
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem("spotify_access_token");
+  });
   const [player, setPlayer] = useState<any>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<any>(null);
@@ -109,38 +121,79 @@ const Focus = () => {
   // Pomodoro State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [pomodoroConfig, setPomodoroConfig] = useState({ work: 25, break: 5 });
+  const [pomodoroConfig] = useState({ work: 25, break: 5 });
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Load Spotify SDK
   useEffect(() => {
-    if (audioRef.current) {
+    if (musicSource === 'spotify' && spotifyToken) {
+      if (!window.Spotify) {
+        const script = document.createElement("script");
+        script.src = "https://sdk.scdn.co/spotify-player.js";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        const newPlayer = new window.Spotify.Player({
+          name: 'Sanctum v2 Player',
+          getOAuthToken: cb => { cb(spotifyToken); },
+          volume: volume
+        });
+
+        newPlayer.addListener('ready', ({ device_id }) => {
+          setDeviceId(device_id);
+        });
+
+        newPlayer.addListener('player_state_changed', state => {
+          if (!state) return;
+          setCurrentTrack(state.track_window.current_track);
+          setIsPlaying(!state.paused);
+        });
+
+        newPlayer.connect();
+        setPlayer(newPlayer);
+      };
+    }
+    
+    return () => {
+      if (player) {
+        player.disconnect();
+      }
+    };
+  }, [spotifyToken, musicSource]);
+
+  // Sync Volume
+  useEffect(() => {
+    if (player) player.setVolume(volume);
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume, player]);
+
+  // Sync Mute
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = isMuted;
+  }, [isMuted]);
+
+  // Ambient Audio Control
+  useEffect(() => {
+    if (audioRef.current && musicSource === 'ambient') {
       if (isPlaying) {
         audioRef.current.play().catch(e => console.error("Audio play failed:", e));
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying, activeMode]);
+  }, [isPlaying, activeMode, musicSource]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
-
+  // Persist State
   useEffect(() => {
     localStorage.setItem('sanctum_music_source', musicSource);
     localStorage.setItem('sanctum_spotify_url', spotifyUrl);
   }, [musicSource, spotifyUrl]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
+  // Timer Logic
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {
       timerRef.current = setInterval(() => {
@@ -155,6 +208,38 @@ const Focus = () => {
     };
   }, [isTimerRunning, timeLeft]);
 
+  const handleSpotifyLogin = () => {
+    const scopes = "streaming user-read-email user-read-private user-modify-playback-state";
+    window.location.href = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+  };
+
+  const playSpotifyPlaylist = async () => {
+    if (!deviceId || !spotifyToken || !spotifyUrl) return;
+    
+    const match = spotifyUrl.match(/\/(playlist|track|album|artist)\/([a-zA-Z0-9]+)/);
+    if (!match) return;
+    
+    const type = match[1];
+    const id = match[2];
+    const context_uri = `spotify:${type}:${id}`;
+    
+    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(type === 'track' ? { uris: [context_uri] } : { context_uri: context_uri }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${spotifyToken}`
+      },
+    });
+  };
+
+  const toggleSpotifyPlayback = () => {
+    if (player) player.togglePlay();
+  };
+
+  const skipNext = () => player && player.nextTrack();
+  const skipPrev = () => player && player.previousTrack();
+
   const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
   const resetTimer = () => {
     setIsTimerRunning(false);
@@ -165,16 +250,12 @@ const Focus = () => {
     try {
       if (!url) return "";
       if (url.includes('embed')) return url;
-      
-      // Regex robusto para capturar o tipo (playlist|track|album|artist) e o ID
       const match = url.match(/\/(playlist|track|album|artist)\/([a-zA-Z0-9]+)/);
-      
       if (match) {
         const type = match[1];
         const id = match[2];
         return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
       }
-      
       return url;
     } catch (e) {
       return url;
@@ -192,12 +273,14 @@ const Focus = () => {
   return (
     <div className={`min-h-screen transition-colors duration-1000 ${isFullscreen ? 'fixed inset-0 z-[100] bg-black p-10 flex flex-col items-center justify-center' : 'space-y-10'}`}>
       
-      {/* Hidden Audio Element */}
-      <audio 
-        ref={audioRef}
-        src={activeMode.audioUrl}
-        loop
-      />
+      {/* Hidden Audio Element for Ambient */}
+      {musicSource === 'ambient' && (
+        <audio 
+          ref={audioRef}
+          src={activeMode.audioUrl}
+          loop
+        />
+      )}
 
       {/* Background Effects */}
       <AnimatePresence>
@@ -241,10 +324,7 @@ const Focus = () => {
                 {FOCUS_MODES.map((mode) => (
                   <GlassCard 
                     key={mode.id}
-                    onClick={() => {
-                        setActiveMode(mode);
-                        // If it's already playing, keep it playing with new source
-                    }}
+                    onClick={() => setActiveMode(mode)}
                     className={`p-6 cursor-pointer border-2 transition-all ${
                       activeMode.id === mode.id ? 'border-primary' : 'border-transparent'
                     }`}
@@ -345,7 +425,7 @@ const Focus = () => {
                            <p className="text-sm font-bold truncate group-hover:text-secondary transition-colors">{activeMode.defaultMusic}</p>
                            <p className="text-[10px] opacity-40 uppercase tracking-tighter">Fluxo: Ativo</p>
                         </div>
-                        <button onClick={() => setIsPlaying(!isPlaying)} className="p-2">
+                        <button onClick={(() => setIsPlaying(!isPlaying))} className="p-2">
                            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                         </button>
                      </div>
@@ -473,15 +553,25 @@ const Focus = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-2xl overflow-hidden border border-on-surface/10 shadow-2xl h-48 group">
-                    <iframe 
-                        src={formatSpotifyUrl(spotifyUrl)} 
-                        width="100%" 
-                        height="100%" 
-                        frameBorder="0" 
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                        loading="lazy"
-                    ></iframe>
+                  <div className="space-y-4 w-full">
+                    {currentTrack ? (
+                       <div className="flex flex-col items-center gap-6">
+                          <img src={currentTrack.album.images[0].url} className="w-48 h-48 rounded-3xl shadow-2xl" alt="" />
+                          <div className="text-center">
+                             <h4 className="text-2xl font-bold">{currentTrack.name}</h4>
+                             <p className="text-sm opacity-40">{currentTrack.artists[0].name}</p>
+                          </div>
+                          <div className="flex items-center gap-8">
+                             <button onClick={skipPrev} className="opacity-30 hover:opacity-100 transition-opacity"><SkipBack size={24} fill="currentColor"/></button>
+                             <button onClick={toggleSpotifyPlayback} className="w-16 h-16 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all">
+                                {isPlaying ? <Pause size={28} fill="currentColor"/> : <Play size={28} fill="currentColor" className="ml-1"/>}
+                             </button>
+                             <button onClick={skipNext} className="opacity-30 hover:opacity-100 transition-opacity"><SkipForward size={24} fill="currentColor"/></button>
+                          </div>
+                       </div>
+                    ) : (
+                       <div className="w-full py-12 text-center opacity-20 editorial-label">ABRA O SPOTIFY E DÊ O PLAY</div>
+                    )}
                   </div>
                 )}
              </div>
@@ -500,12 +590,6 @@ const Focus = () => {
           <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em] font-mono">Respirar · Focar · Executar</p>
         </div>
       )}
-      <style>{`
-        @keyframes wave {
-          0%, 100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1); }
-        }
-      `}</style>
     </div>
   );
 };
