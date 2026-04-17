@@ -45,6 +45,7 @@ const getRichTextMetadata = (html: string | undefined) => {
 const Tasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<any[]>(MOCK_PROJECTS);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
@@ -66,8 +67,25 @@ const Tasks = () => {
   const [activeDropCol, setActiveDropCol] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) fetchTasks();
+    if (user) {
+      fetchTasks();
+      fetchProjects();
+    }
   }, [user]);
+
+  const fetchProjects = async () => {
+    const { data, error } = await supabase.from("projects").select("*");
+    if (!error && data && data.length > 0) {
+      // Mescla projetos reais com mocks para garantir que associações antigas não quebrem visualmente
+      const combined = [...data];
+      MOCK_PROJECTS.forEach(mp => {
+        if (!combined.find(p => p.id === mp.id)) combined.push(mp);
+      });
+      setProjects(combined);
+    } else {
+      setProjects(MOCK_PROJECTS);
+    }
+  };
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -122,6 +140,7 @@ const Tasks = () => {
         due_date: newDueDate ? new Date(newDueDate).toISOString() : null,
         is_critical: newCritical,
         is_completed: false,
+        project_id: newProject || null
       }])
       .select();
 
@@ -143,10 +162,11 @@ const Tasks = () => {
     }
 
     const { error } = await supabase.from("tasks").update({
-      title: editingTask.title,
+      title: editingTask.title.trim(),
       energy_level: editingTask.energy_level,
       due_date: editingTask.due_date,
       is_critical: editingTask.is_critical,
+      project_id: editingTask.project_id || null
     }).eq("id", editingTask.id);
 
     if (!error) {
@@ -206,7 +226,7 @@ const Tasks = () => {
     // Atualiza apenas is_completed (campo garantido no banco)
     const { error } = await supabase
       .from("tasks")
-      .update({ is_completed: isNowCompleted })
+      .update({ is_completed: isNowCompleted, status: newStatus })
       .eq("id", id);
     
     if (error) {
@@ -296,7 +316,7 @@ const Tasks = () => {
       // Atualiza apenas is_completed (campo garantido no banco)
       const { error } = await supabase
         .from("tasks")
-        .update({ is_completed: isCompletedNow })
+        .update({ is_completed: isCompletedNow, status: newStatus })
         .eq("id", taskId);
         
       if (error) {
@@ -412,8 +432,7 @@ const Tasks = () => {
   
   const renderTaskCard = (task: Task) => {
     const overdue = isOverdue(task);
-
-    const project = MOCK_PROJECTS.find(p => p.id === task.project_id);
+    const project = projects.find(p => p.id === task.project_id);
     const hoverClass = task.is_completed ? "" : "hover:shadow-lg hover:shadow-primary/5";
     return (
       <motion.div
@@ -522,7 +541,7 @@ const Tasks = () => {
               </div>
               <AnimatePresence>
                 {colTasks.map(task => {
-                  const proj = MOCK_PROJECTS.find(p => p.id === task.project_id);
+                  const proj = projects.find(p => p.id === task.project_id);
                   const overdue = isOverdue(task);
                   return (
                     <motion.div key={task.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
@@ -665,7 +684,7 @@ const Tasks = () => {
                       className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
                     >
                       <option value="">Nenhum</option>
-                      {MOCK_PROJECTS.map(p => (
+                      {projects.map(p => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
@@ -765,7 +784,7 @@ const Tasks = () => {
                       className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
                     >
                       <option value="">Nenhum Projeto</option>
-                      {MOCK_PROJECTS.map(p => (
+                      {projects.map(p => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
