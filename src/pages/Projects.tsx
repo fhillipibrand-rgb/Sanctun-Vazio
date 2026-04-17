@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { 
   FolderKanban, Plus, MoreHorizontal, AlignLeft, 
   CheckCircle2, Circle, Trash2, Edit2, Calendar, 
-  Clock, X, ChevronRight, AlertCircle, Info
+  Clock, X, ChevronRight, AlertCircle, Info,
+  Rocket, Target, Briefcase, Code, Sparkles, Zap,
+  Star, Shield, Globe, Award, Database, Terminal, 
+  Layout, Heart, Coffee, Flame, Lightbulb, PenTool,
+  Activity, Camera, Music, Video, ShoppingCart
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,10 +17,17 @@ interface Project {
   id: string;
   name: string;
   color: string;
+  icon?: string;
   deadline?: string;
   description?: string;
   portfolio_id?: string;
   created_at: string;
+}
+
+interface DraftTask {
+  id: string;
+  title: string;
+  subtasks: DraftTask[];
 }
 
 interface Task {
@@ -46,12 +57,28 @@ const Projects = () => {
   
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("#5e9eff");
+  const [iconName, setIconName] = useState("FolderKanban");
   const [deadlineDate, setDeadlineDate] = useState("");
   const [deadlineTime, setDeadlineTime] = useState("");
   const [description, setDescription] = useState("");
   const [portfolioId, setPortfolioId] = useState("");
 
+  const [draftTasks, setDraftTasks] = useState<DraftTask[]>([]);
+
   const [portfolios, setPortfolios] = useState<{id: string, name: string}[]>([]);
+
+  const iconOptions = [
+    { name: "Rocket", icon: Rocket }, { name: "Target", icon: Target }, 
+    { name: "Briefcase", icon: Briefcase }, { name: "Code", icon: Code },
+    { name: "Sparkles", icon: Sparkles }, { name: "Zap", icon: Zap },
+    { name: "Star", icon: Star }, { name: "Shield", icon: Shield },
+    { name: "Globe", icon: Globe }, { name: "Award", icon: Award },
+    { name: "Database", icon: Database }, { name: "Terminal", icon: Terminal },
+    { name: "Layout", icon: Layout }, { name: "Heart", icon: Heart },
+    { name: "Coffee", icon: Coffee }, { name: "Flame", icon: Flame },
+    { name: "Lightbulb", icon: Lightbulb }, { name: "PenTool", icon: PenTool },
+    { name: "Activity", icon: Activity }, { name: "Camera", icon: Camera }
+  ];
 
   const colors = ["#5e9eff", "#a855f7", "#00f5a0", "#ff6b6b", "#f5a623", "#3b82f6", "#ec4899"];
 
@@ -93,10 +120,12 @@ const Projects = () => {
   const resetForm = () => {
     setTitle("");
     setColor("#5e9eff");
+    setIconName("FolderKanban");
     setDeadlineDate("");
     setDeadlineTime("");
     setDescription("");
     setPortfolioId("");
+    setDraftTasks([]);
     setShowForm(false);
     setEditingProject(null);
   };
@@ -105,6 +134,7 @@ const Projects = () => {
     setEditingProject(proj);
     setTitle(proj.name);
     setColor(proj.color);
+    setIconName(proj.icon || "FolderKanban");
     setDescription(proj.description || "");
     setPortfolioId(proj.portfolio_id || "");
     if (proj.deadline) {
@@ -136,6 +166,7 @@ const Projects = () => {
         .update({
           name: title.trim(),
           color: color,
+          icon: iconName,
           deadline: fullDeadline,
           description: description.trim(),
           portfolio_id: portfolioId || null
@@ -155,6 +186,7 @@ const Projects = () => {
         .insert([{
           name: title.trim(),
           color: color,
+          icon: iconName,
           deadline: fullDeadline,
           description: description.trim(),
           portfolio_id: portfolioId || null,
@@ -164,10 +196,57 @@ const Projects = () => {
         .single();
 
       if (!error && data) {
+        // Criar as tarefas associadas se houver
+        if (draftTasks.length > 0) {
+          await createDraftTasks(data.id, draftTasks);
+        }
         setProjects([data, ...projects]);
         resetForm();
       }
     }
+  };
+
+  const createDraftTasks = async (projectId: string, tasks: DraftTask[]) => {
+    for (const dt of tasks) {
+      // Cria a tarefa principal
+      const { data: taskData, error: taskError } = await supabase
+        .from("tasks")
+        .insert([{
+          title: dt.title,
+          project_id: projectId,
+          user_id: user?.id,
+          subtasks: dt.subtasks.map(s => ({ id: crypto.randomUUID(), title: s.title, is_completed: false }))
+        }])
+        .select()
+        .single();
+      
+      // Se tiver subtarefas complexas que precisem ser tarefas reais, faríamos recursão aqui.
+      // Mas para manter simples na criação rápida de projetos, salvamos no JSONB de subtasks.
+    }
+  };
+
+  const addDraftTask = () => {
+    setDraftTasks([...draftTasks, { id: crypto.randomUUID(), title: "", subtasks: [] }]);
+  };
+
+  const updateDraftTask = (id: string, text: string) => {
+    setDraftTasks(draftTasks.map(t => t.id === id ? { ...t, title: text } : t));
+  };
+
+  const addDraftSubtask = (parentId: string) => {
+    setDraftTasks(draftTasks.map(t => 
+      t.id === parentId 
+      ? { ...t, subtasks: [...t.subtasks, { id: crypto.randomUUID(), title: "", subtasks: [] }] } 
+      : t
+    ));
+  };
+
+  const updateDraftSubtask = (parentId: string, subId: string, text: string) => {
+    setDraftTasks(draftTasks.map(t => 
+      t.id === parentId 
+      ? { ...t, subtasks: t.subtasks.map(s => s.id === subId ? { ...s, title: text } : s) } 
+      : t
+    ));
   };
 
   const handleDelete = async (id: string) => {
@@ -236,15 +315,39 @@ const Projects = () => {
                 </div>
 
                 <div className="space-y-6">
-                  <input 
-                    type="text" 
-                    value={title} 
-                    onChange={e => setTitle(e.target.value)} 
-                    placeholder="Nome do projeto..." 
-                    className="w-full bg-transparent text-3xl font-bold placeholder:text-on-surface/10 outline-none border-b border-[var(--glass-border)] pb-4 focus:border-primary/50 transition-all" 
-                    autoFocus 
-                    required 
-                  />
+                  <div className="flex items-end gap-6 border-b border-[var(--glass-border)] pb-4">
+                    <div className="relative group shrink-0">
+                      <div className="w-16 h-16 rounded-2xl bg-on-surface/5 border-2 border-dashed border-[var(--glass-border)] flex items-center justify-center hover:border-primary/50 transition-all cursor-pointer">
+                        {(() => {
+                          const IconComp = iconOptions.find(i => i.name === iconName)?.icon || FolderKanban;
+                          return <IconComp size={32} className="text-primary" />;
+                        })()}
+                      </div>
+                      <div className="absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all bg-surface/90 backdrop-blur-md rounded-2xl border border-primary/20 p-4 min-w-[320px] shadow-2xl z-50">
+                        <p className="text-[10px] font-bold opacity-40 mb-3 uppercase tracking-widest text-center">Escolha um Ícone</p>
+                        <div className="grid grid-cols-5 gap-3">
+                          {iconOptions.map(opt => (
+                            <button 
+                              key={opt.name} type="button" 
+                              onClick={() => setIconName(opt.name)}
+                              className={`p-2 rounded-xl transition-all ${iconName === opt.name ? 'bg-primary/20 text-primary' : 'hover:bg-on-surface/5 text-on-surface/40 hover:text-on-surface'}`}
+                            >
+                              <opt.icon size={20} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={title} 
+                      onChange={e => setTitle(e.target.value)} 
+                      placeholder="Nome do projeto..." 
+                      className="flex-1 bg-transparent text-3xl font-bold placeholder:text-on-surface/10 outline-none focus:border-primary/50 transition-all" 
+                      autoFocus 
+                      required 
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <textarea 
@@ -318,7 +421,54 @@ const Projects = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Plano de Ação (Tarefas e Subtarefas) */}
+                  <div className="space-y-6 pt-6 border-t border-[var(--glass-border)]">
+                    <div className="flex items-center justify-between">
+                       <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase tracking-widest"><Layout size={12} /> Plano de Ação Estratégico</label>
+                       <button type="button" onClick={addDraftTask} className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline">
+                         <Plus size={12} /> ADICIONAR TAREFA
+                       </button>
+                    </div>
+
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {draftTasks.map(t => (
+                        <div key={t.id} className="bg-on-surface/5 rounded-2xl p-4 border border-[var(--glass-border)] space-y-3">
+                          <div className="flex items-center gap-4">
+                            <div className="w-1.5 h-6 bg-primary rounded-full" />
+                            <input 
+                              type="text" value={t.title} 
+                              onChange={e => updateDraftTask(t.id, e.target.value)}
+                              placeholder="Título da tarefa principal..."
+                              className="flex-1 bg-transparent text-sm font-bold outline-none placeholder:opacity-30"
+                            />
+                            <button type="button" onClick={() => addDraftSubtask(t.id)} className="p-1.5 hover:bg-on-surface/10 rounded-lg text-primary" title="Adicionar Subtarefa">
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          
+                          <div className="pl-6 space-y-2 border-l border-[var(--glass-border)]">
+                            {t.subtasks.map(s => (
+                              <div key={s.id} className="flex items-center gap-2">
+                                <ChevronRight size={12} className="opacity-20" />
+                                <input 
+                                  type="text" value={s.title} 
+                                  onChange={e => updateDraftSubtask(t.id, s.id, e.target.value)}
+                                  placeholder="Subtarefa..."
+                                  className="flex-1 bg-transparent text-xs outline-none placeholder:opacity-30"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      {draftTasks.length === 0 && (
+                        <div className="py-8 text-center border-2 border-dashed border-[var(--glass-border)] rounded-2xl opacity-20">
+                          <p className="text-[10px] font-bold uppercase tracking-widest italic">Ainda não há tarefas vinculadas</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-[var(--glass-border)]">
                   <button type="button" onClick={resetForm} className="px-8 py-3 rounded-full font-bold text-sm opacity-40 hover:opacity-100 transition-all">CANCELAR</button>
@@ -355,69 +505,78 @@ const Projects = () => {
 
             return (
               <motion.div key={proj.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-                <GlassCard className="p-0 border-t-8 overflow-hidden group flex flex-col h-full hover:border-[var(--glass-border)] transition-all hover:scale-[1.01]" style={{ borderTopColor: proj.color }}>
-                  <div className="p-7 pb-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-on-surface/5 flex items-center justify-center shadow-inner">
-                        <FolderKanban size={22} style={{ color: proj.color }} />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleOpenEdit(proj)} className="text-on-surface/30 hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10"><Edit2 size={16} /></button>
-                        <button onClick={() => handleDelete(proj.id)} className="text-on-surface/30 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-red-400/10"><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                    
-                    <h3 className="font-bold text-xl leading-snug group-hover:text-primary transition-colors">{proj.name}</h3>
-                    {proj.description && <p className="text-xs opacity-40 mt-2 line-clamp-2">{proj.description}</p>}
-                    
-                    <div className="flex items-center gap-4 mt-6">
-                       <div className="flex flex-col">
-                          <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">STATUS</span>
-                          <span className="text-[10px] font-bold uppercase tracking-widest mt-1">
-                            {totalTasks === 0 ? "VAZIO" : `${completedTasks}/${totalTasks} TAREFAS`}
-                          </span>
-                       </div>
-                       {proj.deadline && (
-                         <div className="flex flex-col border-l border-[var(--glass-border)] pl-4">
-                            <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">PRAZO</span>
-                            <div className={`flex items-center gap-1.5 mt-1 ${timeLeft === 'Atrasado' ? 'text-red-400' : 'text-primary'}`}>
-                               <Clock size={10} />
-                               <span className="text-[10px] font-bold uppercase tracking-widest">{timeLeft}</span>
-                            </div>
+                <GlassCard className="group relative overflow-hidden p-0 border border-primary/10 hover:border-primary/40 transition-all shadow-xl hover:shadow-primary/5 rounded-[2.5rem]">
+                  <div className="p-8 space-y-7">
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-5">
+                         <div className="w-16 h-16 rounded-3xl bg-on-surface/5 flex items-center justify-center text-primary shadow-inner border border-[var(--glass-border)] group-hover:scale-110 transition-transform duration-500">
+                           <IconComp size={32} style={{ color: proj.color }} />
                          </div>
-                       )}
+                         <div className="min-w-0">
+                           <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors truncate">{proj.name}</h3>
+                           <div className="flex items-center gap-2 mt-1 opacity-40 text-[9px] font-bold uppercase tracking-[0.2em]">
+                              <TagIcon size={10} style={{ color: proj.color }} />
+                              <span className="truncate">{proj.description || "Sem descrição"}</span>
+                           </div>
+                         </div>
+                      </div>
+                      <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button onClick={() => handleOpenEdit(proj)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors text-primary">
+                            <Edit2 size={16} />
+                         </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  {totalTasks > 0 && (
-                    <div className="px-7 py-3 flex flex-col gap-2 mb-4 bg-on-surface/[0.01]">
-                      {projectTasks.slice(0, 3).map(task => (
-                        <div key={task.id} className="flex items-center gap-2 group/task">
-                          {task.is_completed ? <CheckCircle2 size={12} className="text-primary opacity-50 shrink-0" /> : <Circle size={12} className="opacity-30 shrink-0 group-hover/task:text-primary transition-colors" />}
-                          <span className={`text-[11px] truncate ${task.is_completed ? 'line-through opacity-30' : 'opacity-70 group-hover/task:opacity-100 transition-opacity'}`}>{task.title}</span>
-                        </div>
-                      ))}
-                      {totalTasks > 3 && (
-                        <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest mt-1 flex items-center gap-1">
-                          <Plus size={10} /> {totalTasks - 3} MAIS TAREFAS
-                        </span>
-                      )}
-                    </div>
-                  )}
 
-                  <div className="mt-auto bg-on-surface/[0.03] p-7 pt-5 border-t border-[var(--glass-border)]">
-                    <div className="flex justify-between text-[10px] font-bold mb-3">
-                      <span className="opacity-40 uppercase tracking-[0.2em] font-bold">PROGRESSO TOTAL</span>
-                      <span className="font-mono" style={{ color: proj.color }}>{dynamicProgress}%</span>
+                    {/* Progresso Dinâmico */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-widest">
+                         <span className="opacity-40 font-bold">Status do Escopo</span>
+                         <span style={{ color: proj.color }}>{dynamicProgress}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-on-surface/5 rounded-full overflow-hidden p-[1px]">
+                        <motion.div 
+                          className="h-full rounded-full" 
+                          initial={{ width: 0 }} 
+                          animate={{ width: `${dynamicProgress}%` }} 
+                          style={{ backgroundColor: proj.color }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 w-full bg-on-surface/10 rounded-full overflow-hidden p-[1px]">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dynamicProgress}%` }}
-                        transition={{ duration: 1.5, ease: "circOut" }}
-                        className="h-full rounded-full shadow-[0_0_12px_rgba(0,0,0,0.2)]" 
-                        style={{ backgroundColor: proj.color }} 
-                      />
+
+                    {/* Atividades Chave */}
+                    <div className="space-y-4 pt-2">
+                       <p className="text-[10px] font-bold opacity-30 uppercase tracking-[0.2em] flex items-center gap-2"><Layout size={10} /> Atividades Chave</p>
+                       <div className="space-y-3">
+                          {projectTasks.slice(0, 3).map(t => (
+                            <div key={t.id} className="flex items-center gap-3 text-xs">
+                              <div className="shrink-0">
+                                {t.is_completed ? <CheckCircle2 size={14} className="text-primary" /> : <Circle size={14} className="opacity-20" />}
+                              </div>
+                              <span className={`truncate ${t.is_completed ? "line-through opacity-30" : "opacity-70"}`}>{t.title}</span>
+                            </div>
+                          ))}
+                          {totalTasks > 3 && (
+                            <p className="text-[9px] opacity-30 font-bold pl-7 tracking-widest">+ {totalTasks - 3} OUTRAS TAREFAS</p>
+                          )}
+                          {totalTasks === 0 && (
+                            <p className="text-[10px] opacity-20 italic pl-7">Plano de ação vazio</p>
+                          )}
+                       </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[var(--glass-border)]">
+                      <div className="flex items-center gap-2">
+                         {proj.deadline && (
+                           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-bold border ${timeLeft === 'Atrasado' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-primary/5 text-primary border-primary/10'}`}>
+                              <Clock size={10} /> {timeLeft.toUpperCase()}
+                           </div>
+                         )}
+                      </div>
+                      <button onClick={() => handleDelete(proj.id)} className="p-2 hover:bg-red-500/10 text-red-400 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                         <Trash2 size={16} />
+                       </button>
                     </div>
                   </div>
                 </GlassCard>
