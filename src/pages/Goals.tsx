@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Target, Flag, Rocket, Sparkles, Plus, ChevronRight, Calendar, Calculator, TrendingUp, Trash2, Loader2, X } from "lucide-react";
+import { Target, Flag, Rocket, Sparkles, Plus, ChevronRight, Calendar, Calculator, TrendingUp, Trash2, Loader2, X, Briefcase } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
+import { motion, AnimatePresence } from "motion/react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { MOCK_GOALS } from "../lib/mockData";
 
 interface Goal {
   id: string;
   title: string;
   category: string;
+  type?: "financial" | "qualitative";
   current_amount: number;
   target_amount: number;
   deadline: string;
@@ -19,7 +22,10 @@ const Goals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [newGoal, setNewGoal] = useState({ title: "", category: "Financeiro", target_amount: 0, current_amount: 0, deadline: "" });
+  const [usingMock, setUsingMock] = useState(false);
+  const [newGoal, setNewGoal] = useState<{ title: string; category: string; type: "financial" | "qualitative"; target_amount: number; current_amount: number; deadline: string }>({ 
+    title: "", category: "Empresa", type: "qualitative", target_amount: 100, current_amount: 0, deadline: "" 
+  });
 
   useEffect(() => {
     if (user) fetchGoals();
@@ -27,8 +33,14 @@ const Goals = () => {
 
   const fetchGoals = async () => {
     setLoading(true);
-    const { data } = await supabase.from('goals').select('*').order('created_at', { ascending: false });
-    if (data) setGoals(data);
+    const { data, error } = await supabase.from('goals').select('*').order('created_at', { ascending: false });
+    if (!error && data && data.length > 0) {
+      setGoals(data);
+      setUsingMock(false);
+    } else {
+      setGoals(MOCK_GOALS as any);
+      setUsingMock(true);
+    }
     setLoading(false);
   };
 
@@ -44,11 +56,15 @@ const Goals = () => {
     if (!error && data) {
       setGoals([data, ...goals]);
       setShowForm(false);
-      setNewGoal({ title: "", category: "Financeiro", target_amount: 0, current_amount: 0, deadline: "" });
+      setNewGoal({ title: "", category: "Empresa", type: "qualitative", target_amount: 100, current_amount: 0, deadline: "" });
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (usingMock) {
+      setGoals(goals.filter(g => g.id !== id));
+      return;
+    }
     const { error } = await supabase.from('goals').delete().eq('id', id);
     if (!error) setGoals(goals.filter(g => g.id !== id));
   };
@@ -59,7 +75,7 @@ const Goals = () => {
         <div>
           <div className="flex items-center gap-2 opacity-60 mb-1">
             <Target size={12} className="text-secondary" />
-            <p className="editorial-label !tracking-[0.2em]">GESTÃO DE OBJETIVOS</p>
+            <p className="editorial-label !tracking-[0.2em]">{usingMock ? "MOCK DATA" : "GESTÃO DE OBJETIVOS"}</p>
           </div>
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Planos e Metas</h2>
           <p className="text-sm opacity-50 mt-1">Defina o seu futuro e acompanhe a evolução dos seus grandes sonhos.</p>
@@ -86,7 +102,8 @@ const Goals = () => {
                   </div>
                   <div className="space-y-2">
                     <label className="editorial-label text-[10px] opacity-40">CATEGORIA</label>
-                    <select value={newGoal.category} onChange={e => setNewGoal({...newGoal, category: e.target.value})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 outline-none appearance-none font-bold uppercase tracking-widest text-xs">
+                    <select value={newGoal.category} onChange={e => setNewGoal({...newGoal, category: e.target.value, type: e.target.value === 'Financeiro' ? 'financial' : 'qualitative'})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 outline-none appearance-none font-bold uppercase tracking-widest text-xs">
+                       <option value="Empresa">Organizacional / Empresa</option>
                        <option value="Financeiro">Financeiro</option>
                        <option value="Pessoal">Pessoal</option>
                        <option value="Carreira">Carreira</option>
@@ -94,11 +111,11 @@ const Goals = () => {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-40">VALOR ALVO (BRL)</label>
+                    <label className="editorial-label text-[10px] opacity-40">{newGoal.type === 'financial' ? 'VALOR ALVO (BRL)' : 'OBJETIVO ALVO (ex: 100%)'}</label>
                     <input type="number" value={newGoal.target_amount} onChange={e => setNewGoal({...newGoal, target_amount: Number(e.target.value)})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 outline-none font-mono font-bold" required />
                   </div>
                   <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-40">ESTADO ATUAL (BRL)</label>
+                    <label className="editorial-label text-[10px] opacity-40">{newGoal.type === 'financial' ? 'ESTADO ATUAL (BRL)' : 'PROGRESSO ATUAL'}</label>
                     <input type="number" value={newGoal.current_amount} onChange={e => setNewGoal({...newGoal, current_amount: Number(e.target.value)})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 outline-none font-mono font-bold" />
                   </div>
                   <div className="space-y-2">
@@ -125,7 +142,7 @@ const Goals = () => {
               <GlassCard key={goal.id} className="p-7 relative group hover:border-secondary/40 transition-all flex flex-col h-full">
                 <div className="flex justify-between items-start mb-6">
                   <div className={`w-12 h-12 rounded-2xl bg-on-surface/[0.03] flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-surface transition-all`}>
-                    {goal.category === 'Financeiro' ? <TrendingUp size={20} /> : goal.category === 'Saúde' ? <Rocket size={20} /> : <Target size={20} />}
+                    {goal.category === 'Financeiro' ? <TrendingUp size={20} /> : goal.category === 'Empresa' ? <Briefcase size={20} /> : goal.category === 'Saúde' ? <Rocket size={20} /> : <Target size={20} />}
                   </div>
                   <div className="flex flex-col items-end">
                     <button onClick={() => handleDelete(goal.id)} className="opacity-0 group-hover:opacity-30 hover:opacity-100 p-1 mb-1 transition-all"><Trash2 size={14}/></button>
@@ -140,9 +157,13 @@ const Goals = () => {
                   <div>
                     <div className="flex justify-between items-end mb-2">
                       <p className="text-xs font-bold font-mono">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(goal.current_amount)}
+                        {(!goal.type || goal.type === 'financial') 
+                          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(goal.current_amount)
+                          : `${goal.current_amount} pts`}
                       </p>
-                      <p className="text-[10px] opacity-40 font-bold tracking-wider">META: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(goal.target_amount)}</p>
+                      <p className="text-[10px] opacity-40 font-bold tracking-wider">META: {(!goal.type || goal.type === 'financial') 
+                          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(goal.target_amount)
+                          : `${goal.target_amount} pts`}</p>
                     </div>
                     <div className="h-2 w-full bg-on-surface/5 rounded-full overflow-hidden">
                       <motion.div 

@@ -20,6 +20,7 @@ export interface Task {
   is_mock?: boolean;
   description?: string;
   attachments?: { name: string; url: string; path: string; type: string }[];
+  subtasks?: { id: string; title: string; is_completed: boolean }[];
 }
 
 type Filter = "all" | "active" | "completed" | "critical";
@@ -157,6 +158,7 @@ const Tasks = () => {
     const { error } = await supabase.from("tasks").update({
       description: updates.description,
       attachments: updates.attachments,
+      subtasks: updates.subtasks,
     }).eq("id", id);
 
     if (!error) {

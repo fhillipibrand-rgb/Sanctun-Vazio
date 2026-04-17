@@ -1,9 +1,19 @@
 // src/lib/mockData.ts
 
+export const MOCK_GOALS = [
+  { id: "goal-1", title: "Aumentar Receita Q3", category: "Financeiro", current_amount: 50000, target_amount: 100000, deadline: new Date().toISOString() },
+  { id: "goal-2", title: "Rebranding Completo da Marca", category: "Empresa", type: "qualitative", target_amount: 100, current_amount: 60, deadline: new Date().toISOString() },
+];
+
+export const MOCK_PORTFOLIOS = [
+  { id: "port-1", name: "Iniciativas de Marketing", color: "#f59e0b", created_at: new Date().toISOString() },
+  { id: "port-2", name: "Produto e Engenharia", color: "#3b82f6", created_at: new Date().toISOString() },
+];
+
 export const MOCK_PROJECTS = [
-  { id: "proj-1", name: "Website Nova Marca", color: "#5e9eff", progress: 60, created_at: new Date().toISOString() },
-  { id: "proj-2", name: "App Mobile V2", color: "#a855f7", progress: 25, created_at: new Date().toISOString() },
-  { id: "proj-3", name: "Campanha de Marketing", color: "#00f5a0", progress: 80, created_at: new Date().toISOString() },
+  { id: "proj-1", name: "Website Nova Marca", color: "#5e9eff", progress: 60, portfolio_id: "port-1", created_at: new Date().toISOString() },
+  { id: "proj-2", name: "App Mobile V2", color: "#a855f7", progress: 25, portfolio_id: "port-2", created_at: new Date().toISOString() },
+  { id: "proj-3", name: "Campanha de Marketing", color: "#00f5a0", progress: 80, portfolio_id: "port-1", created_at: new Date().toISOString() },
 ];
 
 export const generateMockTasks = () => {
@@ -14,10 +24,16 @@ export const generateMockTasks = () => {
     return result;
   };
 
+  const defaultSubtasks = [
+    { id: "sub-1", title: "Rascunhar primeira versão", is_completed: true },
+    { id: "sub-2", title: "Pedir aprovação do cliente", is_completed: false },
+    { id: "sub-3", title: "Aplicar feedback", is_completed: false }
+  ];
+
   return [
-    { id: "mock-task-1", title: "Finalizar arquitetura do painel financeiro", energy_level: "high", due_date: now.toISOString(), is_critical: true, is_completed: false, status: "in_progress", project_id: "proj-1", created_at: addDays(now, -2).toISOString() },
+    { id: "mock-task-1", title: "Finalizar arquitetura do painel financeiro", energy_level: "high", due_date: now.toISOString(), is_critical: true, is_completed: false, status: "in_progress", project_id: "proj-1", created_at: addDays(now, -2).toISOString(), subtasks: defaultSubtasks },
     { id: "mock-task-2", title: "Reunião de alinhamento com stakeholders", energy_level: "low", due_date: addDays(now, 1).toISOString(), is_critical: false, is_completed: false, status: "todo", project_id: "proj-3", created_at: addDays(now, -1).toISOString() },
-    { id: "mock-task-3", title: "Revisão do código do módulo de agendamentos", energy_level: "medium", due_date: addDays(now, 2).toISOString(), is_critical: true, is_completed: false, status: "todo", project_id: "proj-2", created_at: now.toISOString() },
+    { id: "mock-task-3", title: "Revisão do código do módulo de agendamentos", energy_level: "medium", due_date: addDays(now, 2).toISOString(), is_critical: true, is_completed: false, status: "todo", project_id: "proj-2", created_at: now.toISOString(), subtasks: [] },
     { id: "mock-task-4", title: "Desenhar fluxos do usuário (User Flow)", energy_level: "high", due_date: addDays(now, -1).toISOString(), is_critical: false, is_completed: true, status: "done", project_id: "proj-1", created_at: addDays(now, -5).toISOString() },
     { id: "mock-task-5", title: "Configurar banco de dados de produção", energy_level: "high", due_date: now.toISOString(), is_critical: true, is_completed: false, status: "in_progress", project_id: "proj-2", created_at: addDays(now, -3).toISOString() },
   ];

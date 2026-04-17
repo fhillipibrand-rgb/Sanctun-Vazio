@@ -15,6 +15,7 @@ interface Project {
   color: string;
   deadline?: string;
   description?: string;
+  portfolio_id?: string;
   created_at: string;
 }
 
@@ -48,6 +49,9 @@ const Projects = () => {
   const [deadlineDate, setDeadlineDate] = useState("");
   const [deadlineTime, setDeadlineTime] = useState("");
   const [description, setDescription] = useState("");
+  const [portfolioId, setPortfolioId] = useState("");
+
+  const [portfolios, setPortfolios] = useState<{id: string, name: string}[]>([]);
 
   const colors = ["#5e9eff", "#a855f7", "#00f5a0", "#ff6b6b", "#f5a623", "#3b82f6", "#ec4899"];
 
@@ -55,8 +59,14 @@ const Projects = () => {
     if (user) {
       fetchProjects();
       fetchTasks();
+      fetchPortfolios();
     }
   }, [user]);
+
+  const fetchPortfolios = async () => {
+    const { data } = await supabase.from("portfolios").select("id, name");
+    if (data) setPortfolios(data);
+  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -86,6 +96,7 @@ const Projects = () => {
     setDeadlineDate("");
     setDeadlineTime("");
     setDescription("");
+    setPortfolioId("");
     setShowForm(false);
     setEditingProject(null);
   };
@@ -95,6 +106,7 @@ const Projects = () => {
     setTitle(proj.name);
     setColor(proj.color);
     setDescription(proj.description || "");
+    setPortfolioId(proj.portfolio_id || "");
     if (proj.deadline) {
       const dt = new Date(proj.deadline);
       setDeadlineDate(dt.toISOString().split('T')[0]);
@@ -125,7 +137,8 @@ const Projects = () => {
           name: title.trim(),
           color: color,
           deadline: fullDeadline,
-          description: description.trim()
+          description: description.trim(),
+          portfolio_id: portfolioId || null
         })
         .eq("id", editingProject.id)
         .select()
@@ -144,6 +157,7 @@ const Projects = () => {
           color: color,
           deadline: fullDeadline,
           description: description.trim(),
+          portfolio_id: portfolioId || null,
           user_id: user.id
         }])
         .select()
@@ -232,12 +246,29 @@ const Projects = () => {
                     required 
                   />
 
-                  <textarea 
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Adicione uma breve descrição do escopo (opcional)..."
-                    className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[80px] resize-none"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <textarea 
+                      value={description}
+                      onChange={e => setDescription(e.target.value)}
+                      placeholder="Adicione uma breve descrição do escopo (opcional)..."
+                      className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[140px] resize-none"
+                    />
+                    
+                    <div className="space-y-4">
+                      <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase"><FolderKanban size={12} /> Vincular a um Portfólio</label>
+                      <select 
+                        value={portfolioId} 
+                        onChange={e => setPortfolioId(e.target.value)} 
+                        className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all font-bold uppercase tracking-wider appearance-none cursor-pointer"
+                      >
+                        <option value="">NENHUM (Projeto Independente)</option>
+                        {portfolios.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] opacity-30 px-2">Associe este projeto a um Portfólio (ex: Marketing, Produto) para acompanhar o progresso macro.</p>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div className="space-y-4">
