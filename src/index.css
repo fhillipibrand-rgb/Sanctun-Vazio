@@ -103,15 +103,11 @@
   }
 
   /* Tiptap / Rich Text Editor Styles */
+  .custom-tiptap-content {
+    @apply min-h-[200px] outline-none;
+  }
   .custom-tiptap-content p {
     @apply mb-4 leading-relaxed;
-  }
-  .custom-tiptap-content p.is-editor-empty:first-child::before {
-    color: theme('colors.gray.400');
-    content: attr(data-placeholder);
-    float: left;
-    height: 0;
-    pointer-events: none;
   }
   .custom-tiptap-content strong {
     @apply font-bold text-on-surface;
@@ -119,33 +115,46 @@
   .custom-tiptap-content em {
     @apply italic;
   }
-  .custom-tiptap-content s {
-    @apply line-through opacity-60;
-  }
-  .custom-tiptap-content ul {
-    @apply list-disc pl-6 mb-4 space-y-1;
-  }
   .custom-tiptap-content ul[data-type="taskList"] {
-    @apply list-none pl-0;
+    @apply list-none pl-0 my-4 space-y-2;
   }
   .custom-tiptap-content li[data-type="taskItem"] {
-    @apply flex items-start gap-2 mb-1 p-1 rounded-lg;
+    @apply flex items-start gap-4 mb-2;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label {
-    @apply flex-shrink-0 mt-1 cursor-pointer select-none;
+    @apply flex items-center justify-center shrink-0 mt-[1.5px] cursor-pointer select-none relative !important;
   }
   .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"] {
-    @apply w-4 h-4 rounded border-[var(--glass-border)] bg-on-surface/[0.05] text-primary focus:ring-primary/50 cursor-pointer;
+    @apply appearance-none w-5 h-5 rounded border-2 border-[var(--glass-border)] bg-on-surface/[0.05] checked:bg-primary checked:border-primary transition-all cursor-pointer relative !important;
+  }
+  /* Mark for the checkbox */
+  .custom-tiptap-content li[data-type="taskItem"] > label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 6px;
+    height: 10px;
+    border: solid var(--surface);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
   .custom-tiptap-content li[data-type="taskItem"] > div {
     @apply flex-1 min-w-0;
   }
   .custom-tiptap-content li[data-type="taskItem"][data-checked="true"] > div {
-    @apply opacity-50 line-through;
+    @apply opacity-30 line-through decoration-primary/50;
+  }
+  .custom-tiptap-content ul:not([data-type="taskList"]) {
+    @apply list-disc pl-6 mb-4 space-y-1;
   }
   .custom-tiptap-content ol {
     @apply list-decimal pl-6 mb-4 space-y-1;
   }
+  /* Heading sizes */
+  .custom-tiptap-content h1 { @apply text-2xl font-bold mb-4 mt-6; }
+  .custom-tiptap-content h2 { @apply text-xl font-bold mb-3 mt-5; }
+  .prose-editor .ProseMirror { @apply outline-none !important; }
   .custom-tiptap-content li p {
     @apply mb-0 inline;
   }

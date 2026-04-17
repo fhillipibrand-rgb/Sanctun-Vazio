@@ -33,6 +33,15 @@ const ENERGY_COLORS = {
   low: "text-green-400 bg-green-400/10 border-green-400/20",
 };
 
+// Helpers para processar conteúdo do Tiptap para o Card
+const getRichTextMetadata = (html: string | undefined) => {
+  if (!html) return { text: '', total: 0, completed: 0 };
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 50);
+  const total = (html.match(/data-type="taskItem"/g) || []).length;
+  const completed = (html.match(/data-checked="true"/g) || []).length;
+  return { text: text ? text + (html.length > 50 ? '...' : '') : '', total, completed };
+};
+
 const Tasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -163,6 +172,8 @@ const Tasks = () => {
 
     if (!error) {
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+      // Se o modal estiver aberto pra essa tarefa, garantimos que ela feche com os dados novos no pai
+      if (expandedTask?.id === id) setExpandedTask(null); 
     } else {
       console.error("Erro ao atualizar metadados da tarefa:", error);
     }
@@ -542,6 +553,27 @@ const Tasks = () => {
                             <span className="text-[9px] font-bold uppercase tracking-wider">{proj.name}</span>
                           </div>
                         )}
+
+                        {/* Rich Content Preview */}
+                        {(() => {
+                          const meta = getRichTextMetadata(task.description);
+                          if (!meta.text && meta.total === 0) return null;
+                          return (
+                            <div className="space-y-2 mt-1">
+                              {meta.text && (
+                                <p className="text-[10px] opacity-40 line-clamp-1 italic italic-serif">{meta.text}</p>
+                              )}
+                              {meta.total > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1 bg-on-surface/5 rounded-full overflow-hidden">
+                                     <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(meta.completed / meta.total) * 100}%` }} />
+                                  </div>
+                                  <span className="text-[9px] font-mono opacity-40 whitespace-nowrap">{meta.completed}/{meta.total}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         <div className="flex flex-wrap gap-2 mt-1">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${ENERGY_COLORS[task.energy_level]}`}>

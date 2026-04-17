@@ -33,8 +33,6 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
   const { user } = useAuth();
   const [description, setDescription] = useState(task.description || "");
   const [attachments, setAttachments] = useState<Attachment[]>(task.attachments || []);
-  const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -42,27 +40,13 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Para simplificar a experiência do usuário, delegamos a função de save pro pai (Tasks.tsx)
-    // O pai vai decidir se lida mock data ou supabase real
-    await onUpdate(task.id, { description, attachments, subtasks });
+    // Persistindo no Supabase ou Local (Mock) através do pai
+    await onUpdate(task.id, { description, attachments });
     setIsSaving(false);
     onClose();
   };
 
-  const handleAddSubtask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSubtaskTitle.trim()) return;
-    setSubtasks([...subtasks, { id: `sub-${Date.now()}`, title: newSubtaskTitle.trim(), is_completed: false }]);
-    setNewSubtaskTitle("");
-  };
 
-  const toggleSubtask = (id: string) => {
-    setSubtasks(subtasks.map(s => s.id === id ? { ...s, is_completed: !s.is_completed } : s));
-  };
-
-  const removeSubtask = (id: string) => {
-    setSubtasks(subtasks.filter(s => s.id !== id));
-  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -171,55 +155,30 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
                </button>
             </div>
 
-            {/* Scrollable Content */}
+             {/* Scrollable Content */}
             <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
                {/* Description Section */}
-               <div className="space-y-3">
+               <div className="space-y-4">
                  <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label mb-2">
-                   <AlignLeft size={14} /> Notas Internas Formatadas
+                   <AlignLeft size={14} /> Notas Internas e Subtarefas
                  </label>
+                 
                  <RichTextEditor 
                    content={description}
                    onChange={setDescription}
                    className="min-h-[250px]"
                  />
-               </div>
 
-               {/* Subtasks Section */}
-               <div className="space-y-4">
-                 <div className="flex items-center justify-between">
-                   <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label">
-                     <CheckSquare size={14} /> Subtarefas ({subtasks.filter(s => s.is_completed).length}/{subtasks.length})
-                   </label>
-                 </div>
-                 
-                 <div className="space-y-2">
-                   {subtasks.map((sub) => (
-                     <div key={sub.id} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${sub.is_completed ? "bg-on-surface/[0.02] border-[var(--glass-border)] opacity-50" : "bg-on-surface/[0.05] border-[var(--glass-border)] hover:border-primary/30"}`}>
-                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                         <button onClick={() => toggleSubtask(sub.id)} className={`shrink-0 transition-colors ${sub.is_completed ? "text-primary" : "text-primary/30 hover:text-primary/60"}`}>
-                           {sub.is_completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                         </button>
-                         <span className={`text-sm font-medium truncate ${sub.is_completed ? "line-through" : ""}`}>{sub.title}</span>
-                       </div>
-                       <button onClick={() => removeSubtask(sub.id)} className="p-1.5 text-red-400 opacity-0 group-hover:opacity-100 hover:opacity-100 hover:bg-red-400/10 rounded-lg transition-all" style={{ opacity: 1 /* forced to ensure UX */ }}>
-                         <Trash2 size={14} />
-                       </button>
-                     </div>
-                   ))}
-                   
-                   <form onSubmit={handleAddSubtask} className="flex gap-2">
-                     <input
-                       type="text"
-                       value={newSubtaskTitle}
-                       onChange={e => setNewSubtaskTitle(e.target.value)}
-                       placeholder="Adicionar subtarefa..."
-                       className="flex-1 bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-primary/50 text-sm"
-                     />
-                     <button type="submit" disabled={!newSubtaskTitle.trim()} className="px-4 bg-primary/10 text-primary rounded-xl font-bold hover:bg-primary/20 disabled:opacity-30 transition-all flex items-center justify-center">
-                       <Plus size={18} />
-                     </button>
-                   </form>
+                 <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 flex items-start gap-4 mx-2">
+                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <CheckSquare size={20} className="text-primary" />
+                   </div>
+                   <div className="space-y-1 text-left">
+                     <p className="text-sm font-bold text-primary italic">Dica de Produtividade</p>
+                     <p className="text-[11px] opacity-60 leading-relaxed italic">
+                       Use o botão de <strong>Checklist</strong> no editor acima para gerenciar subtarefas aninhadas (pressione TAB para recuar e criar hierarquia).
+                     </p>
+                   </div>
                  </div>
                </div>
 
