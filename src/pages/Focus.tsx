@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX, SkipBack, SkipForward } from "lucide-react";
+import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX, SkipBack, SkipForward, ChevronDown, ChevronUp } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -119,12 +119,18 @@ const Focus = () => {
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   
   // Pomodoro State
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [pomodoroConfig, setPomodoroConfig] = useState(() => {
+    const saved = localStorage.getItem('sanctum_pomodoro_config');
+    return saved ? JSON.parse(saved) : { work: 25, break: 5 };
+  });
+  const [timeLeft, setTimeLeft] = useState(pomodoroConfig.work * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [pomodoroConfig] = useState({ work: 25, break: 5 });
+  const [isBreakMode, setIsBreakMode] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const alarmRef = useRef<HTMLAudioElement | null>(null);
 
   // Load Spotify SDK
   useEffect(() => {
@@ -191,7 +197,8 @@ const Focus = () => {
   useEffect(() => {
     localStorage.setItem('sanctum_music_source', musicSource);
     localStorage.setItem('sanctum_spotify_url', spotifyUrl);
-  }, [musicSource, spotifyUrl]);
+    localStorage.setItem('sanctum_pomodoro_config', JSON.stringify(pomodoroConfig));
+  }, [musicSource, spotifyUrl, pomodoroConfig]);
 
   // Timer Logic
   useEffect(() => {
@@ -202,11 +209,24 @@ const Focus = () => {
     } else if (timeLeft === 0) {
       setIsTimerRunning(false);
       if (timerRef.current) clearInterval(timerRef.current);
+      
+      // Play Alarm
+      if (alarmRef.current) {
+        alarmRef.current.currentTime = 0;
+        alarmRef.current.play().catch(e => console.error("Alarm failed:", e));
+      }
+
+      // Switch Mode
+      const nextMode = !isBreakMode;
+      setIsBreakMode(nextMode);
+      setTimeLeft(nextMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
+      
+      // Optional: Auto-start next cycle could be added here
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isTimerRunning, timeLeft]);
+  }, [isTimerRunning, timeLeft, isBreakMode, pomodoroConfig]);
 
   const handleSpotifyLogin = () => {
     const scopes = "streaming user-read-email user-read-private user-modify-playback-state";
@@ -243,6 +263,7 @@ const Focus = () => {
   const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
   const resetTimer = () => {
     setIsTimerRunning(false);
+    setIsBreakMode(false);
     setTimeLeft(pomodoroConfig.work * 60);
   };
 
@@ -268,11 +289,39 @@ const Focus = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      setIsFullscreen(false);
+    }
+  };
+
+  // Sync state with browser fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   return (
     <div className={`min-h-screen transition-colors duration-1000 ${isFullscreen ? 'fixed inset-0 z-[100] bg-black p-10 flex flex-col items-center justify-center' : 'space-y-10'}`}>
       
+      {/* Alarm Audio */}
+      <audio 
+        ref={alarmRef}
+        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+        preload="auto"
+      />
+
       {/* Hidden Audio Element for Ambient */}
       {musicSource === 'ambient' && (
         <audio 
@@ -351,26 +400,99 @@ const Focus = () => {
 
             {/* Config & Controls */}
             <div className="space-y-8">
-              <GlassCard className="p-8">
-                <h3 className="editorial-label opacity-40 mb-6 text-center">TIMER POMODORO</h3>
-                <div className="text-center mb-10">
-                   <div className="text-7xl font-mono font-bold tracking-tight mb-2">{formatTime(timeLeft)}</div>
-                   <p className="text-[10px] opacity-40 font-bold tracking-[0.3em] uppercase">Sessão de Trabalho</p>
-                </div>
-                <div className="flex items-center justify-center gap-4">
-                  <button onClick={resetTimer} className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
-                    <RotateCcw size={20} />
-                  </button>
+              <GlassCard className="p-8 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="editorial-label opacity-40">TIMER POMODORO</h3>
                   <button 
-                    onClick={toggleTimer} 
-                    className="w-20 h-20 rounded-full flex items-center justify-center bg-primary text-surface shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+                    onClick={() => setShowSettings(!showSettings)}
+                    className={`p-2 rounded-lg transition-all ${showSettings ? 'bg-primary text-surface' : 'hover:bg-on-surface/5 opacity-40 hover:opacity-100'}`}
                   >
-                    {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
-                  </button>
-                  <button className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
-                    <Settings size={20} />
+                    <Settings size={16} />
                   </button>
                 </div>
+
+                <AnimatePresence mode="wait">
+                  {showSettings ? (
+                    <motion.div 
+                      key="settings"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6 pt-2"
+                    >
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Foco (min)</label>
+                             <div className="flex items-center gap-2 bg-on-surface/5 rounded-xl border border-[var(--glass-border)] px-4 py-2">
+                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, work: Math.max(1, prev.work - 5) }))} className="opacity-40 hover:opacity-100">-</button>
+                                <input 
+                                  type="number" 
+                                  value={pomodoroConfig.work}
+                                  onChange={(e) => setPomodoroConfig(prev => ({ ...prev, work: parseInt(e.target.value) || 1 }))}
+                                  className="w-full bg-transparent text-center text-xs font-bold outline-none"
+                                />
+                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, work: prev.work + 5 }))} className="opacity-40 hover:opacity-100">+</button>
+                             </div>
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Pausa (min)</label>
+                             <div className="flex items-center gap-2 bg-on-surface/5 rounded-xl border border-[var(--glass-border)] px-4 py-2">
+                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, break: Math.max(1, prev.break - 1) }))} className="opacity-40 hover:opacity-100">-</button>
+                                <input 
+                                  type="number" 
+                                  value={pomodoroConfig.break}
+                                  onChange={(e) => setPomodoroConfig(prev => ({ ...prev, break: parseInt(e.target.value) || 1 }))}
+                                  className="w-full bg-transparent text-center text-xs font-bold outline-none"
+                                />
+                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, break: prev.break + 1 }))} className="opacity-40 hover:opacity-100">+</button>
+                             </div>
+                          </div>
+                       </div>
+                       <button 
+                        onClick={() => {
+                          setShowSettings(false);
+                          if (!isTimerRunning) setTimeLeft(isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
+                        }}
+                        className="w-full py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20"
+                       >
+                         Salvar Configuração
+                       </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="timer"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="text-center"
+                    >
+                      <div className="text-7xl font-mono font-bold tracking-tight mb-2">{formatTime(timeLeft)}</div>
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold tracking-[0.2em] uppercase mb-10 ${isBreakMode ? 'bg-[#00f5a0]/10 text-[#00f5a0]' : 'bg-primary/10 text-primary'}`}>
+                         <div className={`w-1.5 h-1.5 rounded-full ${isBreakMode ? 'bg-[#00f5a0]' : 'bg-primary'} animate-pulse`} />
+                         {isBreakMode ? 'Tempo de Pausa' : 'Sessão de Foco'}
+                      </div>
+
+                      <div className="flex items-center justify-center gap-4">
+                        <button onClick={resetTimer} className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
+                          <RotateCcw size={20} />
+                        </button>
+                        <button 
+                          onClick={toggleTimer} 
+                          className={`w-20 h-20 rounded-full flex items-center justify-center text-surface shadow-2xl transition-all scale-110 ${isBreakMode ? 'bg-[#00f5a0] shadow-[#00f5a0]/30' : 'bg-primary shadow-primary/30'} hover:scale-115 active:scale-95`}
+                        >
+                          {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                        </button>
+                        <button onClick={() => {
+                          setIsBreakMode(!isBreakMode);
+                          setTimeLeft(!isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
+                          setIsTimerRunning(false);
+                        }} className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
+                          <Target size={20} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </GlassCard>
 
               <GlassCard className="p-6">
@@ -481,7 +603,7 @@ const Focus = () => {
                          </div>
 
                          <div className="flex items-center justify-center gap-6 pt-2">
-                            <button onClick={skipPrev} className="opacity-40 hover:opacity-100 transition-opacity"><SkipBack size={18} fill="currentColor" /></button>
+                            <button onClick={skipNext === player && player.nextTrack} className="opacity-40 hover:opacity-100 transition-opacity"><SkipBack size={18} fill="currentColor" /></button>
                             <button 
                               onClick={toggleSpotifyPlayback} 
                               className="w-12 h-12 rounded-full bg-on-surface/5 flex items-center justify-center hover:bg-on-surface/10 transition-all"
@@ -510,13 +632,14 @@ const Focus = () => {
           </button>
 
           <motion.div 
+            key={isBreakMode ? 'break' : 'work'}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="space-y-4 mb-12"
           >
-            <div className="flex items-center justify-center gap-3 text-on-surface/40 uppercase tracking-[0.5em] font-bold text-xs">
-              <activeMode.icon size={16} />
-              {activeMode.name} Ativo
+            <div className={`flex items-center justify-center gap-3 uppercase tracking-[0.5em] font-bold text-xs ${isBreakMode ? 'text-[#00f5a0]' : 'text-on-surface/40'}`}>
+              {isBreakMode ? <ShieldCheck size={16} /> : <activeMode.icon size={16} />}
+              {isBreakMode ? 'Momento de Descanso' : `${activeMode.name} Ativo`}
             </div>
             <h1 className="text-9xl md:text-[12rem] font-bold tracking-tighter font-mono">{formatTime(timeLeft)}</h1>
           </motion.div>
@@ -532,7 +655,7 @@ const Focus = () => {
                 {musicSource === 'ambient' ? (
                   <div className="space-y-8">
                     <div className="flex items-center gap-12">
-                      <button onClick={() => setIsPlaying(!isPlaying)} className="w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all outline-none">
+                      <button onClick={() => setIsPlaying(!isPlaying)} className={`w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all outline-none ${isPlaying ? 'text-primary border-primary/20' : ''}`}>
                          {isPlaying ? <Pause size={32} /> : <Play size={32} />}
                       </button>
                       <div className="space-y-2 flex-1">
@@ -579,15 +702,21 @@ const Focus = () => {
              <div className="flex flex-col items-center gap-6">
                <button 
                  onClick={toggleTimer}
-                 className="w-32 h-32 rounded-full border-2 border-primary flex items-center justify-center hover:bg-primary/5 transition-all text-primary group"
+                 className={`w-32 h-32 rounded-full border-2 flex items-center justify-center hover:bg-primary/5 transition-all group shadow-2xl ${isBreakMode ? 'border-[#00f5a0] text-[#00f5a0] shadow-[#00f5a0]/20' : 'border-primary text-primary shadow-primary/20'}`}
                >
                  {isTimerRunning ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" className="ml-2" />}
                </button>
-               <button onClick={resetTimer} className="text-[10px] opacity-30 hover:opacity-100 transition-opacity uppercase tracking-[0.3em] font-bold">Reiniciar Timer</button>
+               <div className="flex flex-col gap-2">
+                 <button onClick={resetTimer} className="text-[10px] opacity-30 hover:opacity-100 transition-opacity uppercase tracking-[0.3em] font-bold">Reiniciar Timer</button>
+                 <button onClick={() => {
+                   setIsBreakMode(!isBreakMode);
+                   setTimeLeft(!isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
+                 }} className="text-[8px] opacity-20 hover:opacity-100 transition-opacity uppercase tracking-[0.2em]">Pular para {!isBreakMode ? 'Pausa' : 'Trabalho'}</button>
+               </div>
              </div>
           </div>
 
-          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em] font-mono">Respirar · Focar · Executar</p>
+          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em] font-mono italic">"A excelência não é um ato, mas um hábito."</p>
         </div>
       )}
     </div>
