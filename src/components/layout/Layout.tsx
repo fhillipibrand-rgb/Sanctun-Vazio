@@ -5,6 +5,7 @@ import { Zap, Sun, Moon, Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 import QuickCaptureModal from "../ui/QuickCaptureModal";
+import OnboardingModal from "../ui/OnboardingModal";
 
 // Contexto para compartilhar controles de layout com páginas filhas
 export interface LayoutContextType {
@@ -70,6 +71,9 @@ const Layout = () => {
           isOpen={isQuickCaptureOpen} 
           onClose={() => setIsQuickCaptureOpen(false)} 
         />
+
+        {/* Onboarding Guide */}
+        <OnboardingModal onComplete={() => console.log("Onboarding complete")} />
 
         {/* Decorative Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
