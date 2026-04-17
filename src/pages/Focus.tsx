@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX } from "lucide-react";
+import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX, SkipBack, SkipForward } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -82,6 +82,11 @@ const FocusBackgroundEffects = ({ color }: { color: string }) => {
   );
 };
 
+const SPOTIFY_CLIENT_ID = "e017a24e45534327b58bb895137bda8f";
+const REDIRECT_URI = typeof window !== 'undefined' && window.location.origin.includes('localhost') 
+  ? "http://localhost:5173/callback" 
+  : "https://sanctun-vazio.vercel.app/callback";
+
 const Focus = () => {
   const [activeMode, setActiveMode] = useState<FocusMode>(FOCUS_MODES[0]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -94,6 +99,12 @@ const Focus = () => {
   const [spotifyUrl, setSpotifyUrl] = useState(() => {
     return localStorage.getItem('sanctum_spotify_url') || 'https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS';
   });
+
+  // Spotify SDK State
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(localStorage.getItem("spotify_access_token"));
+  const [player, setPlayer] = useState<any>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<any>(null);
   
   // Pomodoro State
   const [timeLeft, setTimeLeft] = useState(25 * 60);
