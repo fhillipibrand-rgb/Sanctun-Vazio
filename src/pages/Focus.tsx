@@ -341,27 +341,67 @@ const Focus = () => {
                    </div>
                  ) : (
                    <div className="space-y-4">
-                     <div className="flex flex-col gap-2">
-                        <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Link da Playlist/Álbum</label>
-                        <input 
-                          type="text" 
-                          value={spotifyUrl}
-                          onChange={(e) => setSpotifyUrl(e.target.value)}
-                          placeholder="Cole o link do Spotify aqui..."
-                          className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-2 px-3 text-[10px] outline-none focus:border-[#1DB954]/50 transition-all font-mono"
-                        />
-                     </div>
-                     <div className="rounded-2xl overflow-hidden bg-black/40 h-40">
-                        <iframe 
-                          src={formatSpotifyUrl(spotifyUrl)} 
-                          width="100%" 
-                          height="100%" 
-                          frameBorder="0" 
-                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                          loading="lazy"
-                        ></iframe>
-                     </div>
-                     <p className="text-[8px] opacity-20 text-center italic">Nota: Use sua conta Spotify no navegador para ouvir a música completa.</p>
+                     {!spotifyToken ? (
+                       <button 
+                         onClick={handleSpotifyLogin}
+                         className="w-full py-8 rounded-2xl bg-[#1DB954]/10 border-2 border-dashed border-[#1DB954]/30 flex flex-col items-center justify-center gap-3 hover:bg-[#1DB954]/20 transition-all group"
+                       >
+                          <div className="w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center text-white shadow-xl shadow-[#1DB954]/30 group-hover:scale-110 transition-transform">
+                             <Music size={24} />
+                          </div>
+                          <div className="text-center">
+                             <p className="text-xs font-bold uppercase tracking-widest text-[#1DB954]">Conectar Spotify Premium</p>
+                             <p className="text-[9px] opacity-40 mt-1">Necessário para áudio completo sem limites</p>
+                          </div>
+                       </button>
+                     ) : (
+                       <div className="space-y-4">
+                         <div className="flex flex-col gap-2">
+                            <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Playlist ou Álbum</label>
+                            <div className="flex gap-2">
+                              <input 
+                                type="text" 
+                                value={spotifyUrl}
+                                onChange={(e) => setSpotifyUrl(e.target.value)}
+                                placeholder="Cole o link do Spotify aqui..."
+                                className="flex-1 bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-2 px-3 text-[10px] outline-none focus:border-[#1DB954]/50 transition-all font-mono"
+                              />
+                              <button 
+                                onClick={playSpotifyPlaylist}
+                                className="px-4 py-2 bg-[#1DB954] text-white rounded-xl text-[9px] font-bold hover:scale-105 transition-all"
+                              >
+                                CARREGAR
+                              </button>
+                            </div>
+                         </div>
+                         
+                         <div className="p-4 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center gap-4">
+                            {currentTrack ? (
+                              <>
+                                <img src={currentTrack.album.images[0].url} className="w-12 h-12 rounded-lg shadow-lg" alt="" />
+                                <div className="flex-1 min-w-0">
+                                   <p className="text-xs font-bold truncate">{currentTrack.name}</p>
+                                   <p className="text-[10px] opacity-40 truncate">{currentTrack.artists[0].name}</p>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex-1 text-center py-2 opacity-30 text-[10px] font-bold">AGUARDANDO REPRODUÇÃO...</div>
+                            )}
+                         </div>
+
+                         <div className="flex items-center justify-center gap-6 pt-2">
+                            <button onClick={skipPrev} className="opacity-40 hover:opacity-100 transition-opacity"><SkipBack size={18} fill="currentColor" /></button>
+                            <button 
+                              onClick={toggleSpotifyPlayback} 
+                              className="w-12 h-12 rounded-full bg-on-surface/5 flex items-center justify-center hover:bg-on-surface/10 transition-all"
+                            >
+                               {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+                            </button>
+                            <button onClick={skipNext} className="opacity-40 hover:opacity-100 transition-opacity"><SkipForward size={18} fill="currentColor" /></button>
+                         </div>
+                         <button onClick={() => { localStorage.removeItem("spotify_access_token"); setSpotifyToken(null); }} className="w-full text-[8px] opacity-20 hover:opacity-100 py-2 border-t border-[var(--glass-border)] transition-opacity uppercase tracking-widest">Desconectar Conta</button>
+                       </div>
+                     )}
                    </div>
                  )}
               </GlassCard>

@@ -18,6 +18,7 @@ import Habits from "./pages/Habits";
 import Nutrition from "./pages/Nutrition";
 import Health from "./pages/Health";
 import Focus from "./pages/Focus";
+import SpotifyCallback from "./pages/SpotifyCallback";
 import FinanceTransactions from "./pages/FinanceTransactions";
 import FinanceAnalytics from "./pages/FinanceAnalytics";
 import Investments from "./pages/Investments";
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/focus" element={<Focus />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/health" element={<Health />} />
+          <Route path="/callback" element={<SpotifyCallback />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
