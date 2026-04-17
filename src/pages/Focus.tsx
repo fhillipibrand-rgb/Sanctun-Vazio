@@ -200,6 +200,17 @@ const Focus = () => {
     localStorage.setItem('sanctum_pomodoro_config', JSON.stringify(pomodoroConfig));
   }, [musicSource, spotifyUrl, pomodoroConfig]);
 
+  // Persist active focus mode para o Dashboard
+  useEffect(() => {
+    localStorage.setItem('sanctum_active_focus', JSON.stringify({
+      id: activeMode.id,
+      name: activeMode.name,
+      color: activeMode.color,
+      isRunning: isTimerRunning,
+      isBreak: isBreakMode,
+    }));
+  }, [activeMode, isTimerRunning, isBreakMode]);
+
   // Timer Logic
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Rocket, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle } from "lucide-react";
+import { Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Clock, ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle, Play, Pause } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -18,14 +18,36 @@ interface Activity {
   color: string;
 }
 
+interface FocusState {
+  id: string;
+  name: string;
+  color: string;
+  isRunning: boolean;
+  isBreak: boolean;
+}
+
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const stats = useSystemStats();
   const { toggleSidebar, theme, toggleTheme, isSidebarOpen, isMobile } = useLayout();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [focusState, setFocusState] = useState<FocusState | null>(null);
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
+
+  // Ler estado do foco do localStorage e atualizar a cada 5s
+  useEffect(() => {
+    const readFocus = () => {
+      const raw = localStorage.getItem('sanctum_active_focus');
+      if (raw) {
+        try { setFocusState(JSON.parse(raw)); } catch {}
+      }
+    };
+    readFocus();
+    const interval = setInterval(readFocus, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -370,21 +392,59 @@ const Dashboard = () => {
           </div>
 
           <Link to="/focus" className="block transform hover:translate-y-[-4px] transition-all">
-            <GlassCard className="p-7 bg-gradient-to-br from-primary/10 to-transparent border-primary/30 group relative overflow-hidden h-full">
-               <div className="absolute right-0 top-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16 group-hover:bg-primary/20 transition-all" />
+            <GlassCard 
+              className="p-7 group relative overflow-hidden h-full border transition-all"
+              style={{
+                background: focusState ? `linear-gradient(135deg, ${focusState.color}15, transparent)` : 'linear-gradient(135deg, var(--color-primary)/10, transparent)',
+                borderColor: focusState ? `${focusState.color}40` : 'var(--glass-border)',
+              }}
+            >
+               <div className="absolute right-0 top-0 w-32 h-32 blur-3xl -mr-16 -mt-16 group-hover:opacity-60 transition-all opacity-30"
+                 style={{ backgroundColor: focusState?.color || 'var(--color-primary)' }} />
                <div className="flex items-center justify-between relative z-10">
                  <div>
-                   <div className="flex items-center gap-2 text-primary mb-2">
+                   <div className="flex items-center gap-2 mb-2" style={{ color: focusState?.color || 'var(--color-primary)' }}>
                      <Zap size={14} fill="currentColor" />
                      <p className="editorial-label text-[10px] tracking-widest font-bold uppercase">ESTADO DE FOCO</p>
                    </div>
-                   <p className="text-sm font-bold">DISPONÍVEL</p>
-                   <p className="text-[9px] opacity-40 mt-1 uppercase">INICIAR MODO PROFUNDO</p>
+                   <p className="text-sm font-bold">
+                     {focusState ? focusState.name.toUpperCase() : 'DISPONÍVEL'}
+                   </p>
+                   <p className="text-[9px] opacity-40 mt-1 uppercase">
+                     {focusState?.isRunning 
+                       ? (focusState.isBreak ? 'EM PAUSA — RECUPERANDO' : '⏱ SESSÃO ATIVA')
+                       : focusState 
+                       ? 'PAUSADO — CLIQUE PARA CONTINUAR'
+                       : 'INICIAR MODO PROFUNDO'
+                     }
+                   </p>
                  </div>
-                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                   <Zap size={24} fill="currentColor" />
+                 <div 
+                   className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"
+                   style={{ 
+                     backgroundColor: focusState ? `${focusState.color}20` : 'var(--color-primary)/10',
+                     color: focusState?.color || 'var(--color-primary)'
+                   }}
+                 >
+                   {focusState?.isRunning
+                     ? <Play size={24} fill="currentColor" />
+                     : <Zap size={24} fill="currentColor" />
+                   }
                  </div>
                </div>
+               {focusState?.isRunning && (
+                 <div className="mt-3 flex items-center gap-1.5 relative z-10">
+                   {[...Array(5)].map((_, i) => (
+                     <motion.div
+                       key={i}
+                       className="h-1 rounded-full flex-1"
+                       style={{ backgroundColor: focusState.color }}
+                       animate={{ opacity: [0.3, 1, 0.3] }}
+                       transition={{ duration: 1.2, delay: i * 0.15, repeat: Infinity }}
+                     />
+                   ))}
+                 </div>
+               )}
             </GlassCard>
           </Link>
         </div>
