@@ -12,7 +12,7 @@ import { useLayout } from "./Layout";
 
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
-  const { openOnboarding } = useLayout();
+  const { openOnboarding, isLiveMode, setIsLiveMode } = useLayout();
   
   const menuSections = [
     {
@@ -125,6 +125,30 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
               <span className="editorial-label text-[9px]">SAIR</span>
             </button>
           </div>
+        </div>
+
+        {/* Modo Servidor Toggle */}
+        <div className="pt-4 border-t border-[var(--glass-border)]">
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-on-surface/[0.03] border border-[var(--glass-border)]">
+             <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${isLiveMode ? 'bg-secondary animate-pulse' : 'bg-primary'}`} />
+                <span className="editorial-label text-[9px] font-bold tracking-widest leading-none">
+                  {isLiveMode ? 'MODO SERVIDOR' : 'MODO DEMO'}
+                </span>
+             </div>
+             <button 
+              onClick={() => setIsLiveMode(!isLiveMode)}
+              className={`w-10 h-5 rounded-full relative transition-all duration-300 ${isLiveMode ? 'bg-secondary' : 'bg-on-surface/20'}`}
+             >
+                <motion.div 
+                  animate={{ x: isLiveMode ? 22 : 2 }}
+                  className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                />
+             </button>
+          </div>
+          <p className="text-[8px] opacity-30 mt-2 px-1 text-center uppercase tracking-tighter">
+            {isLiveMode ? 'Conectado aos dados reais do banco' : 'Visualizando dados de exemplo'}
+          </p>
         </div>
 
         {/* Versão do App */}

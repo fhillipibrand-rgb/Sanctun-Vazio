@@ -154,13 +154,30 @@ const Tasks = () => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
+    const isNowCompleted = !current;
+    const completedAt = isNowCompleted ? new Date().toISOString() : null;
+
     if (task.is_mock) {
-      setTasks(tasks.map(t => t.id === id ? { ...t, is_completed: !current, status: !current ? "done" : "todo" } : t));
+      setTasks(tasks.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: isNowCompleted ? "done" : "todo" } : t));
       return;
     }
 
-    const { error } = await supabase.from("tasks").update({ is_completed: !current }).eq("id", id);
-    if (!error) setTasks(tasks.map(t => t.id === id ? { ...t, is_completed: !current } : t));
+    // Otimista: Atualiza UI antes do banco
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted } : t));
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ 
+        is_completed: isNowCompleted,
+        completed_at: completedAt
+      })
+      .eq("id", id);
+    
+    if (error) {
+      // Rollback em caso de erro
+      fetchTasks();
+      console.error("Erro ao atualizar tarefa:", error);
+    }
   };
 
   const toggleCritical = async (id: string, current: boolean) => {
@@ -230,16 +247,23 @@ const Tasks = () => {
     if (!task) return;
 
     const isCompletedNow = newStatus === "done";
+    const completedAt = isCompletedNow ? new Date().toISOString() : null;
     
     setTasks(prevTasks => prevTasks.map(t => 
       t.id === taskId ? { ...t, status: newStatus, is_completed: isCompletedNow } : t
     ));
 
     if (!task.is_mock) {
-      await supabase
+      const { error } = await supabase
         .from("tasks")
-        .update({ status: newStatus, is_completed: isCompletedNow })
+        .update({ 
+          status: newStatus, 
+          is_completed: isCompletedNow,
+          completed_at: completedAt
+        })
         .eq("id", taskId);
+        
+      if (error) fetchTasks();
     }
   };
 

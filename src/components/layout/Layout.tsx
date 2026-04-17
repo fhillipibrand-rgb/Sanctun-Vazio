@@ -16,6 +16,8 @@ export interface LayoutContextType {
   isMobile: boolean;
   openQuickCapture: () => void;
   openOnboarding: () => void;
+  isLiveMode: boolean;
+  setIsLiveMode: (v: boolean) => void;
 }
 
 export const LayoutContext = createContext<LayoutContextType>({
@@ -26,6 +28,8 @@ export const LayoutContext = createContext<LayoutContextType>({
   isMobile: false,
   openQuickCapture: () => {},
   openOnboarding: () => {},
+  isLiveMode: false,
+  setIsLiveMode: () => {},
 });
 
 export const useLayout = () => useContext(LayoutContext);
@@ -36,8 +40,15 @@ const Layout = () => {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isLiveMode, setIsLiveMode] = useState(() => {
+    return localStorage.getItem("sanctuary_live_mode") === "true";
+  });
   const { signOut } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    localStorage.setItem("sanctuary_live_mode", String(isLiveMode));
+  }, [isLiveMode]);
 
   useEffect(() => {
     // Check mobile
@@ -82,7 +93,8 @@ const Layout = () => {
   return (
     <LayoutContext.Provider value={{ 
       isSidebarOpen, toggleSidebar, theme, toggleTheme, 
-      isMobile, openQuickCapture, openOnboarding 
+      isMobile, openQuickCapture, openOnboarding,
+      isLiveMode, setIsLiveMode
     }}>
       <div className="flex h-screen w-full overflow-hidden relative bg-surface">
         
@@ -166,19 +178,6 @@ const Layout = () => {
             </motion.div>
           </AnimatePresence>
         </main>
-
-        {/* Global Floating Help Button */}
-        <motion.button
-          initial={{ opacity: 0, scale: 0.5, y: 50 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          whileHover={{ scale: 1.1, rotate: 10 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={openOnboarding}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-surface/40 backdrop-blur-xl border border-primary/20 rounded-2xl flex items-center justify-center shadow-2xl transition-all text-primary group"
-          title="Guia de Uso"
-        >
-          <HelpCircle size={28} className="group-hover:scale-110 transition-transform" />
-        </motion.button>
       </div>
     </LayoutContext.Provider>
   );

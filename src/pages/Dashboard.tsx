@@ -49,11 +49,7 @@ const Dashboard = () => {
     setActivities(combined.sort((a,b) => b.time.localeCompare(a.time)).slice(0, 5));
   };
 
-  const chartDataSource = stats.isDemo ? [
-    { name: 'Seg', v: 40, f: 30 }, { name: 'Ter', v: 70, f: 50 }, { name: 'Qua', v: 50, f: 45 }, { name: 'Qui', v: 90, f: 80 }, { name: 'Sex', v: 65, f: 60 }, { name: 'Sab', v: 30, f: 20 }, { name: 'Dom', v: 10, f: 5 }
-  ] : [
-    { name: 'Seg', v: 5, f: 2 }, { name: 'Ter', v: 12, f: 8 }, { name: 'Qua', v: 8, f: 4 }, { name: 'Qui', v: 20, f: 15 }, { name: 'Sex', v: 15, f: 10 }, { name: 'Sab', v: 30, f: 20 }, { name: 'Dom', v: stats.tasks.completed * 2, f: stats.finance.income / 100 }
-  ];
+  const chartDataSource = stats.weeklyHistory;
 
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">

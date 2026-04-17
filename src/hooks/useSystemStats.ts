@@ -2,15 +2,25 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
+export interface DailyData {
+  name: string; // Ex: 'Seg', 'Ter'
+  v: number;    // Valor Tarefas
+  f: number;    // Valor Finanças
+  date: string; // ISO Date para ordenação
+}
+
 export interface SystemStats {
   tasks: { total: number; completed: number; percentage: number; criticalPending: number; criticalTaskTitle?: string; };
   finance: { balance: number; income: number; expenses: number; savingsRate: number; };
   calendar: { nextEvent: any | null; totalUpcoming: number; };
   health: { lowStockMeds: number; };
   nutrition: { waterProgress: number; };
+  weeklyHistory: DailyData[];
   isDemo: boolean;
   loading: boolean;
 }
+
+const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export const useSystemStats = () => {
   const { user } = useAuth();
@@ -20,6 +30,7 @@ export const useSystemStats = () => {
     calendar: { nextEvent: null, totalUpcoming: 0 },
     health: { lowStockMeds: 0 },
     nutrition: { waterProgress: 0 },
+    weeklyHistory: [],
     isDemo: false,
     loading: true,
   });
@@ -30,17 +41,24 @@ export const useSystemStats = () => {
     try {
       setStats(prev => ({ ...prev, loading: true }));
 
+      const last7Days = new Date();
+      last7Days.setDate(last7Days.getDate() - 7);
+      const last7DaysStr = last7Days.toISOString();
+
       // 1. TAREFAS
-      const { data: tasksData } = await supabase.from('tasks').select('is_combined:is_completed, is_critical, title');
+      const { data: tasksData } = await supabase.from('tasks').select('is_completed, is_critical, title, completed_at, created_at');
       const totalTasks = tasksData?.length || 0;
-      const completedTasks = tasksData?.filter((t: any) => t.is_combined).length || 0;
-      const criticalTask = tasksData?.find((t: any) => t.is_critical && !t.is_combined);
+      const completedTasks = tasksData?.filter((t: any) => t.is_completed).length || 0;
+      const criticalTask = tasksData?.find((t: any) => t.is_critical && !t.is_completed);
       const tasksPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       // 2. FINANÇAS
-      const { data: financeData } = await supabase.from('transactions').select('amount, type');
+      const { data: financeData } = await supabase.from('transactions').select('amount, type, created_at');
       let income = 0; let expenses = 0;
-      financeData?.forEach(tx => { if (tx.type === 'income') income += Number(tx.amount); else expenses += Number(tx.amount); });
+      financeData?.forEach(tx => { 
+        if (tx.type === 'income') income += Number(tx.amount); 
+        else expenses += Number(tx.amount); 
+      });
       const balance = income - expenses;
       const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
 
@@ -54,20 +72,47 @@ export const useSystemStats = () => {
       const lowStockCount = medsData?.filter(m => m.stock <= m.min_stock).length || 0;
 
       // 5. NUTRIÇÃO
-      const today = new Date().toISOString().split('T')[0];
-      const { data: waterData } = await supabase.from('nutrition_water').select('amount, target').eq('date', today).single();
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: waterData } = await supabase.from('nutrition_water').select('amount, target').eq('date', todayStr).single();
       const waterProgress = waterData ? (waterData.amount / waterData.target) * 100 : 0;
 
-      // CHECAR SE ESTÁ VAZIO (NEW USER)
-      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && (medsData?.length || 0) === 0;
+      // 6. HISTÓRICO SEMANAL DINÂMICO
+      const history: DailyData[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        
+        // Tarefas concluídas neste dia
+        const tasksOnDay = tasksData?.filter(t => t.is_completed && t.completed_at && t.completed_at.startsWith(dStr)).length || 0;
+        
+        // Volume financeiro (gastos) neste dia
+        const financeOnDay = financeData?.filter(tx => tx.type === 'expense' && tx.created_at.startsWith(dStr)).reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
-      if (isEmpty) {
+        history.push({
+          name: DAYS_SHORT[d.getDay()],
+          v: tasksOnDay,
+          f: Math.min(financeOnDay / 10, 100), // Normalizado para o gráfico
+          date: dStr
+        });
+      }
+
+      // CHECAR MODO LIVE VS EMPTY
+      const isLiveMode = localStorage.getItem("sanctuary_live_mode") === "true";
+      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && (medsData?.length || 0) === 0;
+      const showDemo = !isLiveMode && isEmpty;
+
+      if (showDemo) {
         setStats({
           tasks: { total: 5, completed: 3, percentage: 60, criticalPending: 1, criticalTaskTitle: "Explorar o Novo Dashboard" },
           finance: { balance: 5240, income: 8000, expenses: 2760, savingsRate: 65 },
           calendar: { nextEvent: { title: "Mentoria de Performance", start_time: new Date(Date.now() + 86400000).toISOString() }, totalUpcoming: 3 },
           health: { lowStockMeds: 1 },
           nutrition: { waterProgress: 45 },
+          weeklyHistory: [
+            { name: 'Seg', v: 40, f: 30, date: '1' }, { name: 'Ter', v: 70, f: 50, date: '2' }, { name: 'Qua', v: 50, f: 45, date: '3' }, 
+            { name: 'Qui', v: 90, f: 80, date: '4' }, { name: 'Sex', v: 65, f: 60, date: '5' }, { name: 'Sab', v: 30, f: 20, date: '6' }, { name: 'Dom', v: 10, f: 5, date: '7' }
+          ],
           isDemo: true,
           loading: false
         });
@@ -78,6 +123,7 @@ export const useSystemStats = () => {
           calendar: { nextEvent, totalUpcoming },
           health: { lowStockMeds: lowStockCount },
           nutrition: { waterProgress },
+          weeklyHistory: history,
           isDemo: false,
           loading: false
         });
@@ -91,7 +137,6 @@ export const useSystemStats = () => {
   useEffect(() => {
     fetchStats();
     
-    // Opcional: Escutar mudanças em tempo real (Realtime)
     const channels = [
       supabase.channel('stats-tasks').on('postgres_changes' as any, { event: '*', table: 'tasks' }, fetchStats).subscribe(),
       supabase.channel('stats-finance').on('postgres_changes' as any, { event: '*', table: 'transactions' }, fetchStats).subscribe(),
