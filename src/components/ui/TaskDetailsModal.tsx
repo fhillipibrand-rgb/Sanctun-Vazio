@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle, Plus, AlignLeft } from "lucide-react";
 import GlassCard from "./GlassCard";
 import { Task } from "../../pages/Tasks";
 import { supabase } from "../../lib/supabase";
