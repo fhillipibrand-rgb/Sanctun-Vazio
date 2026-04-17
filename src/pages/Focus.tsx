@@ -123,14 +123,45 @@ const Focus = () => {
     const saved = localStorage.getItem('sanctum_pomodoro_config');
     return saved ? JSON.parse(saved) : { work: 25, break: 5 };
   });
-  const [timeLeft, setTimeLeft] = useState(pomodoroConfig.work * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isBreakMode, setIsBreakMode] = useState(false);
+  const getSavedFocusState = () => {
+    try {
+      const saved = localStorage.getItem('sanctum_active_focus');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  };
+
+  const [isTimerRunning, setIsTimerRunning] = useState(() => {
+    const state = getSavedFocusState();
+    return state ? state.isRunning : false;
+  });
+  
+  const [isBreakMode, setIsBreakMode] = useState(() => {
+    const state = getSavedFocusState();
+    return state ? state.isBreak : false;
+  });
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const state = getSavedFocusState();
+    if (state && state.timeLeft !== undefined) {
+       if (state.isRunning && state.targetEndTime) {
+           const remaining = Math.max(0, Math.floor((state.targetEndTime - Date.now()) / 1000));
+           return remaining;
+       }
+       return state.timeLeft;
+    }
+    return pomodoroConfig.work * 60;
+  });
+
   const [showSettings, setShowSettings] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const alarmRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    (window as any).__focusMounted = true;
+    return () => { (window as any).__focusMounted = false; };
+  }, []);
 
   // Load Spotify SDK
   useEffect(() => {
@@ -202,14 +233,33 @@ const Focus = () => {
 
   // Persist active focus mode para o Dashboard
   useEffect(() => {
+    const targetEndTime = isTimerRunning ? Date.now() + timeLeft * 1000 : null;
     localStorage.setItem('sanctum_active_focus', JSON.stringify({
       id: activeMode.id,
       name: activeMode.name,
       color: activeMode.color,
       isRunning: isTimerRunning,
       isBreak: isBreakMode,
+      timeLeft,
+      targetEndTime,
     }));
-  }, [activeMode, isTimerRunning, isBreakMode]);
+  }, [activeMode, isTimerRunning, isBreakMode, timeLeft]);
+
+  // Escuta comandos remotos do Dashboard via Custom Events
+  useEffect(() => {
+    const handleFocusToggle = () => setIsTimerRunning(prev => !prev);
+    const handleFocusReset = () => {
+      setIsTimerRunning(false);
+      setIsBreakMode(false);
+      setTimeLeft(pomodoroConfig.work * 60);
+    };
+    window.addEventListener('sanctum:focus-toggle', handleFocusToggle);
+    window.addEventListener('sanctum:focus-reset', handleFocusReset);
+    return () => {
+      window.removeEventListener('sanctum:focus-toggle', handleFocusToggle);
+      window.removeEventListener('sanctum:focus-reset', handleFocusReset);
+    };
+  }, [pomodoroConfig.work]);
 
   // Timer Logic
   useEffect(() => {

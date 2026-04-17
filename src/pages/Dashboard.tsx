@@ -24,6 +24,8 @@ interface FocusState {
   color: string;
   isRunning: boolean;
   isBreak: boolean;
+  timeLeft?: number;
+  targetEndTime?: number;
 }
 
 const Dashboard = () => {
@@ -32,22 +34,65 @@ const Dashboard = () => {
   const { toggleSidebar, theme, toggleTheme, isSidebarOpen, isMobile } = useLayout();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [focusState, setFocusState] = useState<FocusState | null>(null);
+  const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
 
-  // Ler estado do foco do localStorage e atualizar a cada 5s
+  // Ler estado do foco do localStorage e atualizar UI localmente
   useEffect(() => {
-    const readFocus = () => {
+    const syncFocus = () => {
       const raw = localStorage.getItem('sanctum_active_focus');
       if (raw) {
-        try { setFocusState(JSON.parse(raw)); } catch {}
+        try { 
+          const state = JSON.parse(raw);
+          setFocusState(state);
+          if (state.isRunning && state.targetEndTime) {
+             setLocalTimeLeft(Math.max(0, Math.floor((state.targetEndTime - Date.now()) / 1000)));
+          } else if (state.timeLeft !== undefined) {
+             setLocalTimeLeft(state.timeLeft);
+          }
+        } catch {}
       }
     };
-    readFocus();
-    const interval = setInterval(readFocus, 5000);
+    syncFocus();
+    
+    // Atualização granular de 1s para o timer
+    const interval = setInterval(syncFocus, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleToggleFocus = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!focusState) return;
+    
+    const nextIsRunning = !focusState.isRunning;
+    const currentRemaining = localTimeLeft || 0;
+    
+    // Se o Focus.tsx estiver montado, avisa via evento e ele atualiza o DB.
+    if ((window as any).__focusMounted) {
+       window.dispatchEvent(new CustomEvent('sanctum:focus-toggle'));
+    } else {
+       // O Focus está desmontado! Atualizamos direto como 'source of truth'
+       const newState = {
+           ...focusState,
+           isRunning: nextIsRunning,
+           timeLeft: currentRemaining,
+           targetEndTime: nextIsRunning ? Date.now() + currentRemaining * 1000 : null
+       };
+       localStorage.setItem('sanctum_active_focus', JSON.stringify(newState));
+       setFocusState(newState);
+       setLocalTimeLeft(currentRemaining);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (user) {
@@ -407,30 +452,45 @@ const Dashboard = () => {
                      <Zap size={14} fill="currentColor" />
                      <p className="editorial-label text-[10px] tracking-widest font-bold uppercase">ESTADO DE FOCO</p>
                    </div>
-                   <p className="text-sm font-bold">
-                     {focusState ? focusState.name.toUpperCase() : 'DISPONÍVEL'}
-                   </p>
+                   <div className="flex items-center gap-3">
+                     <p className="text-sm font-bold">
+                       {focusState ? focusState.name.toUpperCase() : 'DISPONÍVEL'}
+                     </p>
+                     {localTimeLeft !== null && focusState && (
+                       <span className="font-mono text-lg tracking-wider opacity-90 drop-shadow-lg p-1 bg-surface/30 rounded-md shadow-sm border border-white/5">
+                         {formatTime(localTimeLeft)}
+                       </span>
+                     )}
+                   </div>
                    <p className="text-[9px] opacity-40 mt-1 uppercase">
                      {focusState?.isRunning 
                        ? (focusState.isBreak ? 'EM PAUSA — RECUPERANDO' : '⏱ SESSÃO ATIVA')
                        : focusState 
-                       ? 'PAUSADO — CLIQUE PARA CONTINUAR'
-                       : 'INICIAR MODO PROFUNDO'
+                       ? 'PAUSADO — CLIQUE NO PLAY PARA CONTINUAR'
+                       : 'CLIQUE NO CARD PARA INICIAR MODO PROFUNDO'
                      }
                    </p>
                  </div>
-                 <div 
-                   className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"
-                   style={{ 
-                     backgroundColor: focusState ? `${focusState.color}20` : 'var(--color-primary)/10',
-                     color: focusState?.color || 'var(--color-primary)'
-                   }}
-                 >
-                   {focusState?.isRunning
-                     ? <Play size={24} fill="currentColor" />
-                     : <Zap size={24} fill="currentColor" />
-                   }
-                 </div>
+                 {focusState ? (
+                   <button 
+                     onClick={handleToggleFocus}
+                     className="w-12 h-12 rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all outline-none"
+                     style={{ 
+                       backgroundColor: `${focusState.color}30`,
+                       color: focusState.color,
+                       boxShadow: focusState.isRunning ? `0 0 20px ${focusState.color}20` : 'none'
+                     }}
+                   >
+                     {focusState.isRunning
+                       ? <Pause size={20} fill="currentColor" />
+                       : <Play size={20} fill="currentColor" className="ml-1" />
+                     }
+                   </button>
+                 ) : (
+                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                     <Zap size={24} fill="currentColor" />
+                   </div>
+                 )}
                </div>
                {focusState?.isRunning && (
                  <div className="mt-3 flex items-center gap-1.5 relative z-10">
