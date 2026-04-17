@@ -155,28 +155,25 @@ const Tasks = () => {
     if (!task) return;
 
     const isNowCompleted = !current;
-    const completedAt = isNowCompleted ? new Date().toISOString() : null;
+    const newStatus = isNowCompleted ? "done" : "todo";
 
     if (task.is_mock) {
-      setTasks(tasks.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: isNowCompleted ? "done" : "todo" } : t));
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: newStatus } : t));
       return;
     }
 
-    // Otimista: Atualiza UI antes do banco
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted } : t));
+    // Atualização otimista: a UI responde imediatamente
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: newStatus } : t));
 
     const { error } = await supabase
       .from("tasks")
-      .update({ 
-        is_completed: isNowCompleted,
-        completed_at: completedAt
-      })
+      .update({ is_completed: isNowCompleted, status: newStatus })
       .eq("id", id);
     
     if (error) {
-      // Rollback em caso de erro
-      fetchTasks();
+      // Rollback silencioso somente em caso de falha real
       console.error("Erro ao atualizar tarefa:", error);
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: current, status: current ? "done" : "todo" } : t));
     }
   };
 
@@ -245,25 +242,30 @@ const Tasks = () => {
 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
+    if (task.status === newStatus) return; // Sem mudança, ignorar
 
     const isCompletedNow = newStatus === "done";
-    const completedAt = isCompletedNow ? new Date().toISOString() : null;
+    const prevStatus = task.status;
+    const prevCompleted = task.is_completed;
     
-    setTasks(prevTasks => prevTasks.map(t => 
+    // Atualização otimista
+    setTasks(prev => prev.map(t => 
       t.id === taskId ? { ...t, status: newStatus, is_completed: isCompletedNow } : t
     ));
 
     if (!task.is_mock) {
       const { error } = await supabase
         .from("tasks")
-        .update({ 
-          status: newStatus, 
-          is_completed: isCompletedNow,
-          completed_at: completedAt
-        })
+        .update({ status: newStatus, is_completed: isCompletedNow })
         .eq("id", taskId);
         
-      if (error) fetchTasks();
+      if (error) {
+        console.error("Erro ao mover tarefa:", error);
+        // Rollback via estado local - sem chamar fetchTasks que recarregaria tudo
+        setTasks(prev => prev.map(t =>
+          t.id === taskId ? { ...t, status: prevStatus, is_completed: prevCompleted } : t
+        ));
+      }
     }
   };
 
