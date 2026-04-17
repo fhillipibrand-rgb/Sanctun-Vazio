@@ -3,10 +3,10 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
 export interface DailyData {
-  name: string; // Ex: 'Seg', 'Ter'
-  v: number;    // Valor Tarefas
-  f: number;    // Valor Finanças
-  date: string; // ISO Date para ordenação
+  name: string; 
+  v: number;    
+  f: number;    
+  date: string; 
 }
 
 export interface SystemStats {
@@ -41,65 +41,68 @@ export const useSystemStats = () => {
     try {
       setStats(prev => ({ ...prev, loading: true }));
 
-      const last7Days = new Date();
-      last7Days.setDate(last7Days.getDate() - 7);
-      const last7DaysStr = last7Days.toISOString();
-
-      // 1. TAREFAS
-      const { data: tasksData } = await supabase.from('tasks').select('is_completed, is_critical, title, completed_at, created_at');
-      const totalTasks = tasksData?.length || 0;
-      const completedTasks = tasksData?.filter((t: any) => t.is_completed).length || 0;
-      const criticalTask = tasksData?.find((t: any) => t.is_critical && !t.is_completed);
+      // 1. TAREFAS - Consulta segura (sem travar se a coluna não existir)
+      const { data: rawTasks } = await supabase.from('tasks').select('*');
+      const tasksData = rawTasks || [];
+      const totalTasks = tasksData.length;
+      const completedTasks = tasksData.filter((t: any) => t.is_completed).length;
+      const criticalTask = tasksData.find((t: any) => t.is_critical && !t.is_completed);
       const tasksPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       // 2. FINANÇAS
-      const { data: financeData } = await supabase.from('transactions').select('amount, type, created_at');
+      const { data: rawFinance } = await supabase.from('transactions').select('*');
+      const financeData = rawFinance || [];
       let income = 0; let expenses = 0;
-      financeData?.forEach(tx => { 
-        if (tx.type === 'income') income += Number(tx.amount); 
-        else expenses += Number(tx.amount); 
+      financeData.forEach(tx => { 
+        if (tx.type === 'income') income += Number(tx.amount || 0); 
+        else expenses += Number(tx.amount || 0); 
       });
       const balance = income - expenses;
       const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
 
       // 3. CALENDÁRIO
-      const { data: eventsData } = await supabase.from('events').select('*').gte('start_time', new Date().toISOString()).order('start_time', { ascending: true });
-      const nextEvent = eventsData?.[0] || null;
-      const totalUpcoming = eventsData?.length || 0;
+      const { data: rawEvents } = await supabase.from('events').select('*').gte('start_time', new Date().toISOString()).order('start_time', { ascending: true });
+      const eventsData = rawEvents || [];
+      const nextEvent = eventsData[0] || null;
+      const totalUpcoming = eventsData.length;
 
       // 4. SAÚDE
-      const { data: medsData } = await supabase.from('health_meds').select('stock, min_stock');
-      const lowStockCount = medsData?.filter(m => m.stock <= m.min_stock).length || 0;
+      const { data: rawMeds } = await supabase.from('health_meds').select('*');
+      const medsData = rawMeds || [];
+      const lowStockCount = medsData.filter(m => Number(m.stock || 0) <= Number(m.min_stock || 0)).length;
 
-      // 5. NUTRIÇÃO
+      // 5. NUTRIÇÃO - Evitando .single() que pode causar erro 406/crash
       const todayStr = new Date().toISOString().split('T')[0];
-      const { data: waterData } = await supabase.from('nutrition_water').select('amount, target').eq('date', todayStr).single();
-      const waterProgress = waterData ? (waterData.amount / waterData.target) * 100 : 0;
+      const { data: rawWater } = await supabase.from('nutrition_water').select('*').eq('date', todayStr);
+      const waterData = rawWater?.[0] || null;
+      const waterProgress = waterData ? (Number(waterData.amount || 0) / Number(waterData.target || 2000)) * 100 : 0;
 
-      // 6. HISTÓRICO SEMANAL DINÂMICO
+      // 6. HISTÓRICO SEMANAL DINÂMICO - Proteção total contra nulos
       const history: DailyData[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dStr = d.toISOString().split('T')[0];
         
-        // Tarefas concluídas neste dia
-        const tasksOnDay = tasksData?.filter(t => t.is_completed && t.completed_at && t.completed_at.startsWith(dStr)).length || 0;
+        const tasksOnDay = tasksData.filter(t => 
+          t.is_completed && t.completed_at && typeof t.completed_at === 'string' && t.completed_at.startsWith(dStr)
+        ).length;
         
-        // Volume financeiro (gastos) neste dia
-        const financeOnDay = financeData?.filter(tx => tx.type === 'expense' && tx.created_at.startsWith(dStr)).reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+        const financeOnDay = financeData.filter(tx => 
+          tx.type === 'expense' && tx.created_at && typeof tx.created_at === 'string' && tx.created_at.startsWith(dStr)
+        ).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
 
         history.push({
           name: DAYS_SHORT[d.getDay()],
           v: tasksOnDay,
-          f: Math.min(financeOnDay / 10, 100), // Normalizado para o gráfico
+          f: Math.min(financeOnDay / 10, 100), 
           date: dStr
         });
       }
 
       // CHECAR MODO LIVE VS EMPTY
       const isLiveMode = localStorage.getItem("sanctuary_live_mode") === "true";
-      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && (medsData?.length || 0) === 0;
+      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && medsData.length === 0;
       const showDemo = !isLiveMode && isEmpty;
 
       if (showDemo) {
@@ -129,7 +132,8 @@ export const useSystemStats = () => {
         });
       }
     } catch (error) {
-      console.error("Erro stats:", error);
+      console.error("Erro crítico no hook de stats:", error);
+      // Fallback para evitar tela branca
       setStats(prev => ({ ...prev, loading: false }));
     }
   };
