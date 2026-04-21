@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { Zap, Mail, Lock, LogIn, ChevronRight, Github } from "lucide-react";
+import { Zap, Mail, Lock, LogIn, ChevronRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import GlassCard from "../components/ui/GlassCard";
 import { useNavigate } from "react-router-dom";
@@ -36,7 +36,12 @@ const Login = () => {
           password,
           options: {
             data: {
-              full_name: email.split('@')[0], // Nome padrão simples
+              full_name: email
+                .split('@')[0]
+                .replace(/[._]/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' '),
             }
           }
         });
@@ -66,33 +71,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
 
-  const handleGithubLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-6 relative overflow-hidden bg-surface">
@@ -182,28 +161,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-8 flex items-center gap-4">
-            <div className="h-[1px] flex-1 bg-[var(--glass-border)]" />
-            <span className="editorial-label text-[8px] opacity-30">OU CONTINUAR COM</span>
-            <div className="h-[1px] flex-1 bg-[var(--glass-border)]" />
-          </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <button 
-              onClick={handleGoogleLogin}
-              className="w-full py-3 rounded-xl bg-on-surface/[0.03] border border-[var(--glass-border)] flex items-center justify-center gap-2 hover:bg-on-surface/[0.06] transition-colors"
-            >
-              <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center text-[8px] font-bold text-black font-serif italic">G</div>
-              <span className="text-[10px] font-bold">GOOGLE</span>
-            </button>
-            <button 
-              onClick={handleGithubLogin}
-              className="w-full py-3 rounded-xl bg-on-surface/[0.03] border border-[var(--glass-border)] flex items-center justify-center gap-2 hover:bg-on-surface/[0.06] transition-colors"
-            >
-              <Github size={16} />
-              <span className="text-[10px] font-bold">GITHUB</span>
-            </button>
-          </div>
 
           <p className="mt-10 text-center text-xs text-on-surface-variant opacity-60">
             {isSignUp ? "Já tem uma conta?" : "Não tem uma conta?"} {" "}

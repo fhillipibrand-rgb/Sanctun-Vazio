@@ -1,6 +1,11 @@
-import { Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, Clock, Utensils, TrendingUp, LayoutList } from "lucide-react";
+import { useState } from "react";
+import { 
+  Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, 
+  Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, 
+  Clock, Utensils, TrendingUp, LayoutList, ChevronDown 
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useLayout } from "./Layout";
 
 interface SidebarProps {
@@ -13,12 +18,13 @@ interface SidebarProps {
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
   const { openOnboarding, isLiveMode, setIsLiveMode } = useLayout();
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(['PRODUTIVIDADE', 'DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
   
   const menuSections = [
     {
       title: "PRINCIPAL",
       items: [
-        { id: "/", icon: Home, label: "INÍCIO" },
+        { id: "/", icon: Home, label: "DASHBOARD" },
         { id: "/focus", icon: Zap, label: "FOCO" },
       ]
     },
@@ -27,7 +33,6 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
       items: [
         { id: "/tasks", icon: CheckSquare, label: "TODAS TAREFAS" },
         { id: "/tasks/projects", icon: LayoutList, label: "PROJETOS" },
-        { id: "/portfolios", icon: FolderKanban, label: "PORTFÓLIOS" },
         { id: "/calendar", icon: Calendar, label: "CALENDÁRIO" },
       ]
     },
@@ -51,6 +56,12 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
     }
   ];
 
+  const toggleSection = (title: string) => {
+    setCollapsedSections(prev => 
+      prev.includes(title) ? prev.filter(s => s !== title) : [...prev, title]
+    );
+  };
+
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
@@ -59,7 +70,7 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
   return (
     <aside className="w-[320px] h-full flex flex-col p-8 border-r border-[var(--glass-border)] bg-surface/90 backdrop-blur-2xl shrink-0 shadow-2xl relative">
       <div className="flex items-center justify-between mb-12">
-        <div className="flex items-center gap-3">
+        <div id="tour-sidebar-header" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
             <Zap className="text-surface" size={20} fill="currentColor" />
           </div>
@@ -77,22 +88,63 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
       </div>
 
       <nav className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-thin">
-        {menuSections.map((section, idx) => (
-          <div key={idx} className="space-y-2">
-            <p className="editorial-label px-6 opacity-50 tracking-widest text-[9px] mb-2">{section.title}</p>
-            {section.items.map((item) => (
-              <Link 
-                key={item.id}
-                to={item.id}
-                onClick={!isCollapsible ? onClose : undefined}
-                className={`sidebar-item ${isActive(item.id) ? "active" : ""}`}
+        {menuSections.map((section, idx) => {
+          const isCollapsed = collapsedSections.includes(section.title);
+          const hasActionableItems = section.title !== "PRINCIPAL";
+          
+          return (
+            <div key={idx} className="space-y-2">
+              <button 
+                onClick={() => hasActionableItems && toggleSection(section.title)}
+                className={`w-full flex items-center justify-between px-6 mb-2 group/header ${hasActionableItems ? 'cursor-pointer' : 'cursor-default'}`}
               >
-                <item.icon size={20} strokeWidth={isActive(item.id) ? 2.5 : 2} />
-                <span className="editorial-label tracking-widest">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        ))}
+                <p 
+                  id={`tour-section-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="editorial-label opacity-50 tracking-widest text-[9px] group-hover/header:opacity-100 transition-opacity"
+                >
+                  {section.title}
+                </p>
+                {hasActionableItems && (
+                  <motion.div
+                    animate={{ rotate: isCollapsed ? -90 : 0 }}
+                    transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                  >
+                    <ChevronDown size={10} className="opacity-30 group-hover/header:opacity-100 transition-opacity" />
+                  </motion.div>
+                )}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {!isCollapsed && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                    className="overflow-hidden space-y-2"
+                  >
+                    {section.items.map((item) => (
+                      <Link 
+                        key={item.id}
+                        to={item.id}
+                        onClick={!isCollapsible ? onClose : undefined}
+                        className={`sidebar-item ${isActive(item.id) ? "active" : ""}`}
+                      >
+                        <item.icon size={20} strokeWidth={isActive(item.id) ? 2.5 : 2} />
+                        <span 
+                          id={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                          className="editorial-label tracking-widest"
+                        >
+                          {item.label}
+                        </span>
+                      </Link>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </nav>
 
       <div className="mt-auto space-y-6">

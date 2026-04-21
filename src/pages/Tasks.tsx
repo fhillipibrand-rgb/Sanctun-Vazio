@@ -45,7 +45,7 @@ const getRichTextMetadata = (html: string | undefined) => {
 const Tasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<any[]>(MOCK_PROJECTS);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
@@ -58,7 +58,10 @@ const Tasks = () => {
   const [newProject, setNewProject] = useState(""); 
   const [showForm, setShowForm] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [formError, setFormError] = useState("");
   const [usingMockData, setUsingMockData] = useState(false);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const ignoreNextFetch = React.useRef(false);
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
@@ -85,19 +88,17 @@ const Tasks = () => {
 
   const fetchProjects = async () => {
     const { data, error } = await supabase.from("projects").select("*");
-    if (!error && data && data.length > 0) {
-      // Mescla projetos reais com mocks para garantir que associações antigas não quebrem visualmente
-      const combined = [...data];
-      MOCK_PROJECTS.forEach(mp => {
-        if (!combined.find(p => p.id === mp.id)) combined.push(mp);
-      });
-      setProjects(combined);
-    } else {
-      setProjects(MOCK_PROJECTS);
+    if (!error && data) {
+      setProjects(data);
     }
   };
 
   const fetchTasks = async () => {
+    if (ignoreNextFetch.current) {
+      ignoreNextFetch.current = false;
+      return;
+    }
+
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
@@ -106,10 +107,16 @@ const Tasks = () => {
       .order("is_critical", { ascending: false })
       .order("created_at", { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      setTasks(data);
-      setUsingMockData(false);
-    } else {
+    if (!error && data) {
+      if (data.length > 0) {
+        setTasks(data);
+        setUsingMockData(false);
+      } else {
+        setTasks([]);
+        setUsingMockData(false);
+      }
+    } else if (error) {
+      console.warn("⚠️ Usando dados fictícios devido a erro:", error.message);
       const mocks = generateMockTasks() as Task[];
       setTasks(mocks.map(t => ({ ...t, is_mock: true })));
       setUsingMockData(true);
@@ -150,12 +157,20 @@ const Tasks = () => {
         due_date: newDueDate ? new Date(newDueDate).toISOString() : null,
         is_critical: newCritical,
         is_completed: false,
+        status: "todo",
         project_id: newProject || null
       }])
       .select();
 
-    if (!error && data) {
-      setTasks([data[0], ...tasks]);
+    if (error) {
+      console.error("❌ ERRO SUPABASE (Adicionar Tarefa):", error);
+      const errorMsg = `ERRO SUPABASE: ${error.message}\n\nDica: Rodou o script 'setup_all_tables.sql' no Supabase?`;
+      setFormError(errorMsg);
+      window.alert(errorMsg);
+    } else if (data && data.length > 0) {
+      const newTask = data[0];
+      ignoreNextFetch.current = true; // Ignorar o próximo fetch via realtime
+      setTasks(prev => [newTask, ...prev]);
       resetForm();
     }
     setAdding(false);
@@ -215,6 +230,7 @@ const Tasks = () => {
     setNewCritical(false);
     setNewEnergy("medium");
     setNewProject("");
+    setFormError("");
     setShowForm(false);
   }
 
@@ -466,7 +482,7 @@ const Tasks = () => {
           <div className="flex items-start gap-3 md:gap-4 relative z-10">
             <button 
               onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.is_completed); }}
-              className={`mt-1 shrink-0 transition-colors ${task.is_completed ? "text-primary" : "text-primary/30 hover:text-primary/60"}`}
+              className={`mt-0.5 shrink-0 transition-colors ${task.is_completed ? "text-primary" : "text-primary/30 hover:text-primary/60"}`}
             >
               {task.is_completed ? <CheckCircle2 size={24} className="fill-primary/20" /> : <Circle size={24} />}
             </button>
@@ -640,6 +656,31 @@ const Tasks = () => {
 
   return (
     <div className={`space-y-8 mx-auto pb-20 ${viewMode === 'list' ? 'max-w-3xl' : 'max-w-6xl'}`}>
+      {/* Banner de Modo Demo */}
+      {usingMockData && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-6 rounded-3xl bg-primary/10 border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-lg shadow-primary/10">
+                <Zap size={24} />
+             </div>
+             <div>
+                <p className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Modo Demo Ativo</p>
+                <p className="text-xs opacity-60 leading-relaxed">As tarefas abaixo são fictícias. Rode o script <code className="bg-on-surface/5 px-1.5 py-0.5 rounded text-primary">setup_all_tables.sql</code> para ativar o banco real.</p>
+             </div>
+          </div>
+          <button 
+            onClick={() => window.alert("Rode o script SQL disponível em setup_all_tables.sql no seu painel do Supabase.")}
+            className="w-full md:w-auto px-6 py-3 bg-primary text-surface rounded-full text-[10px] font-bold tracking-widest uppercase hover:scale-105 transition-all shadow-xl shadow-primary/20"
+          >
+            ATIVAR BANCO DE DADOS
+          </button>
+        </motion.div>
+      )}
+
       <header className="space-y-4">
         <div className="flex items-center gap-2 opacity-60">
           <AlignLeft size={12} className="text-primary" />
@@ -696,6 +737,11 @@ const Tasks = () => {
                 <div className="relative">
                   <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="O que precisa ser feito?" className="w-full bg-transparent text-xl font-bold placeholder:text-on-surface/20 outline-none border-b border-[var(--glass-border)] pb-3 focus:border-primary/50 transition-all" autoFocus required />
                 </div>
+                {formError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                    {formError}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><FolderKanban size={10} /> PROJETO</label>
@@ -705,7 +751,7 @@ const Tasks = () => {
                       className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
                     >
                       <option value="">Nenhum</option>
-                      {projects.map(p => (
+                      {projects.filter(p => usingMockData ? p.id.startsWith('proj-') : !p.id.startsWith('proj-')).map(p => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>

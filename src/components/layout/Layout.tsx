@@ -5,7 +5,7 @@ import { Zap, Sun, Moon, Menu, HelpCircle } from "lucide-react";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 import QuickCaptureModal from "../ui/QuickCaptureModal";
-import OnboardingModal from "../ui/OnboardingModal";
+import { OnboardingTour } from "../OnboardingTour";
 
 // Contexto para compartilhar controles de layout com páginas filhas
 export interface LayoutContextType {
@@ -61,17 +61,17 @@ const Layout = () => {
     checkMobile();
     window.addEventListener("resize", checkMobile);
 
-    // Auto-show Onboarding on first visit
-    const timer = setTimeout(() => {
-      const hasSeenOnboarding = localStorage.getItem("sanctuary_onboarding_done");
-      if (!hasSeenOnboarding) {
-        setIsOnboardingOpen(true);
-      }
-    }, 2000);
 
+
+    // Escutar eventos globais para controle do Sidebar
+    const handleSidebarEvent = (e: any) => {
+      if (e.detail?.open !== undefined) setIsSidebarOpen(e.detail.open);
+    };
+    window.addEventListener('sanctum:toggle-sidebar', handleSidebarEvent);
+    
     return () => {
       window.removeEventListener("resize", checkMobile);
-      clearTimeout(timer);
+      window.removeEventListener('sanctum:toggle-sidebar', handleSidebarEvent);
     };
   }, []);
 
@@ -88,7 +88,9 @@ const Layout = () => {
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const openQuickCapture = () => setIsQuickCaptureOpen(true);
-  const openOnboarding = () => setIsOnboardingOpen(true);
+  const openOnboarding = () => {
+    window.dispatchEvent(new CustomEvent('sanctum:open-tour'));
+  };
 
   return (
     <LayoutContext.Provider value={{ 
@@ -104,11 +106,7 @@ const Layout = () => {
           onClose={() => setIsQuickCaptureOpen(false)} 
         />
 
-        {/* Onboarding Guide */}
-        <OnboardingModal 
-          isOpen={isOnboardingOpen} 
-          onClose={() => setIsOnboardingOpen(false)} 
-        />
+        <OnboardingTour />
 
         {/* Decorative Background Elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">

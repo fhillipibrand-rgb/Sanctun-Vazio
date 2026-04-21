@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { useSystemStats } from "../hooks/useSystemStats";
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { useLayout } from "../components/layout/Layout";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Activity {
   id: string;
@@ -103,15 +103,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      if (stats.isDemo) {
-        setActivities([
-          { id: '1', title: 'Exemplo: Recebeu Salário Mensal', time: '09:00', category: 'Finanças', icon: Wallet, color: 'text-secondary' },
-          { id: '2', title: 'Exemplo: Concluiu "Configurar Santuário"', time: '10:30', category: 'Tarefas', icon: CheckCircle2, color: 'text-primary' },
-          { id: '3', title: 'Exemplo: Café com a Equipe', time: '11:15', category: 'Calendário', icon: Calendar, color: 'text-purple-400' },
-        ]);
-      } else {
         fetchRecentActivity();
-      }
     }
   }, [user, stats.isDemo]);
 
@@ -164,13 +156,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">
-      {/* Banner de Boas-vindas / Demo Mode */}
-      {stats.isDemo && (
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md z-50 flex items-center gap-2 shadow-2xl">
-           <Sparkles size={14} className="text-primary animate-pulse" />
-           <span className="text-[10px] font-bold tracking-[0.2em] text-primary">MODO DE DEMONSTRAÇÃO ATIVO</span>
-        </div>
-      )}
+
 
       {/* Header Premium */}
       <header className="flex items-end justify-between gap-6">
@@ -204,15 +190,10 @@ const Dashboard = () => {
             </h2>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-           <div className="hidden md:block text-right">
-             <p className="text-[10px] editorial-label opacity-40">RESUMO DO FLUXO</p>
-             <p className="text-sm font-bold text-secondary uppercase tracking-tighter">{stats.isDemo ? "Visualização Inicial" : "Dados em Tempo Real"}</p>
-           </div>
-            <Link to="/settings" className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl hover:scale-105 transition-all rotate-2 hover:rotate-0">
-              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            </Link>
+
+        <div className="flex flex-col items-end gap-3">
             <button 
+              id="tour-notifications"
               onClick={() => setIsNotificationsOpen(true)}
               className={`relative w-12 h-12 rounded-2xl border flex items-center justify-center transition-all group ${
                 notifications.length > 0 
@@ -230,11 +211,15 @@ const Dashboard = () => {
                 </>
               )}
             </button>
-         </div>
+
+            <Link id="tour-avatar" to="/settings" className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl hover:scale-105 transition-all rotate-2 hover:rotate-0">
+               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            </Link>
+        </div>
       </header>
 
       {/* Grid de KPIs - 4 Colunas High-Impact */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div id="tour-dashboard-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {/* PRÓXIMO COMPROMISSO */}
         <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
@@ -460,7 +445,7 @@ const Dashboard = () => {
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     <h4 className="text-base font-bold">Tarefas & Projetos</h4>
                   </div>
-                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Status Atual"}</p>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest">Status Atual</p>
                 </div>
                 <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>
@@ -491,7 +476,7 @@ const Dashboard = () => {
                     <div className="w-2 h-2 rounded-full bg-purple-400" />
                     <h4 className="text-base font-bold">Fluxo Financeiro</h4>
                   </div>
-                  <p className="text-[10px] opacity-40 uppercase tracking-widest">{stats.isDemo ? "Dados ilustrativos da semana" : "Fluxo de Saldo"}</p>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest">Fluxo de Saldo</p>
                 </div>
                 <Link to="/finance" className="text-[10px] font-bold text-purple-400 hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>

@@ -89,7 +89,12 @@ const Habits = () => {
       date: today
     }, { onConflict: 'user_id,type,date' });
 
-    if (!error) fetchHabits(); // Recarregar para atualizar a grid
+    if (error) {
+       console.error("Erro ao salvar hábito:", error.message);
+       window.alert(`ERRO AO SALVAR HÁBITO: ${error.message}\n\nDica: Rode o script SQL 'setup_all_tables.sql' para garantir que a tabela 'habits_logs' existe.`);
+    } else {
+       fetchHabits(); // Recarregar para atualizar a grid
+    }
   };
 
   const ConsistencyGrid = ({ data, color }: { data: boolean[], color: string }) => (

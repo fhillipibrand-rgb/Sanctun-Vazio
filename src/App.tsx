@@ -14,7 +14,6 @@ import Login from "./pages/Login";
 import Settings from "./pages/Settings";
 import { useAuth } from "./hooks/useAuth";
 import Projects from "./pages/Projects";
-import Portfolios from "./pages/Portfolios";
 import Habits from "./pages/Habits";
 import Nutrition from "./pages/Nutrition";
 import Health from "./pages/Health";
@@ -58,7 +57,6 @@ export default function App() {
           <Route path="/finance" element={<Finance />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/tasks/projects" element={<Projects />} />
-          <Route path="/portfolios" element={<Portfolios />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/habits" element={<Habits />} />
           <Route path="/finance/transactions" element={<FinanceTransactions />} />

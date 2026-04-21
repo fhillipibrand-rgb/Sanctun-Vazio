@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Target, Flag, Rocket, Sparkles, Plus, ChevronRight, Calendar, Calculator, TrendingUp, Trash2, Loader2, X, Briefcase } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
-import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { MOCK_GOALS } from "../lib/mockData";

@@ -131,45 +131,17 @@ export const useSystemStats = () => {
       });
       const totalProjects = projectsData.length;
 
-      // CHECAR MODO LIVE VS EMPTY
-      const isLiveMode = localStorage.getItem("sanctuary_live_mode") === "true";
-      const isEmpty = totalTasks === 0 && income === 0 && totalUpcoming === 0 && projectsData.length === 0;
-      const showDemo = !isLiveMode && isEmpty;
-
-      if (showDemo) {
-        setStats({
-          tasks: { total: 5, completed: 3, percentage: 60, criticalPending: 1, criticalTaskTitle: "Explorar o Novo Dashboard" },
-          finance: { balance: 5240, income: 8000, expenses: 2760, savingsRate: 65 },
-          calendar: { nextEvent: { title: "Mentoria de Performance", start_time: new Date(Date.now() + 86400000).toISOString() }, totalUpcoming: 3 },
-          health: { lowStockMeds: 1 },
-          nutrition: { waterProgress: 45 },
-          projects: { 
-            active: [
-              { id: '1', name: 'Expansão Digital', icon: 'Rocket', color: '#5e9eff', description: 'Exemplo de projeto' },
-              { id: '2', name: 'Marca Pessoal', icon: 'Sparkles', color: '#a855f7', description: 'Exemplo de projeto' }
-            ], 
-            total: 2 
-          },
-          weeklyHistory: [
-            { name: 'Seg', v: 40, f: 30, date: '1' }, { name: 'Ter', v: 70, f: 50, date: '2' }, { name: 'Qua', v: 50, f: 45, date: '3' }, 
-            { name: 'Qui', v: 90, f: 80, date: '4' }, { name: 'Sex', v: 65, f: 60, date: '5' }, { name: 'Sab', v: 30, f: 20, date: '6' }, { name: 'Dom', v: 10, f: 5, date: '7' }
-          ],
-          isDemo: true,
-          loading: false
-        });
-      } else {
-        setStats({
-          tasks: { total: totalTasks, completed: completedTasks, percentage: tasksPercentage, criticalPending: urgentTasks.length, criticalTaskTitle: criticalTask?.title || "", urgentTasks },
-          finance: { balance, income, expenses, savingsRate },
-          calendar: { nextEvent, totalUpcoming },
-          health: { lowStockMeds: lowStockCount },
-          nutrition: { waterProgress },
-          projects: { active: projectsData, total: totalProjects },
-          weeklyHistory: history,
-          isDemo: false,
-          loading: false
-        });
-      }
+      setStats({
+        tasks: { total: totalTasks, completed: completedTasks, percentage: tasksPercentage, criticalPending: urgentTasks.length, criticalTaskTitle: criticalTask?.title || "", urgentTasks },
+        finance: { balance, income, expenses, savingsRate },
+        calendar: { nextEvent, totalUpcoming },
+        health: { lowStockMeds: lowStockCount },
+        nutrition: { waterProgress },
+        projects: { active: projectsData, total: totalProjects },
+        weeklyHistory: history,
+        isDemo: false,
+        loading: false
+      });
     } catch (error) {
       console.error("Erro crítico no hook de stats:", error);
       // Fallback para evitar tela branca

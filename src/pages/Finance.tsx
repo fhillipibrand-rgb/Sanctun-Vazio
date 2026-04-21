@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { 
   Calendar, Settings, TrendingUp, TrendingDown, Wallet, Coffee, 
   Plane, Plus, Target, ShoppingBag, Home, Zap, Heart, Car, 
-  ArrowUpRight, ArrowDownRight, Tag, Briefcase, Minus
+  ArrowUpRight, ArrowDownRight, Tag, Briefcase, Minus, X, Sparkles
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, PieChart, Pie, Cell, Tooltip } from "recharts";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
+import { MOCK_FINANCE } from "../lib/mockData";
 
 interface Transaction {
   id: string;
@@ -37,6 +38,15 @@ const Finance = () => {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  // Form states
+  const [newName, setNewName] = useState("");
+  const [newAmount, setNewAmount] = useState("");
+  const [newType, setNewType] = useState<'income' | 'expense'>('expense');
+  const [newCategory, setNewCategory] = useState("Alimentação");
 
   useEffect(() => {
     if (user) {
@@ -51,10 +61,61 @@ const Finance = () => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       setTransactions(data);
+      setUsingMockData(false);
+    } else {
+      console.warn("⚠️ Usando dados financeiros fictícios (banco vazio ou sem acesso).");
+      setTransactions(MOCK_FINANCE as Transaction[]);
+      setUsingMockData(true);
     }
     setLoading(false);
+  };
+
+  const addTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newName || !newAmount) return;
+    setAdding(true);
+
+    if (usingMockData) {
+      const mockTx: Transaction = {
+        id: `mock-${Date.now()}`,
+        name: newName,
+        amount: parseFloat(newAmount),
+        type: newType,
+        category: newCategory,
+        created_at: new Date().toISOString()
+      };
+      setTransactions([mockTx, ...transactions]);
+      setShowModal(false);
+      setNewName("");
+      setNewAmount("");
+      setAdding(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert([{
+        user_id: user.id,
+        name: newName,
+        amount: parseFloat(newAmount),
+        type: newType,
+        category: newCategory,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) {
+      console.error("Erro ao adicionar transação:", error.message);
+      window.alert(`ERRO SUPABASE: ${error.message}\n\nDica: Rode o script SQL 'setup_all_tables.sql' para garantir que a tabela 'transactions' existe.`);
+    } else if (data) {
+      setTransactions([data[0], ...transactions]);
+      setShowModal(false);
+      setNewName("");
+      setNewAmount("");
+    }
+    setAdding(false);
   };
 
   const totalIncome = transactions
@@ -113,12 +174,129 @@ const Finance = () => {
           <h2 className="display-lg">Visão de Capital</h2>
         </div>
         <div className="flex gap-4">
-          <button className="px-6 py-3 rounded-full bg-secondary text-surface font-bold text-sm shadow-xl shadow-secondary/20 hover:scale-105 transition-all flex items-center gap-2">
+          <button 
+            onClick={() => setShowModal(true)}
+            className="px-6 py-3 rounded-full bg-secondary text-surface font-bold text-sm shadow-xl shadow-secondary/20 hover:scale-105 transition-all flex items-center gap-2"
+          >
             <Plus size={18} />
             ADICIONAR
           </button>
         </div>
       </header>
+
+      {usingMockData && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-6 rounded-3xl bg-secondary/10 border border-secondary/20 flex flex-col md:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center text-secondary shadow-lg shadow-secondary/10">
+                <Zap size={24} />
+             </div>
+             <div>
+                <p className="text-sm font-bold text-secondary uppercase tracking-[0.2em]">Modo Demo Ativo</p>
+                <p className="text-xs opacity-60 leading-relaxed">As transações abaixo são ilustrativas. Rode o script <code className="bg-on-surface/5 px-1.5 py-0.5 rounded text-secondary">setup_all_tables.sql</code> no seu Supabase para ativar o banco real.</p>
+             </div>
+          </div>
+          <button 
+            onClick={() => window.alert("Rode o script SQL disponível em setup_all_tables.sql no seu painel do Supabase.")}
+            className="w-full md:w-auto px-6 py-3 bg-secondary text-surface rounded-full text-[10px] font-bold tracking-widest uppercase hover:scale-105 transition-all shadow-xl shadow-secondary/20"
+          >
+            ATIVAR BANCO DE DADOS
+          </button>
+        </motion.div>
+      )}
+
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="w-full max-w-md relative"
+            >
+              <GlassCard className="p-8 border-secondary/30">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold tracking-tight">Nova Transação</h3>
+                  <button onClick={() => setShowModal(false)} className="p-2 hover:bg-on-surface/5 rounded-xl transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={addTransaction} className="space-y-6">
+                  <div className="flex p-1 bg-on-surface/5 rounded-2xl border border-[var(--glass-border)]">
+                    <button
+                      type="button"
+                      onClick={() => setNewType('expense')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-bold tracking-widest transition-all ${newType === 'expense' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'opacity-40'}`}
+                    >
+                      DESPESA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewType('income')}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-bold tracking-widest transition-all ${newType === 'income' ? 'bg-secondary/10 text-secondary border border-secondary/20' : 'opacity-40'}`}
+                    >
+                      RECEITA
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                       <label className="editorial-label text-[10px] opacity-40 uppercase tracking-widest pl-1">DESCRIÇÃO</label>
+                       <input 
+                         type="text" 
+                         value={newName} 
+                         onChange={e => setNewName(e.target.value)}
+                         placeholder="Ex: Assinatura Spotify"
+                         className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-secondary/50 font-bold"
+                         required
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="editorial-label text-[10px] opacity-40 uppercase tracking-widest pl-1">VALOR (R$)</label>
+                       <div className="relative">
+                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold opacity-30">R$</span>
+                         <input 
+                           type="number" 
+                           step="0.01"
+                           value={newAmount} 
+                           onChange={e => setNewAmount(e.target.value)}
+                           placeholder="0,00"
+                           className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 pl-12 pr-4 outline-none focus:border-secondary/50 font-mono text-xl font-bold"
+                           required
+                         />
+                       </div>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="editorial-label text-[10px] opacity-40 uppercase tracking-widest pl-1">CATEGORIA</label>
+                       <select 
+                         value={newCategory} 
+                         onChange={e => setNewCategory(e.target.value)}
+                         className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-secondary/50 font-bold text-[11px] uppercase tracking-wider appearance-none cursor-pointer"
+                       >
+                         {Object.keys(CATEGORY_ICONS).map(cat => (
+                           <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+                         ))}
+                       </select>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={adding}
+                    className="w-full py-4 bg-secondary text-surface rounded-2xl font-bold tracking-widest text-[10px] shadow-xl shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 mt-4 uppercase border border-secondary/20"
+                  >
+                    {adding ? 'SALVANDO...' : 'CONFIRMAR LANÇAMENTO'}
+                  </button>
+                </form>
+              </GlassCard>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-8">
         <div className="space-y-8">

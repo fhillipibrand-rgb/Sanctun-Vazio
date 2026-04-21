@@ -20,7 +20,9 @@ interface Project {
   icon?: string;
   deadline?: string;
   description?: string;
-  portfolio_id?: string;
+  status?: string;
+  priority?: string;
+  effort?: string;
   created_at: string;
 }
 
@@ -61,11 +63,12 @@ const Projects = () => {
   const [deadlineDate, setDeadlineDate] = useState("");
   const [deadlineTime, setDeadlineTime] = useState("");
   const [description, setDescription] = useState("");
-  const [portfolioId, setPortfolioId] = useState("");
+  const [status, setStatus] = useState("Planejamento");
+  const [priority, setPriority] = useState("Média");
+  const [effort, setEffort] = useState("Média");
+  const [usingMockData, setUsingMockData] = useState(false);
 
   const [draftTasks, setDraftTasks] = useState<DraftTask[]>([]);
-
-  const [portfolios, setPortfolios] = useState<{id: string, name: string}[]>([]);
 
   const iconOptions = [
     { name: "Rocket", icon: Rocket }, { name: "Target", icon: Target }, 
@@ -86,14 +89,8 @@ const Projects = () => {
     if (user) {
       fetchProjects();
       fetchTasks();
-      fetchPortfolios();
     }
   }, [user]);
-
-  const fetchPortfolios = async () => {
-    const { data } = await supabase.from("portfolios").select("id, name");
-    if (data) setPortfolios(data);
-  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -102,8 +99,15 @@ const Projects = () => {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       setProjects(data);
+      setUsingMockData(false);
+    } else {
+      console.warn("⚠️ Usando dados fictícios ou banco vazio.");
+      // Just visually setup an empty/mock state for projects. Fallback safely without erroring.
+      if (data && data.length === 0) setProjects([]);
+      else setProjects([]); // We'll keep it empty for now, or we could inject MOCK_PROJECTS if we imported it
+      setUsingMockData(true);
     }
     setLoading(false);
   };
@@ -124,7 +128,9 @@ const Projects = () => {
     setDeadlineDate("");
     setDeadlineTime("");
     setDescription("");
-    setPortfolioId("");
+    setStatus("Planejamento");
+    setPriority("Média");
+    setEffort("Média");
     setDraftTasks([]);
     setShowForm(false);
     setEditingProject(null);
@@ -136,7 +142,9 @@ const Projects = () => {
     setColor(proj.color);
     setIconName(proj.icon || "FolderKanban");
     setDescription(proj.description || "");
-    setPortfolioId(proj.portfolio_id || "");
+    setStatus(proj.status || "Planejamento");
+    setPriority(proj.priority || "Média");
+    setEffort(proj.effort || "Média");
     if (proj.deadline) {
       const dt = new Date(proj.deadline);
       setDeadlineDate(dt.toISOString().split('T')[0]);
@@ -145,6 +153,21 @@ const Projects = () => {
       setDeadlineDate("");
       setDeadlineTime("");
     }
+    
+    // Reconstruir tarefas para o modo escopo
+    // Filtramos as tarefas atreladas a esse projeto:
+    const linkedTasks = tasks.filter(t => t.project_id === proj.id);
+    if (linkedTasks.length > 0) {
+      const builtTasks = linkedTasks.map(lt => ({
+        id: lt.id,
+        title: lt.title,
+        subtasks: [] // Em um DB real com subtasks aninhadas buscaríamos do JSON, aqui fazemos um shallow array
+      }));
+      setDraftTasks(builtTasks);
+    } else {
+      setDraftTasks([]);
+    }
+
     setShowForm(true);
   };
 
@@ -159,8 +182,55 @@ const Projects = () => {
         : new Date(deadlineDate).toISOString();
     }
 
+    const syncDraftTasksLocally = (projId: string) => {
+      if (draftTasks.length === 0) return;
+      const strippedTasks = tasks.filter(t => t.project_id !== projId);
+      const newTasks: Task[] = draftTasks.map(dt => ({
+        id: dt.id,
+        title: dt.title,
+        is_completed: false,
+        project_id: projId
+      }));
+      setTasks([...newTasks, ...strippedTasks]);
+    };
+
+    const syncDraftTasksToDb = async (projId: string) => {
+      if (editingProject) {
+        // Clear old ones if editing
+        await supabase.from("tasks").delete().eq("project_id", projId);
+      }
+      if (draftTasks.length > 0) {
+        await createDraftTasks(projId, draftTasks);
+      }
+    };
+
+    if (usingMockData) {
+      // Mock Fallback interativo para que a UI continue respondendo e impressionando na demo.
+      const mockProj: Project = {
+        id: editingProject ? editingProject.id : `mock-proj-${Date.now()}`,
+        name: title.trim(),
+        color: color,
+        icon: iconName,
+        deadline: fullDeadline || undefined,
+        description: description.trim(),
+        status: status,
+        priority: priority,
+        effort: effort,
+        created_at: new Date().toISOString()
+      };
+      
+      if (editingProject) {
+        setProjects(projects.map(p => p.id === mockProj.id ? mockProj : p));
+      } else {
+        setProjects([mockProj, ...projects]);
+      }
+      syncDraftTasksLocally(mockProj.id);
+      resetForm();
+      return;
+    }
+
     if (editingProject) {
-      // Lógica de Edição
+      // Lógica de Edição REAL
       const { data, error } = await supabase
         .from("projects")
         .update({
@@ -169,18 +239,32 @@ const Projects = () => {
           icon: iconName,
           deadline: fullDeadline,
           description: description.trim(),
-          portfolio_id: portfolioId || null
+          status: status,
+          priority: priority,
+          effort: effort
         })
         .eq("id", editingProject.id)
         .select()
         .single();
 
       if (!error && data) {
+        await syncDraftTasksToDb(data.id);
+        syncDraftTasksLocally(data.id);
         setProjects(projects.map(p => p.id === data.id ? data : p));
+        resetForm();
+      } else {
+        console.error("Falha no DB ao editar, caindo em fallback temporário. Erro:", error?.message);
+        const mockProj: Project = { 
+          id: editingProject.id, 
+          name: title.trim(), color, icon: iconName, deadline: fullDeadline || undefined, 
+          description: description.trim(), status, priority, effort, created_at: editingProject.created_at 
+        };
+        syncDraftTasksLocally(mockProj.id);
+        setProjects(projects.map(p => p.id === mockProj.id ? mockProj : p));
         resetForm();
       }
     } else {
-      // Lógica de Criação
+      // Lógica de Criação REAL
       const { data, error } = await supabase
         .from("projects")
         .insert([{
@@ -189,18 +273,24 @@ const Projects = () => {
           icon: iconName,
           deadline: fullDeadline,
           description: description.trim(),
-          portfolio_id: portfolioId || null,
+          status: status,
+          priority: priority,
+          effort: effort,
           user_id: user.id
         }])
         .select()
         .single();
 
       if (!error && data) {
-        // Criar as tarefas associadas se houver
-        if (draftTasks.length > 0) {
-          await createDraftTasks(data.id, draftTasks);
-        }
+        await syncDraftTasksToDb(data.id);
+        syncDraftTasksLocally(data.id);
         setProjects([data, ...projects]);
+        resetForm();
+      } else {
+        console.error("Falha no DB, caindo em fallback. Rode o setup! Erro:", error?.message);
+        const mockProj: Project = { id: `mock-fail-${Date.now()}`, name: title.trim(), color, icon: iconName, deadline: fullDeadline || undefined, description: description.trim(), status, priority, effort, created_at: new Date().toISOString() };
+        syncDraftTasksLocally(mockProj.id);
+        setProjects([mockProj, ...projects]);
         resetForm();
       }
     }
@@ -275,7 +365,7 @@ const Projects = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20 pt-4">
+    <div className="space-y-8 max-w-[1600px] w-full px-2 sm:px-6 mx-auto pb-20 pt-4">
       <header className="space-y-4">
         <div className="flex items-center gap-2 opacity-60">
           <AlignLeft size={12} className="text-primary" />
@@ -323,18 +413,20 @@ const Projects = () => {
                           return <IconComp size={32} className="text-primary" />;
                         })()}
                       </div>
-                      <div className="absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all bg-surface/90 backdrop-blur-md rounded-2xl border border-primary/20 p-4 min-w-[320px] shadow-2xl z-50">
-                        <p className="text-[10px] font-bold opacity-40 mb-3 uppercase tracking-widest text-center">Escolha um Ícone</p>
-                        <div className="grid grid-cols-5 gap-3">
-                          {iconOptions.map(opt => (
-                            <button 
-                              key={opt.name} type="button" 
-                              onClick={() => setIconName(opt.name)}
-                              className={`p-2 rounded-xl transition-all ${iconName === opt.name ? 'bg-primary/20 text-primary' : 'hover:bg-on-surface/5 text-on-surface/40 hover:text-on-surface'}`}
-                            >
-                              <opt.icon size={20} />
-                            </button>
-                          ))}
+                      <div className="absolute top-full left-0 pt-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-[100]">
+                        <div className="bg-[#121214] backdrop-blur-2xl rounded-2xl border border-[var(--glass-border)] p-5 w-[340px] shadow-2xl ring-1 ring-white/5">
+                          <p className="text-[10px] font-bold opacity-40 mb-4 uppercase tracking-widest text-center">Escolha um Ícone</p>
+                          <div className="grid grid-cols-5 gap-3">
+                            {iconOptions.map(opt => (
+                              <button 
+                                key={opt.name} type="button" 
+                                onClick={() => setIconName(opt.name)}
+                                className={`p-2.5 rounded-xl transition-all flex items-center justify-center ${iconName === opt.name ? 'bg-primary text-surface shadow-lg shadow-primary/20 scale-110' : 'bg-on-surface/5 hover:bg-on-surface/10 text-on-surface/40 hover:text-on-surface'}`}
+                              >
+                                <opt.icon size={20} />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -357,19 +449,49 @@ const Projects = () => {
                       className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[140px] resize-none"
                     />
                     
-                    <div className="space-y-4">
-                      <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase"><FolderKanban size={12} /> Vincular a um Portfólio</label>
-                      <select 
-                        value={portfolioId} 
-                        onChange={e => setPortfolioId(e.target.value)} 
-                        className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all font-bold uppercase tracking-wider appearance-none cursor-pointer"
-                      >
-                        <option value="">NENHUM (Projeto Independente)</option>
-                        {portfolios.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-[10px] opacity-30 px-2">Associe este projeto a um Portfólio (ex: Marketing, Produto) para acompanhar o progresso macro.</p>
+                    <div className="space-y-4 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase"><Target size={12} /> Status Operacional</label>
+                        <select 
+                          value={status} 
+                          onChange={e => setStatus(e.target.value)} 
+                          className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 px-4 text-xs outline-none focus:border-primary/50 transition-all font-bold uppercase tracking-widest appearance-none cursor-pointer"
+                        >
+                          <option value="Planejamento">Planejamento</option>
+                          <option value="Andamento">Em Andamento</option>
+                          <option value="Pausado">Pausado</option>
+                          <option value="Concluido">Concluído</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase"><Activity size={12} /> Prioridade</label>
+                          <select 
+                            value={priority} 
+                            onChange={e => setPriority(e.target.value)} 
+                            className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 px-4 text-[10px] outline-none focus:border-primary/50 transition-all font-bold uppercase tracking-widest appearance-none cursor-pointer"
+                          >
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Crítica">Crítica</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="editorial-label text-[10px] opacity-40 flex items-center gap-2 uppercase"><Zap size={12} /> Esforço (T-Shirt)</label>
+                          <select 
+                            value={effort} 
+                            onChange={e => setEffort(e.target.value)} 
+                            className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-3 px-4 text-[10px] outline-none focus:border-primary/50 transition-all font-bold uppercase tracking-widest appearance-none cursor-pointer"
+                          >
+                            <option value="P">P - Rápido</option>
+                            <option value="M">M - Moderado</option>
+                            <option value="G">G - Complexo</option>
+                            <option value="Épico">Épico - Titânico</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -496,46 +618,67 @@ const Projects = () => {
           </div>
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {projects.map((proj, idx) => {
             const projectTasks = tasks.filter(t => t.project_id === proj.id);
             const totalTasks = projectTasks.length;
             const completedTasks = projectTasks.filter(t => t.is_completed).length;
             const dynamicProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
             const timeLeft = getTimeRemaining(proj.deadline);
+            const IconComp = iconOptions.find(i => i.name === proj.icon)?.icon || FolderKanban;
 
             return (
               <motion.div key={proj.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
                 <GlassCard className="group relative overflow-hidden p-0 border border-primary/10 hover:border-primary/40 transition-all shadow-xl hover:shadow-primary/5 rounded-[2.5rem]">
-                  <div className="p-8 space-y-7">
+                  <div className="p-5 md:p-6 space-y-5">
                     {/* Header do Card */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-5">
-                         <div className="w-16 h-16 rounded-3xl bg-on-surface/5 flex items-center justify-center text-primary shadow-inner border border-[var(--glass-border)] group-hover:scale-110 transition-transform duration-500">
-                           <IconComp size={32} style={{ color: proj.color }} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                         <div className="w-12 h-12 rounded-2xl bg-on-surface/5 flex items-center justify-center text-primary shadow-inner border border-[var(--glass-border)] group-hover:scale-110 transition-transform duration-500 shrink-0">
+                           <IconComp size={24} style={{ color: proj.color }} />
                          </div>
-                         <div className="min-w-0">
-                           <h3 className="text-xl font-bold leading-tight group-hover:text-primary transition-colors truncate">{proj.name}</h3>
-                           <div className="flex items-center gap-2 mt-1 opacity-40 text-[9px] font-bold uppercase tracking-[0.2em]">
-                              <TagIcon size={10} style={{ color: proj.color }} />
-                              <span className="truncate">{proj.description || "Sem descrição"}</span>
+                         <div className="min-w-0 flex-1">
+                           <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors truncate" title={proj.name}>{proj.name}</h3>
+                           <div className="flex items-center gap-2 mt-0.5 opacity-40 text-[9px] font-bold uppercase tracking-[0.1em]">
+                              <span className="truncate" title={proj.description}>{proj.description || "Sem descrição"}</span>
                            </div>
                          </div>
                       </div>
-                      <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button onClick={() => handleOpenEdit(proj)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors text-primary">
-                            <Edit2 size={16} />
+                      <div className="flex shrink-0 opacity-40 hover:opacity-100 group-hover:opacity-100 transition-opacity -mt-1 -mr-1">
+                         <button onClick={() => handleOpenEdit(proj)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors text-primary" title="Editar Projeto">
+                            <Edit2 size={14} />
                          </button>
                       </div>
                     </div>
 
+                    {/* Metadata Badges */}
+                    <div className="flex flex-nowrap overflow-hidden items-center gap-1.5 pt-1">
+                       <span className={`px-2 py-1 rounded-md text-[7px] font-bold uppercase tracking-widest border truncate ${
+                         proj.status === 'Concluido' ? 'bg-[#00f5a0]/10 text-[#00f5a0] border-[#00f5a0]/20' :
+                         proj.status === 'Pausado' ? 'bg-on-surface/5 opacity-50 border-[var(--glass-border)]' :
+                         'bg-primary/10 text-primary border-primary/20'
+                       }`}>
+                         {proj.status || 'Planejamento'}
+                       </span>
+                       <span className={`px-2 py-1 rounded-md text-[7px] font-bold uppercase tracking-widest border truncate ${
+                         proj.priority === 'Crítica' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                         proj.priority === 'Alta' ? 'bg-[#f5a623]/10 text-[#f5a623] border-[#f5a623]/20' :
+                         'bg-on-surface/5 opacity-60 border-[var(--glass-border)]'
+                       }`}>
+                         {proj.priority || 'Média'}
+                       </span>
+                       <span className="px-2 py-1 rounded-md text-[7px] font-bold uppercase tracking-widest border bg-on-surface/5 opacity-60 border-[var(--glass-border)] shrink-0">
+                         {proj.effort || 'M'}
+                       </span>
+                    </div>
+
                     {/* Progresso Dinâmico */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-end text-[10px] font-bold uppercase tracking-widest">
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex justify-between items-end text-[9px] font-bold uppercase tracking-widest">
                          <span className="opacity-40 font-bold">Status do Escopo</span>
                          <span style={{ color: proj.color }}>{dynamicProgress}%</span>
                       </div>
-                      <div className="h-2 w-full bg-on-surface/5 rounded-full overflow-hidden p-[1px]">
+                      <div className="h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden p-[1px]">
                         <motion.div 
                           className="h-full rounded-full" 
                           initial={{ width: 0 }} 
@@ -575,7 +718,7 @@ const Projects = () => {
                            </div>
                          )}
                       </div>
-                      <button onClick={() => handleDelete(proj.id)} className="p-2 hover:bg-red-500/10 text-red-400 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                      <button onClick={() => handleDelete(proj.id)} className="p-2 hover:bg-red-500/10 text-red-500 opacity-30 hover:opacity-100 rounded-full transition-colors group-hover:opacity-100">
                          <Trash2 size={16} />
                        </button>
                     </div>

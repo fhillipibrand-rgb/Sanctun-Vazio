@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle, Plus, AlignLeft, CheckSquare, Square, CheckCircle2, Circle } from "lucide-react";
 import GlassCard from "./GlassCard";
 import RichTextEditor from "./RichTextEditor";
-import { Task } from "../../pages/Tasks";
+import type { Task } from "../../pages/Tasks";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 

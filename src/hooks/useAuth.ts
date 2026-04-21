@@ -14,12 +14,21 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fail-safe: Forçar descarregamento após 5s para evitar tela branca
+    const timer = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) console.warn("⚠️ Auth timeout reached. Forcing load state...");
+        return false;
+      });
+    }, 5000);
+
     // Buscar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
       else setLoading(false);
+      clearTimeout(timer);
     });
 
     // Escutar mudanças na autenticação
@@ -31,9 +40,13 @@ export const useAuth = () => {
         setProfile(null);
         setLoading(false);
       }
+      clearTimeout(timer);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -44,7 +57,21 @@ export const useAuth = () => {
         .eq('id', userId)
         .single();
       
-      if (data) setProfile(data);
+      if (data) {
+        if (!data.full_name && user?.email) {
+          const derivedName = user.email
+            .split('@')[0]
+            .replace(/[._]/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+          
+          await supabase.from('profiles').update({ full_name: derivedName }).eq('id', userId);
+          setProfile({ ...data, full_name: derivedName });
+        } else {
+          setProfile(data);
+        }
+      }
       if (error) console.error("Erro ao carregar perfil:", error);
     } catch (err) {
       console.error("Falha ao buscar perfil:", err);
