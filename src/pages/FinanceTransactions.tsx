@@ -28,7 +28,7 @@ const FinanceTransactions = () => {
   // Estado para formulário
   const [showForm, setShowForm] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [newTx, setNewTx] = useState({ name: "", category: "Outros", amount: "", type: "expense" as const });
+  const [newTx, setNewTx] = useState({ name: "", category: "Outros", amount: "", type: "expense" as 'income' | 'expense' });
 
   const categories = [
     "Alimentação", "Moradia", "Transporte", "Saúde", 

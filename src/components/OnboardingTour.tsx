@@ -25,7 +25,7 @@ const steps: Step[] = [
     position: 'right'
   },
   {
-    title: "Modo Foco Profundo",
+    title: "Foco Profundo",
     description: "Entre em estado de flow com ferramentas de imersão e temporizadores especializados.",
     icon: <Zap className="w-8 h-8" />,
     color: "from-orange-400/20 to-orange-400/5",
@@ -33,7 +33,7 @@ const steps: Step[] = [
     position: 'right'
   },
   {
-    title: "Sessão Produtividade",
+    title: "Produtividade",
     description: "Gerencie tarefas, projetos, portfólios e sua agenda com precisão tática.",
     icon: <CheckCircle2 className="w-8 h-8" />,
     color: "from-blue-400/20 to-blue-400/5",
@@ -41,7 +41,7 @@ const steps: Step[] = [
     position: 'right'
   },
   {
-    title: "Sessão Desenvolvimento",
+    title: "Desenvolvimento",
     description: "Cuide da sua base: hábitos, nutrição e gestão de saúde para alta performance biológica.",
     icon: <Target className="w-8 h-8" />,
     color: "from-green-400/20 to-green-400/5",
@@ -49,7 +49,7 @@ const steps: Step[] = [
     position: 'right'
   },
   {
-    title: "Sessão Financeira",
+    title: "Controle Financeiro",
     description: "Controle seu balanço, investimentos e planos futuros com clareza matemática.",
     icon: <Wallet className="w-8 h-8" />,
     color: "from-emerald-400/20 to-emerald-400/5",
@@ -195,53 +195,47 @@ export const OnboardingTour = () => {
     };
     
     const actualPos = getActualPosition();
-    const margin = 30;
+    const margin = 20;
     const modalWidth = 320;
-    const modalHeight = 240; // Approx
+    const modalHeight = 320; // safe approximation for max height
 
-    let posX = 0;
-    let posY = 0;
-    let transform = '';
+    let rawLeft = 0;
+    let rawTop = 0;
 
     switch (actualPos) {
       case 'right':
-        posX = targetRect.right + margin;
-        posY = targetRect.top + targetRect.height / 2;
-        transform = 'translateY(-50%)';
+        rawLeft = targetRect.right + margin;
+        rawTop = targetRect.top + targetRect.height / 2 - modalHeight / 2;
         break;
       case 'bottom':
-        posX = targetRect.left + targetRect.width / 2;
-        posY = targetRect.bottom + margin;
-        transform = 'translateX(-50%)';
+        rawLeft = targetRect.left + targetRect.width / 2 - modalWidth / 2;
+        rawTop = targetRect.bottom + margin;
         break;
       case 'left':
-        posX = targetRect.left - modalWidth - margin;
-        posY = targetRect.top + targetRect.height / 2;
-        transform = 'translateY(-50%)';
+        rawLeft = targetRect.left - modalWidth - margin;
+        rawTop = targetRect.top + targetRect.height / 2 - modalHeight / 2;
         break;
       case 'top':
-        posX = targetRect.left + targetRect.width / 2;
-        posY = targetRect.top - modalHeight - margin;
-        transform = 'translateX(-50%)';
+        rawLeft = targetRect.left + targetRect.width / 2 - modalWidth / 2;
+        rawTop = targetRect.top - modalHeight - margin;
         break;
       default:
-        posX = window.innerWidth / 2;
-        posY = window.innerHeight / 2;
-        transform = 'translate(-50%, -50%)';
+        rawLeft = window.innerWidth / 2 - modalWidth / 2;
+        rawTop = window.innerHeight / 2 - modalHeight / 2;
     }
 
-    const clampedLeft = Math.max(margin, Math.min(posX, window.innerWidth - modalWidth - margin));
-    const clampedTop = Math.max(margin, Math.min(posY, window.innerHeight - modalHeight - margin));
+    const clampedLeft = Math.max(margin, Math.min(rawLeft, window.innerWidth - modalWidth - margin));
+    const clampedTop = Math.max(margin, Math.min(rawTop, window.innerHeight - modalHeight - margin));
 
     return {
       style: {
         left: clampedLeft,
         top: clampedTop,
-        transform
+        transform: 'none'
       },
       pointerOffset: {
-        x: posX - clampedLeft,
-        y: posY - clampedTop
+        x: rawLeft - clampedLeft,
+        y: rawTop - clampedTop
       }
     };
   };
@@ -291,11 +285,11 @@ export const OnboardingTour = () => {
                   <motion.rect 
                     initial={false}
                     animate={{
-                      x: targetRect.x - 8,
-                      y: targetRect.y - 8,
-                      width: targetRect.width + 16,
-                      height: targetRect.height + 16,
-                      rx: 16
+                      x: targetRect.x - 20,
+                      y: targetRect.y - 15,
+                      width: targetRect.width + 40,
+                      height: targetRect.height + 30,
+                      rx: 24
                     }}
                     transition={{ type: "spring", damping: 30, stiffness: 300 }}
                     fill="black"
@@ -304,36 +298,13 @@ export const OnboardingTour = () => {
               </mask>
             </defs>
 
-            {/* Glowing Aura Layer behind the spotlight hole */}
-            {targetRect && (
-              <motion.rect
-                initial={false}
-                animate={{
-                  x: targetRect.x - 4,
-                  y: targetRect.y - 4,
-                  width: targetRect.width + 8,
-                  height: targetRect.height + 8,
-                  rx: 18,
-                  opacity: [0.4, 0.8, 0.4]
-                }}
-                transition={{ 
-                  x: { type: "spring", damping: 30, stiffness: 300 },
-                  y: { type: "spring", damping: 30, stiffness: 300 },
-                  width: { type: "spring", damping: 30, stiffness: 300 },
-                  height: { type: "spring", damping: 30, stiffness: 300 },
-                  opacity: { repeat: Infinity, duration: 2, ease: "easeInOut" }
-                }}
-                fill="rgb(var(--color-primary-rgb))"
-                filter="url(#glow-filter)"
-              />
-            )}
+            {/* The glowing aura has been removed as it was washing out the target elements */}
 
             <rect 
               width="100%" 
               height="100%" 
               fill="rgba(0,0,0,0.85)" 
               mask="url(#spotlight-mask)" 
-              className="backdrop-blur-[4px]"
               onClick={handleComplete}
             />
           </svg>

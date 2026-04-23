@@ -10,10 +10,17 @@ import {
   Sprout,
   Clock,
   Layout,
-  Loader2
+  Loader2,
+  History,
+  TrendingUp,
+  Dumbbell,
+  X,
+  BookOpen
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
-import { motion } from "motion/react";
+import SpiritualJournalModal from "../components/modals/SpiritualJournalModal";
+import WorkoutLogModal from "../components/modals/WorkoutLogModal";
+import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 
@@ -29,6 +36,15 @@ const Habits = () => {
     exercise: [false, false, false, false, false, false, false],
     reading: [false, false, false, false, false, false, false]
   });
+  const [spiritualityLogs, setSpiritualityLogs] = useState<any[]>([]);
+  const [workoutLogs, setWorkoutLogs] = useState<any[]>([]);
+  const [sleepLogs, setSleepLogs] = useState<any[]>([]);
+  const [readingLogs, setReadingLogs] = useState<any[]>([]);
+  const [showJournal, setShowJournal] = useState(false);
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [showSleepHistory, setShowSleepHistory] = useState(false);
+  const [showReadingHistory, setShowReadingHistory] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const readingProgress = (reading.progress / reading.total) * 100;
 
@@ -77,10 +93,24 @@ const Habits = () => {
       setHistory(newHist);
     }
 
+    // Busca todos os registros para histórico
+    const { data: allLogs } = await supabase
+      .from('habits_logs')
+      .select('type, date, value')
+      .order('date', { ascending: false });
+
+    if (allLogs) {
+      setSpiritualityLogs(allLogs.filter(l => l.type === 'gratitude'));
+      setWorkoutLogs(allLogs.filter(l => l.type === 'exercise'));
+      setSleepLogs(allLogs.filter(l => l.type === 'sleep'));
+      setReadingLogs(allLogs.filter(l => l.type === 'reading'));
+    }
+
     setLoading(false);
   };
 
   const saveHabit = async (type: string, value: any) => {
+    setSaving(true);
     const today = new Date().toISOString().split('T')[0];
     const { error } = await supabase.from('habits_logs').upsert({
       user_id: user?.id,
@@ -89,11 +119,12 @@ const Habits = () => {
       date: today
     }, { onConflict: 'user_id,type,date' });
 
+    setSaving(false);
     if (error) {
        console.error("Erro ao salvar hábito:", error.message);
        window.alert(`ERRO AO SALVAR HÁBITO: ${error.message}\n\nDica: Rode o script SQL 'setup_all_tables.sql' para garantir que a tabela 'habits_logs' existe.`);
     } else {
-       fetchHabits(); // Recarregar para atualizar a grid
+       fetchHabits(); // Recarregar para atualizar a grid e o histórico
     }
   };
 
@@ -145,7 +176,15 @@ const Habits = () => {
                   <div className="p-2 bg-primary/10 rounded-xl"><Moon size={20} /></div>
                   <span className="editorial-label font-bold tracking-widest text-[10px]">ROTINA DE SONO</span>
                 </div>
-                <ConsistencyGrid data={history.sleep} color="var(--color-primary)" />
+                <div className="flex items-center gap-3">
+                   <ConsistencyGrid data={history.sleep} color="var(--color-primary)" />
+                   <button 
+                     onClick={() => setShowSleepHistory(true)}
+                     className="p-1.5 bg-on-surface/5 hover:bg-on-surface/10 rounded-lg text-primary transition-all"
+                   >
+                     <History size={14} />
+                   </button>
+                </div>
               </div>
               
               <div className="space-y-6">
@@ -192,8 +231,23 @@ const Habits = () => {
                     <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">QUALIDADE ESTIMADA</span>
                     <span className="text-xl font-mono font-bold text-primary">{sleepTimes.quality}%</span>
                   </div>
-                  <div className="mt-2 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${sleepTimes.quality}%` }} />
+                  <div className="mt-2 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden flex gap-0.5">
+                    {/* Visualizador de tendência dos últimos 7 dias */}
+                    {[...history.sleep].map((done, i) => {
+                      const log = [...sleepLogs].reverse().find(l => l.date === new Date(Date.now() - (6-i)*86400000).toISOString().split('T')[0]);
+                      const quality = log?.value?.quality || 0;
+                      return (
+                        <div 
+                          key={i} 
+                          className="flex-1 bg-primary/10 relative group"
+                        >
+                          <div 
+                            className="absolute bottom-0 w-full bg-primary transition-all duration-1000" 
+                            style={{ height: `${quality}%`, opacity: 0.3 + (i * 0.1) }}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -203,14 +257,9 @@ const Habits = () => {
           {/* Exercício Físico */}
           <div className="space-y-6 flex flex-col">
             <GlassCard 
-              className={`p-8 transition-all duration-500 cursor-pointer overflow-hidden relative flex-1 ${exerciseDone ? 'bg-primary/10 border-primary/30' : 'hover:bg-on-surface/5 border-transparent'}`} 
-              onClick={() => {
-                const newDone = !exerciseDone;
-                setExerciseDone(newDone);
-                saveHabit('exercise', { done: newDone });
-              }}
+              className={`p-8 transition-all duration-500 overflow-hidden relative flex-1 group/v ${exerciseDone ? 'bg-primary/10 border-primary/30' : 'hover:bg-on-surface/5 border-transparent'}`} 
             >
-              <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
+              <div className="absolute -right-6 -bottom-6 opacity-5 group-hover/v:scale-110 transition-transform duration-700">
                 <ExerciseIcon size={120} className="text-primary" />
               </div>
               <div className="relative z-10 h-full flex flex-col">
@@ -229,7 +278,26 @@ const Habits = () => {
                 
                 <div className="flex-1 flex flex-col justify-center text-center py-6">
                   <h3 className="text-3xl font-bold tracking-tighter mb-2">{exerciseDone ? "TREINO PAGO!" : "AINDA NÃO TREINOU"}</h3>
-                  <p className="text-xs opacity-50 px-4">{exerciseDone ? "Seu corpo agradece pela disciplina hoje." : "Hoje o corpo pede movimento. Inicie sua sessão."}</p>
+                  <p className="text-xs opacity-50 px-4 mb-6">{exerciseDone ? "Sua sessão de hoje foi registrada com sucesso." : "Hoje o corpo pede movimento. Inicie sua sessão."}</p>
+                  
+                  <div className="flex gap-3 justify-center">
+                    <button 
+                      onClick={() => {
+                        const newDone = !exerciseDone;
+                        setExerciseDone(newDone);
+                        saveHabit('exercise', { done: newDone, exercises: [] });
+                      }}
+                      className={`px-6 py-2 rounded-full text-[10px] font-bold border transition-all ${exerciseDone ? 'bg-primary text-surface border-primary' : 'border-primary/30 text-primary hover:bg-primary/5'}`}
+                    >
+                      {exerciseDone ? "CONCLUÍDO" : "MARCAR COMO FEITO"}
+                    </button>
+                    <button 
+                      onClick={() => setShowWorkoutModal(true)}
+                      className="px-6 py-2 rounded-full bg-on-surface/10 text-[10px] font-bold hover:bg-on-surface/20 transition-all flex items-center gap-2"
+                    >
+                      <Dumbbell size={12} /> LOG DETALHADO
+                    </button>
+                  </div>
                 </div>
               </div>
             </GlassCard>
@@ -246,7 +314,15 @@ const Habits = () => {
                   <div className="p-2 bg-secondary/10 rounded-xl"><Book size={20} /></div>
                   <span className="editorial-label font-bold tracking-widest text-[10px]">LEITURA & CONHECIMENTO</span>
                 </div>
-                <ConsistencyGrid data={history.reading} color="var(--color-secondary)" />
+                <div className="flex items-center gap-3">
+                   <ConsistencyGrid data={history.reading} color="var(--color-secondary)" />
+                   <button 
+                     onClick={() => setShowReadingHistory(true)}
+                     className="p-1.5 bg-on-surface/5 hover:bg-on-surface/10 rounded-lg text-secondary transition-all"
+                   >
+                     <History size={14} />
+                   </button>
+                </div>
               </div>
 
               <div className="mb-6">
@@ -294,9 +370,18 @@ const Habits = () => {
               <Sprout size={300} className="text-primary" />
             </div>
             <div className="relative z-10 max-w-2xl">
-              <div className="flex items-center gap-3 text-primary mb-6">
-                <div className="p-2 bg-primary/10 rounded-xl"><Sparkles size={20} /></div>
-                <span className="editorial-label font-bold tracking-widest text-[10px]">ESPIRITUALIDADE & INTROSPECÇÃO</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3 text-primary">
+                  <div className="p-2 bg-primary/10 rounded-xl"><Sparkles size={20} /></div>
+                  <span className="editorial-label font-bold tracking-widest text-[10px]">ESPIRITUALIDADE & INTROSPECÇÃO</span>
+                </div>
+                <button 
+                  onClick={() => setShowJournal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 text-[10px] font-bold text-primary hover:bg-primary/5 transition-all"
+                >
+                  <History size={14} />
+                  HISTÓRICO
+                </button>
               </div>
               
               <h3 className="text-2xl font-bold tracking-tight mb-4">Como está sua alma hoje?</h3>
@@ -312,12 +397,97 @@ const Habits = () => {
                   placeholder="Hoje sou grato por..."
                   className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-3xl p-6 text-sm outline-none focus:border-primary/50 transition-all min-h-[120px] resize-none"
                 />
-                <button onClick={() => saveHabit('gratitude', { text: gratitude })} className="absolute bottom-4 right-4 p-3 bg-primary text-surface rounded-2xl shadow-lg shadow-primary/20 hover:scale-110 active:scale-90 transition-all">
-                  <ArrowRight size={20} />
+                <button 
+                  onClick={() => saveHabit('gratitude', { text: gratitude })} 
+                  disabled={saving || !gratitude.trim()}
+                  className="absolute bottom-4 right-4 p-3 bg-primary text-surface rounded-2xl shadow-lg shadow-primary/20 hover:scale-110 active:scale-90 transition-all disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={20} />}
                 </button>
               </div>
             </div>
           </GlassCard>
+
+          <SpiritualJournalModal 
+            isOpen={showJournal} 
+            onClose={() => setShowJournal(false)} 
+            logs={spiritualityLogs} 
+          />
+
+          <WorkoutLogModal 
+            isOpen={showWorkoutModal}
+            onClose={() => setShowWorkoutModal(false)}
+            onSave={(workout) => {
+              setExerciseDone(true);
+              saveHabit('exercise', { done: true, ...workout });
+            }}
+          />
+
+          {/* Modal de Histórico de Sono */}
+          <AnimatePresence>
+            {showSleepHistory && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+                <GlassCard className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col p-0">
+                  <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-primary/5">
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="text-primary" />
+                      <h3 className="text-xl font-bold">Histórico de Sono</h3>
+                    </div>
+                    <button onClick={() => setShowSleepHistory(false)} className="p-2 hover:bg-on-surface/10 rounded-full"><X /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8 space-y-4">
+                    {sleepLogs.map((log, i) => (
+                      <div key={i} className="p-4 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold opacity-40 uppercase">{new Date(log.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
+                          <p className="font-bold">{log.value.wake} - {log.value.sleep}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-primary">{log.value.quality}%</p>
+                          <div className="w-20 h-1 bg-on-surface/10 rounded-full mt-1">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${log.value.quality}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Modal de Histórico de Leitura */}
+          <AnimatePresence>
+            {showReadingHistory && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+                <GlassCard className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col p-0 border-secondary/30">
+                  <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-secondary/5">
+                    <div className="flex items-center gap-3">
+                      <BookOpen size={20} className="text-secondary" />
+                      <h3 className="text-xl font-bold">Registro de Conhecimento</h3>
+                    </div>
+                    <button onClick={() => setShowReadingHistory(false)} className="p-2 hover:bg-on-surface/10 rounded-full"><X /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8 space-y-4">
+                    {readingLogs.map((log: any, i: number) => (
+                      <div key={i} className="p-4 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold opacity-40 uppercase">{new Date(log.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</p>
+                          <p className="font-bold">{log.value.title}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-secondary">{log.value.progress} / {log.value.total} pg</p>
+                          <div className="w-20 h-1 bg-on-surface/10 rounded-full mt-1 overflow-hidden">
+                            <div className="h-full bg-secondary rounded-full" style={{ width: `${(log.value.progress/log.value.total)*100}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+              </div>
+            )}
+          </AnimatePresence>
 
         </div>
       )}

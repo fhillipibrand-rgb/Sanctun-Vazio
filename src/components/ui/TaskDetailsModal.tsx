@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle, Plus, AlignLeft, CheckSquare, Square, CheckCircle2, Circle } from "lucide-react";
+import { X, Paperclip, FileText, Image as ImageIcon, Download, Trash2, Loader2, AlertCircle, Plus, AlignLeft, CheckSquare, Square, CheckCircle2, Circle, FolderKanban, Zap, Calendar, Flag } from "lucide-react";
 import GlassCard from "./GlassCard";
 import RichTextEditor from "./RichTextEditor";
 import type { Task } from "../../pages/Tasks";
@@ -25,15 +25,42 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   onUpdate: (id: string, updates: Partial<Task>) => void;
   isMock?: boolean;
+  projects: any[];
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: TaskDetailsModalProps) {
+export default function TaskDetailsModal({ task, onClose, onUpdate, isMock, projects }: TaskDetailsModalProps) {
   const { user } = useAuth();
   const [description, setDescription] = useState(task.description || "");
   const [attachments, setAttachments] = useState<Attachment[]>(task.attachments || []);
+  const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
+  const [newSubtask, setNewSubtask] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState(task.status || "todo");
+  const [selectedProject, setSelectedProject] = useState(task.project_id || "");
+  const [title, setTitle] = useState(task.title || "");
+  const [energyLevel, setEnergyLevel] = useState<"high" | "medium" | "low">(task.energy_level || "medium");
+  const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.split('T')[0] : "");
+  const [isCritical, setIsCritical] = useState(task.is_critical || false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const ENERGY_COLORS = { high: "text-[#00f5a0] bg-[#00f5a0]/10", medium: "text-[#f5a623] bg-[#f5a623]/10", low: "text-blue-400 bg-blue-400/10" };
+  const ENERGY_LABELS = { high: "Alta", medium: "Média", low: "Baixa" };
+
+  const handleAddSubtask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubtask.trim()) return;
+    setSubtasks([...subtasks, { id: Date.now().toString(), title: newSubtask.trim(), is_completed: false }]);
+    setNewSubtask("");
+  };
+
+  const toggleSubtask = (id: string) => {
+    setSubtasks(subtasks.map(st => st.id === id ? { ...st, is_completed: !st.is_completed } : st));
+  };
+
+  const removeSubtask = (id: string) => {
+    setSubtasks(subtasks.filter(st => st.id !== id));
+  };
   const [uploadError, setUploadError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -43,7 +70,18 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
     setIsSaving(true);
     try {
       // Persistindo no Supabase ou Local (Mock) através do pai
-      await onUpdate(task.id, { description, attachments });
+      await onUpdate(task.id, { 
+        title: title.trim(),
+        description, 
+        attachments,
+        subtasks,
+        status: selectedStatus as any,
+        is_completed: selectedStatus === 'done',
+        project_id: selectedProject || undefined,
+        energy_level: energyLevel,
+        due_date: dueDate ? new Date(dueDate).toISOString() : null,
+        is_critical: isCritical
+      });
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
@@ -151,11 +189,19 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
           <GlassCard className="h-full max-h-[90vh] flex flex-col p-0 border border-primary/20 overflow-hidden shadow-2xl shadow-primary/10">
             {/* Header */}
             <div className="p-6 md:p-8 flex items-start justify-between gap-4 border-b border-[var(--glass-border)] bg-surface/50 backdrop-blur-md sticky top-0 z-10 shrink-0">
-               <div>
-                 <p className="editorial-label text-[10px] text-primary mb-2 opacity-80 uppercase tracking-widest flex items-center gap-2">
-                    Visualização de Tarefa {isMock && "- MODO DEMO"}
-                 </p>
-                 <h2 className="text-2xl md:text-3xl font-bold font-serif leading-tight">{task.title}</h2>
+               <div className="flex-1">
+                 <div className="flex items-center gap-4 mb-2">
+                   <p className="editorial-label text-[10px] text-primary opacity-80 uppercase tracking-widest flex items-center gap-2">
+                      Visualização de Tarefa {isMock && "- MODO DEMO"}
+                   </p>
+                 </div>
+                 <input 
+                   type="text" 
+                   value={title}
+                   onChange={(e) => setTitle(e.target.value)}
+                   placeholder="Título da tarefa..."
+                   className="w-full text-2xl md:text-3xl font-bold font-serif leading-tight bg-transparent outline-none border-b border-transparent focus:border-primary/50 transition-colors pb-1"
+                 />
                </div>
                <button 
                  onClick={onClose}
@@ -167,10 +213,97 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
 
              {/* Scrollable Content */}
             <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
-               {/* Description Section */}
+               {/* Metadata Section */}
+               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                 <div className="space-y-2">
+                   <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1">STATUS</label>
+                   <select
+                     value={selectedStatus}
+                     onChange={(e) => setSelectedStatus(e.target.value)}
+                     className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
+                   >
+                     <option value="todo">A Fazer</option>
+                     <option value="in_progress">Em Andamento</option>
+                     <option value="done">Concluída</option>
+                   </select>
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><FolderKanban size={10} /> PROJETO</label>
+                   <select
+                     value={selectedProject}
+                     onChange={(e) => setSelectedProject(e.target.value)}
+                     className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
+                   >
+                     <option value="">Nenhum Projeto</option>
+                     {projects.map(p => (
+                       <option key={p.id} value={p.id}>{p.name}</option>
+                     ))}
+                   </select>
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Zap size={10} /> ENERGIA</label>
+                   <div className="flex gap-1">
+                     {(["high", "medium", "low"] as const).map(level => (
+                       <button key={level} type="button" onClick={() => setEnergyLevel(level)} className={`flex-1 py-2 rounded-xl text-[9px] font-bold border transition-all ${energyLevel === level ? ENERGY_COLORS[level] + " border-current" : "border-[var(--glass-border)] opacity-40 hover:opacity-70"}`}>
+                         {ENERGY_LABELS[level].toUpperCase()}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Calendar size={10} /> PRAZO</label>
+                   <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-[9px] px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider cursor-text" />
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Flag size={10} /> PRIORIDADE</label>
+                   <button type="button" onClick={() => setIsCritical(!isCritical)} className={`w-full py-2.5 rounded-xl text-[10px] font-bold border transition-all ${isCritical ? "bg-red-500/10 text-red-400 border-red-400/30" : "border-[var(--glass-border)] opacity-50 hover:opacity-80"}`}>
+                     {isCritical ? "⚡ CRÍTICA" : "MARCAR CRÍTICA"}
+                   </button>
+                 </div>
+               </div>
+
+               {/* Subtasks Section */}
                <div className="space-y-4">
                  <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label mb-2">
-                   <AlignLeft size={14} /> Notas Internas e Subtarefas
+                   <CheckSquare size={14} /> Subtarefas
+                 </label>
+                 
+                 <div className="space-y-2">
+                   {subtasks.map(st => (
+                     <div key={st.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors group ${st.is_completed ? 'bg-primary/5 border-primary/20 text-on-surface/50' : 'bg-surface/50 border-[var(--glass-border)]'}`}>
+                       <button onClick={() => toggleSubtask(st.id)} className={`text-${st.is_completed ? 'primary' : 'on-surface/40 hover:text-primary'} transition-colors`}>
+                         {st.is_completed ? <CheckSquare size={18} /> : <Square size={18} />}
+                       </button>
+                       <span className={`flex-1 text-sm ${st.is_completed ? 'line-through' : ''}`}>{st.title}</span>
+                       <button onClick={() => removeSubtask(st.id)} className="text-red-400/50 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 md:opacity-100">
+                         <X size={16} />
+                       </button>
+                     </div>
+                   ))}
+                   
+                   <form onSubmit={handleAddSubtask} className="flex gap-2 mt-2">
+                     <input
+                       type="text"
+                       value={newSubtask}
+                       onChange={(e) => setNewSubtask(e.target.value)}
+                       placeholder="Adicionar nova subtarefa..."
+                       className="flex-1 bg-surface/50 border border-[var(--glass-border)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary transition-colors"
+                     />
+                     <button type="submit" disabled={!newSubtask.trim()} className="bg-primary text-surface px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50 transition-opacity">
+                       Adicionar
+                     </button>
+                   </form>
+                 </div>
+               </div>
+
+               {/* Description Section */}
+               <div className="space-y-4 pt-4 border-t border-[var(--glass-border)]">
+                 <label className="text-sm font-bold opacity-70 flex items-center gap-2 uppercase tracking-widest editorial-label mb-2">
+                   <AlignLeft size={14} /> Notas Internas
                  </label>
                  
                  <RichTextEditor 
@@ -178,18 +311,6 @@ export default function TaskDetailsModal({ task, onClose, onUpdate, isMock }: Ta
                    onChange={setDescription}
                    className="min-h-[250px]"
                  />
-
-                 <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6 flex items-start gap-4 mx-2">
-                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <CheckSquare size={20} className="text-primary" />
-                   </div>
-                   <div className="space-y-1 text-left">
-                     <p className="text-sm font-bold text-primary italic">Dica de Produtividade</p>
-                     <p className="text-[11px] opacity-60 leading-relaxed italic">
-                       Use o botão de <strong>Checklist</strong> no editor acima para gerenciar subtarefas aninhadas (pressione TAB para recuar e criar hierarquia).
-                     </p>
-                   </div>
-                 </div>
                </div>
 
                {/* Attachments Section */}

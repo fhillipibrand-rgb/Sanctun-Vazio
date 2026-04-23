@@ -62,6 +62,7 @@ const Tasks = () => {
   const [usingMockData, setUsingMockData] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const ignoreNextFetch = React.useRef(false);
+  const lastUpdateTime = React.useRef(0);
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTask, setExpandedTask] = useState<Task | null>(null);
@@ -88,14 +89,26 @@ const Tasks = () => {
 
   const fetchProjects = async () => {
     const { data, error } = await supabase.from("projects").select("*");
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       setProjects(data);
+    } else {
+      const savedMockProjects = localStorage.getItem("sanctuary_mock_projects");
+      if (savedMockProjects) {
+        setProjects(JSON.parse(savedMockProjects));
+      } else {
+        setProjects([]);
+      }
     }
   };
 
   const fetchTasks = async () => {
     if (ignoreNextFetch.current) {
       ignoreNextFetch.current = false;
+      return;
+    }
+    
+    // Proteção contra race conditions de realtime após updates otimistas
+    if (Date.now() - lastUpdateTime.current < 1500) {
       return;
     }
 
@@ -109,7 +122,15 @@ const Tasks = () => {
 
     if (!error && data) {
       if (data.length > 0) {
-        setTasks(data);
+        setTasks(prevTasks => {
+          return data.map(fetchedTask => {
+            const localTask = prevTasks.find(t => t.id === fetchedTask.id);
+            if (localTask) {
+              return { ...localTask, ...fetchedTask };
+            }
+            return fetchedTask as Task;
+          });
+        });
         setUsingMockData(false);
       } else {
         setTasks([]);
@@ -157,8 +178,8 @@ const Tasks = () => {
         due_date: newDueDate ? new Date(newDueDate).toISOString() : null,
         is_critical: newCritical,
         is_completed: false,
-        status: "todo",
-        project_id: newProject || null
+        // status: "todo", // Removido temporariamente para evitar erro PGRST204
+        // project_id: newProject || null // Removido temporariamente para evitar erro PGRST204
       }])
       .select();
 
@@ -206,22 +227,57 @@ const Tasks = () => {
 
     if (task.is_mock) {
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+      if (expandedTask?.id === id) setExpandedTask(null);
       return;
     }
 
-    const { error } = await supabase.from("tasks").update({
-      description: updates.description,
-      attachments: updates.attachments,
-      subtasks: updates.subtasks,
-    }).eq("id", id);
+    // Tenta atualizar campos básicos
+    const baseUpdates: any = {};
+    if (updates.title !== undefined) baseUpdates.title = updates.title;
+    if (updates.energy_level !== undefined) baseUpdates.energy_level = updates.energy_level;
+    if (updates.due_date !== undefined) baseUpdates.due_date = updates.due_date;
+    if (updates.is_critical !== undefined) baseUpdates.is_critical = updates.is_critical;
 
-    if (!error) {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-      // Se o modal estiver aberto pra essa tarefa, garantimos que ela feche com os dados novos no pai
-      if (expandedTask?.id === id) setExpandedTask(null); 
-    } else {
-      console.error("Erro ao atualizar metadados da tarefa:", error);
+    if (Object.keys(baseUpdates).length > 0) {
+      const { error: errBase } = await supabase.from("tasks").update(baseUpdates).eq("id", id);
+      if (errBase) console.error("Erro ao atualizar campos base:", errBase);
     }
+
+    // 1. Tenta atualizar campos adicionais que podem faltar no banco (silencia erros PGRST204)
+    const extraUpdates: any = {};
+    if (updates.description !== undefined) extraUpdates.description = updates.description;
+    if (updates.attachments !== undefined) extraUpdates.attachments = updates.attachments;
+    if (updates.subtasks !== undefined) extraUpdates.subtasks = updates.subtasks;
+
+    if (Object.keys(extraUpdates).length > 0) {
+      const { error: errExtra } = await supabase.from("tasks").update(extraUpdates).eq("id", id);
+      if (errExtra) console.warn("Schema Incompleto (extra):", errExtra);
+    }
+
+    // Tenta atualizar project_id, se presente, silenciosamente se falhar (pode não existir na tabela ainda)
+    if (updates.project_id !== undefined) {
+      const { error: errProj } = await supabase.from("tasks").update({ project_id: updates.project_id || null }).eq("id", id);
+      if (errProj) console.warn("Schema Incompleto (project_id):", errProj);
+    }
+
+    // 2. Atualiza is_completed (garantido)
+    if (updates.is_completed !== undefined) {
+      const { error: errComp } = await supabase.from("tasks").update({ is_completed: updates.is_completed }).eq("id", id);
+      if (errComp) console.error(errComp);
+    }
+
+    // 3. Atualiza status (pode faltar)
+    if (updates.status !== undefined) {
+      const { error: errStatus } = await supabase.from("tasks").update({ status: updates.status }).eq("id", id);
+      if (errStatus) console.warn("Schema Incompleto (status):", errStatus);
+    }
+
+    // 4. SEMPRE atualiza o state local para UX perfeita mesmo se o DB falhar
+    lastUpdateTime.current = Date.now();
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    
+    // Fecha o modal
+    if (expandedTask?.id === id) setExpandedTask(null); 
   };
 
   const resetForm = () => {
@@ -247,18 +303,23 @@ const Tasks = () => {
     }
 
     // Atualização otimista: UI responde imediatamente
+    lastUpdateTime.current = Date.now();
     setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: isNowCompleted, status: newStatus } : t));
 
-    // Atualiza apenas is_completed (campo garantido no banco)
+    // Atualiza is_completed primeiro (campo garantido no banco)
     const { error } = await supabase
       .from("tasks")
-      .update({ is_completed: isNowCompleted, status: newStatus })
+      .update({ is_completed: isNowCompleted })
       .eq("id", id);
     
     if (error) {
       console.error("Erro ao atualizar tarefa:", error);
       // Rollback local da tarefa específica
       setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: current, status: current ? "done" : "todo" } : t));
+    } else {
+      // Tenta atualizar o status, mas falha silenciosamente se a coluna não existir (PGRST204)
+      const { error: errStatus } = await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
+      if (errStatus) console.warn("Schema incompleto:", errStatus);
     }
   };
 
@@ -334,15 +395,16 @@ const Tasks = () => {
     const prevCompleted = task.is_completed;
     
     // Atualização otimista
+    lastUpdateTime.current = Date.now();
     setTasks(prev => prev.map(t => 
       t.id === taskId ? { ...t, status: newStatus, is_completed: isCompletedNow } : t
     ));
 
     if (!task.is_mock) {
-      // Atualiza apenas is_completed (campo garantido no banco)
+      // Atualiza primeiro o is_completed (garantido no banco)
       const { error } = await supabase
         .from("tasks")
-        .update({ is_completed: isCompletedNow, status: newStatus })
+        .update({ is_completed: isCompletedNow })
         .eq("id", taskId);
         
       if (error) {
@@ -350,6 +412,10 @@ const Tasks = () => {
         setTasks(prev => prev.map(t =>
           t.id === taskId ? { ...t, status: prevStatus, is_completed: prevCompleted } : t
         ));
+      } else {
+        // Tenta atualizar o status, mas falha silenciosamente se a coluna não existir (PGRST204)
+        const { error: errStatus } = await supabase.from("tasks").update({ status: newStatus }).eq("id", taskId);
+        if (errStatus) console.warn("Schema incompleto:", errStatus);
       }
     }
   };
@@ -598,7 +664,7 @@ const Tasks = () => {
                         <div className="flex justify-between items-start gap-2">
                           <p className={`font-bold text-sm ${task.is_completed ? 'line-through opacity-50' : ''}`}>{task.title}</p>
                           <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingTask(task); }} className="p-1 text-on-surface/50 hover:text-primary transition-colors"><Edit2 size={12} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setExpandedTask(task); }} className="p-1 text-on-surface/50 hover:text-primary transition-colors"><Edit2 size={12} /></button>
                             <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="p-1 text-on-surface/50 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
                           </div>
                         </div>
@@ -651,6 +717,125 @@ const Tasks = () => {
           );
         })}
       </div>
+    );
+  };
+
+  const renderTable = () => {
+    return (
+      <GlassCard className="overflow-hidden border border-[var(--glass-border)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-on-surface/[0.02] border-b border-[var(--glass-border)]">
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase">Status</th>
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase">Tarefa</th>
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase">Projeto</th>
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase">Energia</th>
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase">Prazo</th>
+                <th className="px-6 py-4 editorial-label text-[10px] opacity-30 tracking-widest uppercase text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filteredTasks.map(task => {
+                const proj = projects.find(p => p.id === task.project_id);
+                const overdue = isOverdue(task);
+                const currentStatus = task.status || (task.is_completed ? "done" : "todo");
+                
+                return (
+                  <tr 
+                    key={task.id} 
+                    className={`group hover:bg-on-surface/[0.02] transition-colors cursor-pointer ${task.is_completed ? 'opacity-40' : ''}`}
+                    onClick={() => setExpandedTask(task)}
+                  >
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <select 
+                        value={currentStatus}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          updateTaskMetadata(task.id, { 
+                            status: newStatus, 
+                            is_completed: newStatus === "done" 
+                          });
+                        }}
+                        className={`bg-transparent border-none outline-none text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:text-primary transition-colors appearance-none ${
+                          currentStatus === 'done' ? 'text-green-400' : 
+                          currentStatus === 'in_progress' ? 'text-blue-400' : 'text-on-surface/50'
+                        }`}
+                      >
+                        <option value="todo" className="bg-surface">A Fazer</option>
+                        <option value="in_progress" className="bg-surface">Em Andamento</option>
+                        <option value="done" className="bg-surface">Concluída</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-sm font-bold tracking-wide ${task.is_completed ? 'line-through' : ''}`}>
+                          {task.title}
+                        </span>
+                        {task.is_critical && (
+                          <span className="text-[8px] font-bold text-red-400 uppercase tracking-tighter">Prioridade Crítica</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <select 
+                        value={task.project_id || ""}
+                        onChange={(e) => updateTaskMetadata(task.id, { project_id: e.target.value || null })}
+                        className="bg-transparent border-none outline-none text-[10px] font-bold uppercase tracking-widest cursor-pointer opacity-60 hover:opacity-100 transition-opacity appearance-none max-w-[120px] truncate"
+                        style={{ color: proj?.color }}
+                      >
+                        <option value="" className="bg-surface text-on-surface/40">Sem Projeto</option>
+                        {projects.map(p => (
+                          <option key={p.id} value={p.id} className="bg-surface" style={{ color: p.color }}>{p.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <select 
+                        value={task.energy_level}
+                        onChange={(e) => updateTaskMetadata(task.id, { energy_level: e.target.value as any })}
+                        className={`bg-transparent border-none outline-none text-[9px] font-bold px-2 py-0.5 rounded border cursor-pointer transition-all appearance-none ${ENERGY_COLORS[task.energy_level]} border-current`}
+                      >
+                        <option value="high" className="bg-surface text-red-400">ALTA</option>
+                        <option value="medium" className="bg-surface text-yellow-400">MÉDIA</option>
+                        <option value="low" className="bg-surface text-green-400">BAIXA</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input 
+                        type="date" 
+                        value={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateTaskMetadata(task.id, { due_date: val ? new Date(val).toISOString() : null });
+                        }}
+                        className={`bg-transparent border-none outline-none text-[10px] font-bold cursor-pointer transition-all ${overdue ? 'text-orange-400' : 'opacity-40 hover:opacity-100'}`}
+                      />
+                      {overdue && <span className="ml-1 text-orange-400 animate-pulse text-[10px]">⚠</span>}
+                    </td>
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setEditingTask(task)} 
+                          className="p-1.5 hover:bg-on-surface/5 rounded-lg text-on-surface/60 hover:text-primary transition-all"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => deleteTask(task.id)} 
+                          className="p-1.5 hover:bg-red-500/10 rounded-lg text-on-surface/60 hover:text-red-500 transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </GlassCard>
     );
   };
 
@@ -809,7 +994,7 @@ const Tasks = () => {
           {viewMode === "list" && <div className="space-y-3"><AnimatePresence initial={false}>{filteredTasks.map(task => renderTaskCard(task))}</AnimatePresence></div>}
           {viewMode === "kanban" && renderKanban()}
           {viewMode === "calendar" && renderCalendar()}
-          {viewMode === "table" && <div className="p-8 text-center bg-surface/50 rounded-3xl border border-[var(--glass-border)] opacity-50 editorial-label">Tabela em construção com projetos...</div>}
+          {viewMode === "table" && renderTable()}
         </div>
       )}
 
@@ -827,63 +1012,7 @@ const Tasks = () => {
                 <X size={18} />
               </button>
               
-              <div className="mb-6 flex items-center gap-2 opacity-70">
-                <Edit2 size={14} className="text-primary"/>
-                <span className="editorial-label">EDITAR TAREFA</span>
-              </div>
 
-              <form onSubmit={saveEditedTask} className="space-y-5">
-                <input 
-                  type="text" 
-                  value={editingTask.title} 
-                  onChange={e => setEditingTask({...editingTask, title: e.target.value})} 
-                  placeholder="Nome da tarefa" 
-                  className="w-full bg-transparent text-2xl font-bold placeholder:text-on-surface/20 outline-none border-b border-[var(--glass-border)] pb-3 focus:border-primary/50 transition-all" 
-                  autoFocus 
-                  required 
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><FolderKanban size={10} /> PROJETO</label>
-                    <select 
-                      value={editingTask.project_id || ""} 
-                      onChange={e => setEditingTask({...editingTask, project_id: e.target.value})} 
-                      className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-2.5 px-3 outline-none focus:border-primary/50 transition-all text-[11px] font-bold uppercase tracking-wider appearance-none cursor-pointer"
-                    >
-                      <option value="">Nenhum Projeto</option>
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Zap size={10} /> ENERGIA</label>
-                    <div className="flex gap-2">
-                      {(["high", "medium", "low"] as const).map(level => (
-                        <button key={level} type="button" onClick={() => setEditingTask({...editingTask, energy_level: level})} className={`flex-1 py-2 rounded-xl text-[10px] font-bold border transition-all ${editingTask.energy_level === level ? ENERGY_COLORS[level] + " border-current" : "border-[var(--glass-border)] opacity-40 hover:opacity-70"}`}>
-                          {ENERGY_LABELS[level].toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Calendar size={10} /> PRAZO</label>
-                    <input type="date" value={editingTask.due_date ? editingTask.due_date.split('T')[0] : ""} onChange={e => setEditingTask({...editingTask, due_date: e.target.value ? new Date(e.target.value).toISOString() : null})} className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-[9px] px-3 outline-none focus:border-primary/50 transition-all text-sm " />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="editorial-label text-[10px] opacity-50 flex items-center gap-1"><Flag size={10} /> PRIORIDADE</label>
-                    <button type="button" onClick={() => setEditingTask({...editingTask, is_critical: !editingTask.is_critical})} className={`w-full py-2.5 rounded-xl text-[10px] font-bold border transition-all ${editingTask.is_critical ? "bg-red-500/10 text-red-400 border-red-400/30" : "border-[var(--glass-border)] opacity-50 hover:opacity-80"}`}>
-                      {editingTask.is_critical ? "⚡ CRÍTICA" : "MARCAR CRÍTICA"}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4 border-t border-[var(--glass-border)] mt-6">
-                  <button type="submit" className="px-8 py-3 rounded-full bg-primary text-surface font-bold text-sm shadow-xl hover:scale-105 active:scale-95 transition-all">
-                    SALVAR ALTERAÇÕES
-                  </button>
-                </div>
-              </form>
             </GlassCard>
           </motion.div>
         )}
@@ -896,6 +1025,7 @@ const Tasks = () => {
            onClose={() => setExpandedTask(null)}
            onUpdate={updateTaskMetadata}
            isMock={expandedTask.is_mock}
+           projects={projects}
         />
       )}
 

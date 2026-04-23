@@ -11,6 +11,7 @@ const CalendarPage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", location: "", start_time: "" });
   
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
 
@@ -74,11 +75,11 @@ const CalendarPage = () => {
     }
   };
 
-  // Lógica do Calendário Grid
+  // Lógica do Calendário Grid (Mês)
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const startDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
-  const renderGrid = () => {
+  const renderMonthView = () => {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     const daysCount = daysInMonth(year, month);
@@ -104,7 +105,6 @@ const CalendarPage = () => {
           key={day} 
           onClick={() => {
               setSelectedDate(new Date(year, month, day));
-              // if clicking a day with events, scroll or show list? For now just select.
           }}
           className={`h-24 md:h-32 border border-[var(--glass-border)] p-2 transition-all cursor-pointer group hover:bg-on-surface/[0.05] relative ${
             isSelected ? 'bg-primary/5 border-primary/40' : ''
@@ -136,15 +136,129 @@ const CalendarPage = () => {
       );
     }
 
-    return cells;
+    return (
+      <div className="grid grid-cols-7 border-collapse">
+        {cells}
+      </div>
+    );
   };
 
-  const nextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
-  const prevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+  const renderWeekView = () => {
+    const startOfWeek = new Date(viewDate);
+    startOfWeek.setDate(viewDate.getDate() - viewDate.getDay());
+    
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      weekDays.push(day);
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-px bg-[var(--glass-border)] overflow-hidden">
+        {weekDays.map((day, idx) => {
+          const dateStr = day.toDateString();
+          const isToday = new Date().toDateString() === dateStr;
+          const dayEvents = events.filter(e => new Date(e.start_time).toDateString() === dateStr);
+          
+          return (
+            <div key={idx} className="min-h-[400px] bg-surface/50 p-4 space-y-4">
+              <div className="text-center pb-4 border-b border-[var(--glass-border)]">
+                <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest">{day.toLocaleDateString('pt-BR', { weekday: 'short' })}</p>
+                <p className={`text-2xl font-bold mt-1 ${isToday ? 'text-primary' : ''}`}>{day.getDate()}</p>
+              </div>
+              <div className="space-y-2">
+                {dayEvents.map((event, eIdx) => (
+                  <div 
+                    key={eIdx}
+                    className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${
+                      event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30' : 'bg-primary/5 border-primary/20'
+                    }`}
+                    style={event.isProjectDeadline ? { color: event.color, borderColor: `${event.color}30` } : {}}
+                  >
+                    <div className="flex items-center gap-1.5 opacity-60 mb-1">
+                      <Clock size={10} />
+                      {new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    {event.title}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderDayView = () => {
+    const dayEvents = events.filter(e => new Date(e.start_time).toDateString() === viewDate.toDateString());
+    
+    return (
+      <div className="p-8 space-y-6 min-h-[400px]">
+        <div className="flex items-center gap-4 border-b border-[var(--glass-border)] pb-6">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex flex-col items-center justify-center border border-primary/20">
+            <span className="text-[10px] font-bold opacity-40 uppercase">{viewDate.toLocaleDateString('pt-BR', { month: 'short' })}</span>
+            <span className="text-2xl font-bold text-primary">{viewDate.getDate()}</span>
+          </div>
+          <div>
+            <h4 className="text-2xl font-bold">{viewDate.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase()}</h4>
+            <p className="text-sm opacity-40">{dayEvents.length} compromissos agendados</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {dayEvents.length > 0 ? dayEvents.map((event, idx) => (
+            <div key={idx} className="flex gap-6 group">
+              <div className="w-20 pt-1 text-right">
+                <span className="text-xs font-bold opacity-40">{new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div className="flex-1 pb-6 border-l-2 border-[var(--glass-border)] pl-6 relative">
+                <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-primary" />
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30' : 'bg-on-surface/[0.03] border-[var(--glass-border)]'
+                }`} style={event.isProjectDeadline ? { color: event.color, borderColor: `${event.color}30` } : {}}>
+                  <h5 className="font-bold">{event.title}</h5>
+                  {event.location && (
+                    <div className="flex items-center gap-1.5 text-[10px] opacity-40 mt-2">
+                      <MapPin size={12} /> {event.location}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="py-20 text-center opacity-20 italic">Nenhum compromisso para este dia.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const nextView = () => {
+    const newDate = new Date(viewDate);
+    if (viewMode === 'month') newDate.setMonth(viewDate.getMonth() + 1);
+    else if (viewMode === 'week') newDate.setDate(viewDate.getDate() + 7);
+    else newDate.setDate(viewDate.getDate() + 1);
+    setViewDate(newDate);
+  };
+
+  const prevView = () => {
+    const newDate = new Date(viewDate);
+    if (viewMode === 'month') newDate.setMonth(viewDate.getMonth() - 1);
+    else if (viewMode === 'week') newDate.setDate(viewDate.getDate() - 7);
+    else newDate.setDate(viewDate.getDate() - 1);
+    setViewDate(newDate);
+  };
+
+  const upcomingEvents = events
+    .filter(e => new Date(e.start_time) > new Date())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+    .slice(0, 10);
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <header className="flex items-start justify-between gap-6">
+      <header className="flex items-start justify-between gap-6 flex-wrap">
         <div className="space-y-1">
           <div className="flex items-center gap-2 opacity-60">
             <Calendar size={12} className="text-primary" />
@@ -152,13 +266,30 @@ const CalendarPage = () => {
           </div>
           <h2 className="display-lg">Agenda Visual</h2>
         </div>
-        <button 
-          onClick={() => setIsAdding(!isAdding)}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-full font-bold text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-        >
-          <Plus size={18} />
-          NOVO COMPROMISSO
-        </button>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex bg-surface/50 border border-[var(--glass-border)] rounded-full p-1">
+            {(['day', 'week', 'month'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-widest ${
+                  viewMode === mode ? 'bg-primary text-surface shadow-md' : 'text-on-surface/50 hover:bg-on-surface/5'
+                }`}
+              >
+                {mode === 'day' ? 'Dia' : mode === 'week' ? 'Semana' : 'Mês'}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => setIsAdding(!isAdding)}
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-full font-bold text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">NOVO COMPROMISSO</span>
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8">
@@ -198,83 +329,94 @@ const CalendarPage = () => {
           )}
 
           <GlassCard className="p-0 overflow-hidden border border-[var(--glass-border)] bg-surface-variant/10">
-            {/* Header do Calendário Grid */}
+            {/* Header do Calendário */}
             <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-on-surface/[0.02]">
                <h3 className="text-xl font-bold uppercase tracking-tight">
-                 {viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+                 {viewMode === 'month' 
+                   ? viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+                   : viewMode === 'week'
+                   ? `Semana de ${viewDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
+                   : viewDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                 }
                </h3>
                <div className="flex items-center gap-1">
-                 <button onClick={prevMonth} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronLeft size={20} /></button>
+                 <button onClick={prevView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronLeft size={20} /></button>
                  <button onClick={() => setViewDate(new Date())} className="px-3 py-1.5 text-[10px] font-bold border border-[var(--glass-border)] rounded-md hover:bg-on-surface/5 transition-all uppercase tracking-widest">Hoje</button>
-                 <button onClick={nextMonth} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronRight size={20} /></button>
+                 <button onClick={nextView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronRight size={20} /></button>
                </div>
             </div>
 
-            {/* Dias da Semana */}
-            <div className="grid grid-cols-7 border-b border-[var(--glass-border)] bg-on-surface/[0.01]">
-              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="py-3 text-center text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">
-                  {day}
-                </div>
-              ))}
-            </div>
+            {/* Visualização de Dias da Semana (apenas para Mês) */}
+            {viewMode === 'month' && (
+              <div className="grid grid-cols-7 border-b border-[var(--glass-border)] bg-on-surface/[0.01]">
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                  <div key={day} className="py-3 text-center text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">
+                    {day}
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {/* Grid de Dias */}
-            <div className="grid grid-cols-7 border-collapse">
-              {renderGrid()}
+            {/* Conteúdo da View */}
+            <div className="border-collapse">
+              {viewMode === 'month' && renderMonthView()}
+              {viewMode === 'week' && renderWeekView()}
+              {viewMode === 'day' && renderDayView()}
             </div>
           </GlassCard>
         </div>
 
-        {/* Lateral de Compromissos do Dia Escolhido */}
+        {/* Lateral de Próximos Compromissos */}
         <div className="space-y-6">
-          <GlassCard className="p-6 border border-[var(--glass-border)] bg-surface-variant/30 h-full">
+          <GlassCard className="p-6 border border-[var(--glass-border)] bg-surface-variant/30 h-full flex flex-col">
             <h4 className="editorial-label mb-6 text-primary flex items-center justify-between">
-              COMPROMISSOS 
-              <span className="opacity-40">{selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}</span>
+              PRÓXIMOS COMPROMISSOS 
+              <span className="opacity-40">{upcomingEvents.length} TOTAL</span>
             </h4>
             
-            <div className="space-y-4">
-              {events.filter(e => new Date(e.start_time).toDateString() === selectedDate.toDateString()).length > 0 ? (
-                events.filter(e => new Date(e.start_time).toDateString() === selectedDate.toDateString()).map((event, i) => (
-                  <div key={i} className={`p-4 rounded-2xl border space-y-3 group transition-all ${
-                    event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30 hover:bg-secondary/10' : 'bg-on-surface/[0.03] border-[var(--glass-border)] hover:bg-primary/5'
-                  }`}>
-                    <div className="flex items-start justify-between">
-                       <h5 className="font-bold text-sm leading-tight">
-                         {event.isProjectDeadline && <span className="text-[10px] text-secondary mr-2">PROJETO</span>}
-                         {event.title}
-                       </h5>
-                       <Clock size={14} className="opacity-20 flex-shrink-0" />
+            <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event, i) => {
+                  const eventDate = new Date(event.start_time);
+                  const isToday = eventDate.toDateString() === new Date().toDateString();
+                  const isTomorrow = eventDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                  
+                  return (
+                    <div key={i} className={`p-4 rounded-2xl border space-y-3 group transition-all cursor-pointer ${
+                      event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30 hover:bg-secondary/10' : 'bg-on-surface/[0.03] border-[var(--glass-border)] hover:bg-primary/5'
+                    }`} onClick={() => {
+                      setViewDate(eventDate);
+                      setViewMode('day');
+                    }}>
+                      <div className="flex items-start justify-between">
+                         <h5 className="font-bold text-sm leading-tight flex-1">
+                           {event.title}
+                         </h5>
+                         {isToday ? (
+                           <span className="text-[8px] font-bold bg-primary text-surface px-1.5 py-0.5 rounded uppercase ml-2 animate-pulse">Hoje</span>
+                         ) : isTomorrow ? (
+                           <span className="text-[8px] font-bold border border-primary/40 text-primary px-1.5 py-0.5 rounded uppercase ml-2">Amanhã</span>
+                         ) : null}
+                      </div>
+                      <div className="flex items-center gap-3 opacity-60 text-[10px] font-medium flex-wrap">
+                         <span className="flex items-center gap-1.5"><Clock size={12} /> {eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                         {!isToday && !isTomorrow && <span className="flex items-center gap-1.5"><Calendar size={12} /> {eventDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>}
+                         {event.isProjectDeadline && <span className="text-secondary font-bold uppercase text-[8px] tracking-widest border border-secondary/30 px-1.5 py-0.5 rounded">Projeto</span>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 opacity-60 text-[10px] font-medium">
-                       <span className="flex items-center gap-1.5"><Clock size={12} /> {new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                       {event.location && <span className="flex items-center gap-1.5"><MapPin size={12} /> {event.location}</span>}
-                       {event.isProjectDeadline && <span className="text-secondary font-bold">MARCO ESTRATÉGICO</span>}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-20 opacity-20">
-                   <p className="editorial-label text-[10px]">NENHUM COMPROMISSO</p>
+                   <p className="editorial-label text-[10px]">NENHUM COMPROMISSO FUTURO</p>
                 </div>
               )}
             </div>
 
-            <div className="mt-12 pt-8 border-t border-[var(--glass-border)]">
-               <h4 className="editorial-label mb-4 opacity-40">PRÓXIMAS 24H</h4>
-                {events.filter(e => {
-                  const day = new Date(e.start_time);
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  return day > new Date() && day < tomorrow;
-                }).slice(0, 2).map((e, i) => (
-                  <div key={i} className="flex items-center gap-3 mb-3">
-                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                     <span className="text-[10px] font-bold truncate flex-1">{e.title}</span>
-                     <span className="text-[9px] opacity-40">{new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                ))}
+            <div className="mt-8 pt-6 border-t border-[var(--glass-border)]">
+               <p className="text-[10px] opacity-30 italic leading-relaxed">
+                 Clique em um compromisso para visualizá-lo em destaque no calendário.
+               </p>
             </div>
           </GlassCard>
         </div>

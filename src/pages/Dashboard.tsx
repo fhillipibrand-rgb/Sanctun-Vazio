@@ -9,11 +9,12 @@ import {
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSystemStats } from "../hooks/useSystemStats";
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { useLayout } from "../components/layout/Layout";
 import { motion, AnimatePresence } from "motion/react";
+import TimelineModal from "../components/modals/TimelineModal";
 
 interface Activity {
   id: string;
@@ -38,10 +39,12 @@ const Dashboard = () => {
   const { user, profile } = useAuth();
   const stats = useSystemStats();
   const { toggleSidebar, theme, toggleTheme, isSidebarOpen, isMobile } = useLayout();
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [focusState, setFocusState] = useState<FocusState | null>(null);
   const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
@@ -130,7 +133,8 @@ const Dashboard = () => {
       title: t.title, 
       desc: t.reason === 'overdue' ? 'Tarefa está atrasada' : 'Tarefa marcada como Crítica',
       icon: AlertTriangle,
-      color: 'text-red-400'
+      color: 'text-red-400',
+      route: '/tasks?filter=critical'
     })) || []),
     ...(stats.projects.active.filter((p: any) => {
       if (!p.deadline) return false;
@@ -142,7 +146,8 @@ const Dashboard = () => {
       title: `Entrega: ${p.name}`,
       desc: 'Prazo vencendo em menos de uma semana',
       icon: Rocket,
-      color: 'text-primary'
+      color: 'text-primary',
+      route: '/projects'
     }))),
     ...(stats.health.lowStockMeds > 0 ? [{
       id: 'med-alert',
@@ -150,9 +155,41 @@ const Dashboard = () => {
       title: 'Reposição de Medicamentos',
       desc: `Existem ${stats.health.lowStockMeds} itens com estoque baixo`,
       icon: Pill,
-      color: 'text-orange-400'
+      color: 'text-orange-400',
+      route: '/health'
     }] : [])
   ];
+
+  const handleResolveTask = async (taskId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Identificar se é uma tarefa mock ou real
+    const isMock = taskId.startsWith('task-mock');
+    const actualId = taskId.replace('task-', '');
+
+    try {
+      if (!isMock) {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ is_completed: true, status: 'done', completed_at: new Date().toISOString() })
+          .eq('id', actualId);
+        
+        if (error) throw error;
+      }
+      
+      // Atualizar estatísticas localmente se necessário, ou deixar o realtime agir
+      stats.refresh();
+    } catch (err) {
+      console.error("Erro ao resolver tarefa:", err);
+      alert("Não foi possível concluir a tarefa agora.");
+    }
+  };
+
+  const resolveNotification = (route: string) => {
+    setIsNotificationsOpen(false);
+    navigate(route);
+  };
 
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">
@@ -506,7 +543,7 @@ const Dashboard = () => {
           <GlassCard className="p-6">
             <div className="flex items-center justify-between mb-8">
               <h4 className="text-lg font-bold">Linha do Tempo</h4>
-              <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
+              <button onClick={() => setIsTimelineOpen(true)} className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</button>
             </div>
             <div className="space-y-7">
               {activities.length > 0 ? activities.map((act) => (
@@ -634,6 +671,7 @@ const Dashboard = () => {
             <motion.div 
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              onClick={(e) => e.stopPropagation()}
               className="fixed top-0 right-0 h-full w-full max-w-sm bg-surface/95 border-l border-[var(--glass-border)] shadow-2xl z-[101] p-8 overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-10">
@@ -647,7 +685,7 @@ const Dashboard = () => {
                 <button onClick={() => setIsNotificationsOpen(false)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors opacity-50"><Plus className="rotate-45" size={24} /></button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {notifications.length > 0 ? (
                   notifications.map((n, i) => (
                     <motion.div 
@@ -656,20 +694,38 @@ const Dashboard = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.1 }}
                     >
-                      <GlassCard className="p-5 border-none bg-on-surface/[0.03] hover:bg-on-surface/[0.06] transition-all group">
-                        <div className="flex gap-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-on-surface/5 ${n.color}`}>
-                            <n.icon size={18} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold mb-1 group-hover:text-primary transition-colors">{n.title}</h4>
-                            <p className="text-xs opacity-50 leading-relaxed">{n.desc}</p>
-                            <button className="mt-3 text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 group/btn">
-                              RESOLVER AGORA <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                            </button>
-                          </div>
-                        </div>
-                      </GlassCard>
+                      <div className="relative group/item">
+                        <Link
+                          to={n.route}
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="block"
+                        >
+                          <GlassCard className="p-5 border-none bg-on-surface/[0.03] hover:bg-on-surface/[0.08] hover:border-primary/20 transition-all group cursor-pointer">
+                            <div className="flex gap-4 items-center">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-on-surface/5 ${n.color} group-hover:scale-110 transition-transform`}>
+                                <n.icon size={18} />
+                              </div>
+                              <div className="flex-1 min-w-0 pr-8">
+                                <h4 className="text-sm font-bold mb-0.5 group-hover:text-primary transition-colors truncate">{n.title}</h4>
+                                <p className="text-xs opacity-50 leading-relaxed line-clamp-1">{n.desc}</p>
+                                <span className="mt-2 text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1">
+                                  {n.type === 'critical' ? 'RESOLVER AGORA' : 'VER DETALHES'} <ChevronRight size={11} className="group-hover:translate-x-1 transition-transform" />
+                                </span>
+                              </div>
+                            </div>
+                          </GlassCard>
+                        </Link>
+
+                        {n.type === 'critical' && (
+                          <button
+                            onClick={(e) => handleResolveTask(n.id, e)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-surface transition-all flex items-center justify-center shadow-lg shadow-primary/20 z-20"
+                            title="Concluir tarefa"
+                          >
+                            <CheckCircle2 size={20} />
+                          </button>
+                        )}
+                      </div>
                     </motion.div>
                   ))
                 ) : (
@@ -690,6 +746,12 @@ const Dashboard = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Global Timeline Modal */}
+      <TimelineModal 
+        isOpen={isTimelineOpen} 
+        onClose={() => setIsTimelineOpen(false)} 
+      />
     </div>
   );
 };

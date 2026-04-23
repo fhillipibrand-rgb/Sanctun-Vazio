@@ -87,8 +87,8 @@ const Login = () => {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
-            <Zap className="text-surface" size={32} fill="currentColor" />
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-xl shadow-primary/30 mx-auto mb-6">
+            <img src="/logo.png" alt="Sanctum Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="display-lg text-4xl mb-2">Sanctum</h1>
           <p className="editorial-label opacity-60 tracking-[0.2em]">MODO PROFUNDO • AUTENTICAÇÃO</p>

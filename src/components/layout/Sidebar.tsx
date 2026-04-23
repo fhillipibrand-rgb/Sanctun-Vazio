@@ -18,7 +18,7 @@ interface SidebarProps {
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
   const { openOnboarding, isLiveMode, setIsLiveMode } = useLayout();
-  const [collapsedSections, setCollapsedSections] = useState<string[]>(['PRODUTIVIDADE', 'DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(['DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
   
   const menuSections = [
     {
@@ -71,8 +71,8 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
     <aside className="w-[320px] h-full flex flex-col p-8 border-r border-[var(--glass-border)] bg-surface/90 backdrop-blur-2xl shrink-0 shadow-2xl relative">
       <div className="flex items-center justify-between mb-12">
         <div id="tour-sidebar-header" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-            <Zap className="text-surface" size={20} fill="currentColor" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 shrink-0">
+            <img src="/logo.png" alt="Sanctum Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="editorial-display text-lg leading-tight">Sanctum</h1>
@@ -93,13 +93,16 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
           const hasActionableItems = section.title !== "PRINCIPAL";
           
           return (
-            <div key={idx} className="space-y-2">
+            <div 
+              key={idx} 
+              className="space-y-2"
+              id={`tour-section-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
+            >
               <button 
                 onClick={() => hasActionableItems && toggleSection(section.title)}
                 className={`w-full flex items-center justify-between px-6 mb-2 group/header ${hasActionableItems ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <p 
-                  id={`tour-section-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
                   className="editorial-label opacity-50 tracking-widest text-[9px] group-hover/header:opacity-100 transition-opacity"
                 >
                   {section.title}
@@ -127,12 +130,12 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
                       <Link 
                         key={item.id}
                         to={item.id}
+                        id={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                         onClick={!isCollapsible ? onClose : undefined}
                         className={`sidebar-item ${isActive(item.id) ? "active" : ""}`}
                       >
                         <item.icon size={20} strokeWidth={isActive(item.id) ? 2.5 : 2} />
                         <span 
-                          id={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                           className="editorial-label tracking-widest"
                         >
                           {item.label}
@@ -181,10 +184,9 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
         </div>
 
 
-        {/* Versão do App */}
         <div className="pt-4 mt-2 flex items-center gap-2 opacity-30">
-          <div className="w-4 h-4 bg-primary/20 rounded flex items-center justify-center">
-            <Zap size={8} className="text-primary" fill="currentColor" />
+          <div className="w-4 h-4 rounded flex items-center justify-center overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <span className="text-[9px] font-mono tracking-widest">SANCTUM v2.0 · MODO PROFUNDO</span>
         </div>

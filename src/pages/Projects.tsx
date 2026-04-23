@@ -104,9 +104,12 @@ const Projects = () => {
       setUsingMockData(false);
     } else {
       console.warn("⚠️ Usando dados fictícios ou banco vazio.");
-      // Just visually setup an empty/mock state for projects. Fallback safely without erroring.
-      if (data && data.length === 0) setProjects([]);
-      else setProjects([]); // We'll keep it empty for now, or we could inject MOCK_PROJECTS if we imported it
+      const savedMockProjects = localStorage.getItem("sanctuary_mock_projects");
+      if (savedMockProjects) {
+        setProjects(JSON.parse(savedMockProjects));
+      } else {
+        setProjects([]);
+      }
       setUsingMockData(true);
     }
     setLoading(false);
@@ -220,9 +223,13 @@ const Projects = () => {
       };
       
       if (editingProject) {
-        setProjects(projects.map(p => p.id === mockProj.id ? mockProj : p));
+        const updated = projects.map(p => p.id === mockProj.id ? mockProj : p);
+        setProjects(updated);
+        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
       } else {
-        setProjects([mockProj, ...projects]);
+        const updated = [mockProj, ...projects];
+        setProjects(updated);
+        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
       }
       syncDraftTasksLocally(mockProj.id);
       resetForm();
@@ -260,7 +267,9 @@ const Projects = () => {
           description: description.trim(), status, priority, effort, created_at: editingProject.created_at 
         };
         syncDraftTasksLocally(mockProj.id);
-        setProjects(projects.map(p => p.id === mockProj.id ? mockProj : p));
+        const updated = projects.map(p => p.id === mockProj.id ? mockProj : p);
+        setProjects(updated);
+        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
         resetForm();
       }
     } else {
@@ -290,7 +299,9 @@ const Projects = () => {
         console.error("Falha no DB, caindo em fallback. Rode o setup! Erro:", error?.message);
         const mockProj: Project = { id: `mock-fail-${Date.now()}`, name: title.trim(), color, icon: iconName, deadline: fullDeadline || undefined, description: description.trim(), status, priority, effort, created_at: new Date().toISOString() };
         syncDraftTasksLocally(mockProj.id);
-        setProjects([mockProj, ...projects]);
+        const updated = [mockProj, ...projects];
+        setProjects(updated);
+        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
         resetForm();
       }
     }
@@ -349,6 +360,10 @@ const Projects = () => {
 
     if (!error) {
       setProjects(projects.filter(p => p.id !== id));
+    } else if (usingMockData) {
+      const updated = projects.filter(p => p.id !== id);
+      setProjects(updated);
+      localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
     }
   };
 
