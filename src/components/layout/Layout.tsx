@@ -125,17 +125,21 @@ const Layout = () => {
           <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-500/10 blur-[100px] rounded-full" />
         </div>
 
-        {/* Mobile Menu Button */}
-        {isMobile && !isSidebarOpen && (
+        {/* Sidebar Re-open Button (Mobile & Desktop) */}
+        {!isSidebarOpen && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 transition-all text-surface"
+            className={`fixed z-40 flex items-center justify-center shadow-xl transition-all ${
+              isMobile 
+                ? 'bottom-6 right-6 w-14 h-14 bg-primary rounded-2xl text-surface shadow-primary/30' 
+                : 'top-8 left-8 w-12 h-12 bg-surface border border-[var(--glass-border)] rounded-xl text-on-surface hover:bg-on-surface/5'
+            }`}
           >
-            <Menu size={24} />
+            <Menu size={isMobile ? 24 : 20} />
           </motion.button>
         )}
 
@@ -170,7 +174,7 @@ const Layout = () => {
           )}
         </AnimatePresence>
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-12 relative h-full">
+        <main className={`flex-1 overflow-y-auto p-6 md:p-12 relative h-full transition-all duration-300 ${!isSidebarOpen && !isMobile ? 'md:pl-28 md:pt-24 lg:pt-12' : ''}`}>
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10" />
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
 
