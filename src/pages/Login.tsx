@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Zap, Mail, Lock, LogIn, ChevronRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import GlassCard from "../components/ui/GlassCard";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -12,6 +12,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -151,9 +152,25 @@ const Login = () => {
               </div>
             )}
 
+            {isSignUp && (
+              <div className="flex items-start gap-3 mt-2 group">
+                <input 
+                  type="checkbox" 
+                  id="terms" 
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-[var(--glass-border)] bg-on-surface/[0.03] text-primary focus:ring-primary/50 cursor-pointer"
+                  required
+                />
+                <label htmlFor="terms" className="text-[11px] opacity-60 leading-relaxed cursor-pointer group-hover:opacity-100 transition-opacity">
+                  Eu li e concordo com os <Link to="/terms" className="text-primary hover:underline">Termos de Uso</Link> e a <Link to="/privacy" className="text-primary hover:underline">Política de Privacidade</Link> (LGPD).
+                </label>
+              </div>
+            )}
+
             <button 
               type="submit" 
-              disabled={loading}
+              disabled={loading || (isSignUp && !acceptedTerms)}
               className="w-full py-4 rounded-2xl bg-primary text-surface font-bold text-sm tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
             >
               {loading ? "PROCESSANDO..." : isSignUp ? "CRIAR CONTA" : "ENTRAR"}

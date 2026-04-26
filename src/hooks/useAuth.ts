@@ -5,6 +5,7 @@ import { Session, User } from '@supabase/supabase-js';
 export interface Profile {
   full_name: string;
   avatar_url: string;
+  accepted_terms_at?: string | null;
 }
 
 export const useAuth = () => {
@@ -53,11 +54,13 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, avatar_url, accepted_terms_at')
         .eq('id', userId)
         .single();
       
       if (data) {
+        setProfile(data);
+        
         if (!data.full_name && user?.email) {
           const derivedName = user.email
             .split('@')[0]
@@ -68,11 +71,16 @@ export const useAuth = () => {
           
           await supabase.from('profiles').update({ full_name: derivedName }).eq('id', userId);
           setProfile({ ...data, full_name: derivedName });
-        } else {
-          setProfile(data);
         }
+      } else if (!error) {
+        const derivedName = user?.email?.split('@')[0] || "Explorador";
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .insert({ id: userId, full_name: derivedName })
+          .select()
+          .single();
+        if (newProfile) setProfile(newProfile);
       }
-      if (error) console.error("Erro ao carregar perfil:", error);
     } catch (err) {
       console.error("Falha ao buscar perfil:", err);
     } finally {

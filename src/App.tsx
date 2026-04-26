@@ -23,6 +23,8 @@ import FinanceTransactions from "./pages/FinanceTransactions";
 import FinanceAnalytics from "./pages/FinanceAnalytics";
 import Investments from "./pages/Investments";
 import Goals from "./pages/Goals";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
@@ -47,6 +49,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         
         <Route element={
           <ProtectedRoute>

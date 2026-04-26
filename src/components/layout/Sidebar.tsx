@@ -180,6 +180,11 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
               <LogOut size={14} />
               <span className="editorial-label text-[9px]">SAIR</span>
             </button>
+            
+            <div className="flex items-center gap-4 pt-2 border-t border-[var(--glass-border)] opacity-40">
+              <Link to="/terms" className="editorial-label text-[7px] hover:opacity-100 transition-opacity">TERMOS</Link>
+              <Link to="/privacy" className="editorial-label text-[7px] hover:opacity-100 transition-opacity">PRIVACIDADE</Link>
+            </div>
           </div>
         </div>
 
@@ -188,7 +193,7 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
           <div className="w-4 h-4 rounded flex items-center justify-center overflow-hidden">
             <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="text-[9px] font-mono tracking-widest">SANCTUM v2.0 · MODO PROFUNDO</span>
+          <span className="text-[9px] font-mono tracking-widest">SANCTUM V1.0</span>
         </div>
       </div>
     </aside>

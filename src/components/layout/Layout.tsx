@@ -6,6 +6,7 @@ import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 import QuickCaptureModal from "../ui/QuickCaptureModal";
 import { OnboardingTour } from "../OnboardingTour";
+import ConsentModal from "../modals/ConsentModal";
 
 // Contexto para compartilhar controles de layout com páginas filhas
 export interface LayoutContextType {
@@ -43,8 +44,11 @@ const Layout = () => {
   const [isLiveMode, setIsLiveMode] = useState(() => {
     return localStorage.getItem("sanctuary_live_mode") === "true";
   });
-  const { signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const location = useLocation();
+
+  // Se o usuário está logado mas não aceitou os termos, exibimos o modal bloqueador
+  const showConsentModal = user && profile && !profile.accepted_terms_at;
 
   useEffect(() => {
     localStorage.setItem("sanctuary_live_mode", String(isLiveMode));
@@ -104,6 +108,12 @@ const Layout = () => {
         <QuickCaptureModal 
           isOpen={isQuickCaptureOpen} 
           onClose={() => setIsQuickCaptureOpen(false)} 
+        />
+
+        <ConsentModal 
+          isOpen={!!showConsentModal} 
+          userId={user?.id || ""} 
+          onAccept={() => refreshProfile()} 
         />
 
         <OnboardingTour />

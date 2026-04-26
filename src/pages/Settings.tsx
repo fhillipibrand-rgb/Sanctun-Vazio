@@ -14,12 +14,14 @@ const Settings = () => {
     email: string;
     phone: string;
     address: string;
+    accepted_terms_at: string | null;
   }>({
     full_name: "",
     avatar_url: "",
     email: "",
     phone: "",
     address: "",
+    accepted_terms_at: null,
   });
 
   useEffect(() => {
@@ -31,7 +33,7 @@ const Settings = () => {
   const fetchProfile = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("full_name, avatar_url, email, phone, address")
+      .select("full_name, avatar_url, email, phone, address, accepted_terms_at")
       .eq("id", user?.id)
       .single();
 
@@ -42,6 +44,7 @@ const Settings = () => {
         email: data.email || user?.email || "",
         phone: data.phone || "",
         address: data.address || "",
+        accepted_terms_at: data.accepted_terms_at || null,
       });
     }
   };
@@ -225,10 +228,30 @@ const Settings = () => {
         </form>
       </GlassCard>
 
-      <div className="pt-8 border-t border-[var(--glass-border)]">
-        <p className="text-[10px] text-on-surface-variant text-center opacity-40 uppercase tracking-[0.2em]">
-          Suas informações são armazenadas de forma segura no Supabase.
-        </p>
+      <div className="pt-8 border-t border-[var(--glass-border)] space-y-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+           <div className="flex items-center gap-6">
+              <Link to="/terms" className="editorial-label text-[9px] opacity-40 hover:opacity-100 transition-opacity">Termos de Uso</Link>
+              <Link to="/privacy" className="editorial-label text-[9px] opacity-40 hover:opacity-100 transition-opacity">Política de Privacidade</Link>
+           </div>
+           <p className="text-[9px] text-on-surface-variant opacity-40 uppercase tracking-[0.2em]">
+             Sincronizado via Supabase Cloud
+           </p>
+        </div>
+        
+        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10">
+          <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+            <Lock size={12} /> Proteção de Dados (LGPD)
+          </p>
+          <p className="text-[11px] opacity-60 leading-relaxed">
+            Seus dados são criptografados em repouso e em trânsito. Você possui total controle sobre suas informações, podendo solicitar a exportação ou exclusão total dos seus dados a qualquer momento através do suporte.
+          </p>
+          {profile.accepted_terms_at && (
+            <p className="text-[9px] mt-4 opacity-40 uppercase tracking-widest font-bold">
+              Termos aceitos em: {new Date(profile.accepted_terms_at).toLocaleDateString('pt-BR')} às {new Date(profile.accepted_terms_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
