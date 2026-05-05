@@ -25,6 +25,19 @@ export const useAuth = () => {
 
     // Buscar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Lógica de Acesso Demo para Apresentação
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('demo') === 'musk') {
+        const demoUser = { id: 'd892ae4b-9921-4f44-be4e-3ad6eacf3674', email: 'elon.musk@sanctum.app' };
+        const demoSession = { access_token: 'demo-token', user: demoUser };
+        setSession(demoSession as any);
+        setUser(demoUser as any);
+        fetchProfile(demoUser.id);
+        setLoading(false);
+        clearTimeout(timer);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);

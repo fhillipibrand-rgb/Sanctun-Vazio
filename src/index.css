@@ -5,9 +5,9 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-surface: var(--surface);
-  --color-surface-container-low: var(--surface-low);
-  --color-surface-container-high: var(--surface-high);
-  --color-surface-container-highest: var(--surface-highest);
+  --color-surface-low: var(--surface-low);
+  --color-surface-high: var(--surface-high);
+  --color-surface-highest: var(--surface-highest);
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
   --color-primary: var(--primary);
@@ -34,19 +34,19 @@
 }
 
 .light {
-  --surface: #ffffff;
-  --surface-low: #fcfcfd;
-  --surface-high: #f8fafc;
-  --surface-highest: #f1f5f9;
+  --surface: #f8fafc;
+  --surface-low: #ffffff;
+  --surface-high: #f1f5f9;
+  --surface-highest: #e2e8f0;
   --on-surface: #0f172a;
-  --on-surface-variant: #64748b;
+  --on-surface-variant: #475569;
   --primary: #2563eb;
-  --primary-container: #eff6ff;
+  --primary-container: #dbeafe;
   --secondary: #059669;
-  --secondary-container: #ecfdf5;
+  --secondary-container: #d1fae5;
   --surface-variant: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(15, 23, 42, 0.05);
-  --bg-gradient: radial-gradient(circle at 50% -20%, #f1f5f9 0%, #ffffff 100%);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --bg-gradient: radial-gradient(circle at 50% -20%, #eff6ff 0%, #f8fafc 100%);
 }
 
 @layer base {
@@ -59,11 +59,11 @@
 
 @layer components {
   .glass-stack {
-    @apply bg-surface-variant backdrop-blur-[32px] backdrop-saturate-200 border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.04)];
+    @apply bg-surface-variant backdrop-blur-[32px] backdrop-saturate-200 border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.06)];
   }
 
   .light .glass-stack {
-    @apply shadow-[0_4px_20px_rgba(15,23,42,0.03)];
+    @apply shadow-[0_12px_40px_rgba(15,23,42,0.12)] bg-surface-low border-white/80;
   }
 
   .display-lg {
@@ -91,7 +91,11 @@
   }
 
   .sidebar-item.active {
-    @apply text-on-surface bg-on-surface/[0.05] border-l-2 border-primary;
+    @apply text-on-surface bg-on-surface/[0.05] border-l-2 border-primary shadow-sm;
+  }
+
+  .light .sidebar-item.active {
+    @apply bg-primary/10 text-primary border-primary;
   }
 
   .nav-pill {

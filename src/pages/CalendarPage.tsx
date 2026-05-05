@@ -3,6 +3,8 @@ import { Calendar, ChevronRight, ChevronLeft, Plus, MapPin, Clock } from "lucide
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { isDemoMode } from "../lib/demoMode";
+import { DEMO_MOCK_DATA } from "../lib/demoMock";
 
 const CalendarPage = () => {
   const { user } = useAuth();
@@ -23,6 +25,20 @@ const CalendarPage = () => {
 
   const fetchEvents = async () => {
     setLoading(true);
+    
+    if (isDemoMode()) {
+      const projectEvents = (DEMO_MOCK_DATA.projects || []).map((p: any) => ({
+        id: `proj-${p.id}`,
+        title: `ENTREGA: ${p.name}`,
+        start_time: p.deadline,
+        isProjectDeadline: true,
+        color: p.color
+      }));
+      setEvents([...(DEMO_MOCK_DATA.events || []), ...projectEvents]);
+      setLoading(false);
+      return;
+    }
+
     // Busca eventos normais
     const { data: eventsData, error: eventsError } = await supabase
       .from('events')

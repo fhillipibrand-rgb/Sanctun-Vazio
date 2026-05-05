@@ -19,6 +19,8 @@ import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { isDemoMode } from "../lib/demoMode";
+import { DEMO_MOCK_DATA } from "../lib/demoMock";
 
 interface Med {
   id: string;
@@ -52,12 +54,21 @@ const Health = () => {
   }, [user]);
 
   const fetchMeds = async () => {
+    if (isDemoMode()) {
+      setMeds(DEMO_MOCK_DATA.health_meds);
+      setLoading(false);
+      return;
+    }
     const { data } = await supabase.from('health_meds').select('*').order('name');
     if (data) setMeds(data);
     setLoading(false);
   };
 
   const fetchContacts = async () => {
+    if (isDemoMode()) {
+      setContacts(DEMO_MOCK_DATA.health_contacts);
+      return;
+    }
     const { data } = await supabase.from('health_contacts').select('*').order('name');
     if (data) setContacts(data);
   };

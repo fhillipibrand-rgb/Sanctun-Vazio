@@ -6,6 +6,8 @@ import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMockTasks, MOCK_PROJECTS } from "../lib/mockData";
 import TaskDetailsModal from "../components/ui/TaskDetailsModal";
+import { isDemoMode } from "../lib/demoMode";
+import { DEMO_MOCK_DATA } from "../lib/demoMock";
 
 export interface Task {
   id: string;
@@ -88,6 +90,10 @@ const Tasks = () => {
   }, [user]);
 
   const fetchProjects = async () => {
+    if (isDemoMode()) {
+      setProjects(DEMO_MOCK_DATA.projects);
+      return;
+    }
     const { data, error } = await supabase.from("projects").select("*");
     if (!error && data && data.length > 0) {
       setProjects(data);
@@ -102,6 +108,13 @@ const Tasks = () => {
   };
 
   const fetchTasks = async () => {
+    if (isDemoMode()) {
+      setTasks(DEMO_MOCK_DATA.tasks as Task[]);
+      setUsingMockData(false);
+      setLoading(false);
+      return;
+    }
+
     if (ignoreNextFetch.current) {
       ignoreNextFetch.current = false;
       return;

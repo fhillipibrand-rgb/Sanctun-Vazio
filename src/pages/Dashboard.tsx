@@ -4,7 +4,7 @@ import {
   ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle, 
   Play, Pause, Rocket, Briefcase, Code, Layout, Globe, Star, Heart, Cloud, 
   Camera, Music, Book, Trophy, Shield, Coffee, Lightbulb, Bell, Search, FolderKanban,
-  ChevronRight
+  ChevronRight, Eye, EyeOff
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
@@ -45,9 +45,21 @@ const Dashboard = () => {
   const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(() => {
+    const saved = localStorage.getItem('sanctum_show_metrics');
+    return saved === null ? true : saved === 'true';
+  });
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
+
+  const toggleMetrics = () => {
+    setShowMetrics(prev => {
+      const newValue = !prev;
+      localStorage.setItem('sanctum_show_metrics', String(newValue));
+      return newValue;
+    });
+  };
 
   // Ler estado do foco do localStorage e atualizar UI localmente
   useEffect(() => {
@@ -207,24 +219,43 @@ const Dashboard = () => {
                 <PanelLeft size={16} className={`transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
               </button>
             )}
-            <div className="flex items-center gap-2 opacity-60">
+            <div className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
-              <p className="editorial-label !tracking-[0.2em]">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</p>
+              <p className="editorial-label !tracking-[0.2em] opacity-70 dark:opacity-60">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             {!isMobile && (
-              <button
-                onClick={toggleTheme}
-                className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
-              >
-                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
+                  title="Mudar Tema"
+                >
+                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                </button>
+                <button
+                  onClick={toggleMetrics}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0 border border-[var(--glass-border)] ${
+                    !showMetrics ? 'bg-primary text-surface' : 'bg-on-surface/5 hover:bg-primary/10 hover:text-primary'
+                  }`}
+                  title={showMetrics ? "Modo Privacidade" : "Mostrar Métricas"}
+                >
+                  {showMetrics ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+              </div>
             )}
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-              Olá, <span className="text-on-surface/30">{firstName}.</span>
-            </h2>
+            {/* Backdoor para Greeting do Elon Musk */}
+            {new URLSearchParams(window.location.search).get('demo') === 'musk' ? (
+              <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
+                Olá, <span className="text-on-surface/50 dark:text-on-surface/30 transition-colors">Elon Musk.</span>
+              </h2>
+            ) : (
+              <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
+                Olá, <span className="text-on-surface/50 dark:text-on-surface/30 transition-colors">{firstName}.</span>
+              </h2>
+            )}
           </div>
         </div>
 
@@ -261,9 +292,11 @@ const Dashboard = () => {
         <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={40} /></div>
-            <p className="editorial-label text-[10px] opacity-50 mb-4 text-purple-400 font-bold">PRÓXIMO COMPROMISSO</p>
-            <h4 className="text-sm font-bold truncate mb-1">{stats.calendar.nextEvent?.title || "Horizonte Livre"}</h4>
-            <p className="text-[10px] opacity-50 font-medium font-mono">
+            <p className="editorial-label text-[10px] mb-4 text-purple-600 dark:text-purple-400 font-bold">PRÓXIMO COMPROMISSO</p>
+            <h4 className={`text-sm font-bold truncate mb-1 transition-all duration-500 ${!showMetrics ? 'blur-sm select-none' : ''}`}>
+              {stats.calendar.nextEvent?.title || "Horizonte Livre"}
+            </h4>
+            <p className={`text-[10px] opacity-50 font-medium font-mono transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
                {stats.calendar.nextEvent 
                  ? new Date(stats.calendar.nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                  : "Sem eventos em pauta"}
@@ -275,10 +308,14 @@ const Dashboard = () => {
         <Link to="/tasks" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Target size={40} /></div>
-            <p className="editorial-label text-[10px] opacity-50 mb-4 text-primary font-bold">PRODUTIVIDADE</p>
+            <p className="editorial-label text-[10px] mb-4 text-primary dark:text-primary font-bold">PRODUTIVIDADE</p>
             <div className="flex items-end gap-3">
-              <h3 className="text-3xl font-bold font-mono">{Math.round(stats.tasks.percentage)}%</h3>
-              <span className="text-[10px] font-bold text-secondary mb-1">+{stats.tasks.completed} CONCLUÍDAS</span>
+              <h3 className={`text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-md select-none opacity-50' : ''}`}>
+                {Math.round(stats.tasks.percentage)}%
+              </h3>
+              <span className={`text-[10px] font-bold text-secondary mb-1 transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
+                +{stats.tasks.completed} CONCLUÍDAS
+              </span>
             </div>
             <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
               <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${stats.tasks.percentage}%` }} />
@@ -290,10 +327,14 @@ const Dashboard = () => {
         <Link to="/nutrition" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Droplets size={40} /></div>
-            <p className="editorial-label text-[10px] opacity-50 mb-4 text-cyan-400 font-bold">HIDRATAÇÃO</p>
+            <p className="editorial-label text-[10px] mb-4 text-cyan-600 dark:text-cyan-400 font-bold">HIDRATAÇÃO</p>
             <div className="flex items-end gap-3">
-              <h3 className="text-3xl font-bold font-mono">{Math.round(stats.nutrition.waterProgress)}%</h3>
-              <span className="text-[10px] font-bold text-cyan-500 mb-1">META DIÁRIA</span>
+              <h3 className={`text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-md select-none opacity-50' : ''}`}>
+                {Math.round(stats.nutrition.waterProgress)}%
+              </h3>
+              <span className={`text-[10px] font-bold text-cyan-500 mb-1 transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
+                META DIÁRIA
+              </span>
             </div>
             <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
               <div className="h-full bg-cyan-400 transition-all duration-1000" style={{ width: `${stats.nutrition.waterProgress}%` }} />
@@ -305,9 +346,11 @@ const Dashboard = () => {
         <Link to="/finance" className="block transform hover:scale-[1.02] transition-all">
           <GlassCard className="p-6 relative overflow-hidden group h-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={40} /></div>
-            <p className="editorial-label text-[10px] opacity-50 mb-4 text-secondary font-bold">ECONOMIA</p>
+            <p className="editorial-label text-[10px] mb-4 text-secondary dark:text-secondary font-bold">ECONOMIA</p>
             <div className="flex items-end gap-3">
-              <h3 className="text-2xl md:text-3xl font-bold font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(stats.finance.balance)}</h3>
+              <h3 className={`text-2xl md:text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-lg select-none opacity-30' : ''}`}>
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(stats.finance.balance)}
+              </h3>
             </div>
             <p className="text-[9px] font-medium opacity-40 mt-3 uppercase tracking-wider">SALDO CONSOLIDADO</p>
           </GlassCard>
@@ -319,7 +362,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between px-2">
            <div className="flex items-center gap-3">
               <div className="w-1.5 h-6 bg-primary rounded-full" />
-              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-40 uppercase">Projetos em Foco</h3>
+              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase transition-opacity">Projetos em Foco</h3>
            </div>
            <Link to="/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
              GERENCIAR <ChevronRight size={12} />
@@ -348,7 +391,7 @@ const Dashboard = () => {
                        </div>
                        <div className="min-w-0">
                           <h4 className="text-sm font-bold truncate tracking-tight">{proj.name}</h4>
-                          <p className="text-[9px] opacity-40 uppercase font-bold tracking-widest">{proj.taskCount || 0} Atividades</p>
+                          <p className="text-[9px] opacity-60 dark:opacity-40 uppercase font-bold tracking-widest transition-opacity">{proj.taskCount || 0} Atividades</p>
                        </div>
                     </div>
 
@@ -486,7 +529,7 @@ const Dashboard = () => {
                 </div>
                 <Link to="/tasks" className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>
-              <div className="h-44 w-full">
+              <div className={`h-44 w-full transition-all duration-700 ${!showMetrics ? 'blur-xl opacity-20 scale-95 pointer-events-none' : ''}`}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartDataSource}>
                     <defs>
@@ -517,7 +560,7 @@ const Dashboard = () => {
                 </div>
                 <Link to="/finance" className="text-[10px] font-bold text-purple-400 hover:underline tracking-widest uppercase">VER TUDO</Link>
               </div>
-              <div className="h-44 w-full">
+              <div className={`h-44 w-full transition-all duration-700 ${!showMetrics ? 'blur-xl opacity-20 scale-95 pointer-events-none' : ''}`}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartDataSource}>
                     <defs>

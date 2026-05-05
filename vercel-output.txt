@@ -1,0 +1,35 @@
+Retrieving project…
+Deploying fhillipis-projects/sanctuary
+Uploading [--------------------] (0.0B/1.3MB)
+Uploading [=====---------------] (332.5KB/1.3MB)
+Uploading [==========----------] (656.0KB/1.3MB)
+Uploading [===============-----] (976.0KB/1.3MB)
+Uploading [====================] (1.3MB/1.3MB)
+Inspect: https://vercel.com/fhillipis-projects/sanctuary/3aqLQu6e7a5iBfek59zyjmyWRVw2 [9s]
+Production: https://sanctuary-gdslikb6j-fhillipis-projects.vercel.app [9s]
+https://sanctuary-gdslikb6j-fhillipis-projects.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 75 deployment files...
+Building: Restored build cache from previous deployment (FxZkeWVwU1AdAAqpBjKyVbu6sA9Q)
+Building: Running "vercel build"
+Building: Vercel CLI 51.6.1
+Building: Installing dependencies...
+Building: up to date in 909ms
+Building: 74 packages are looking for funding
+Building: run `npm fund` for details
+Building: Running "npm run build"
+Building: > react-example@0.0.0 build
+Building: > vite build
+Building: vite v6.4.2 building for production...
+Building: transforming...
+[2K[1A[2K[GProduction: https://sanctuary-gdslikb6j-fhillipis-projects.vercel.app [26s]
+Completing...
+Aliased: https://sanctuary-nu.vercel.app [26s]
+
+Common next commands:
+- `vercel inspect sanctuary-gdslikb6j-fhillipis-projects.vercel.app --logs`
+- `vercel redeploy sanctuary-gdslikb6j-fhillipis-projects.vercel.app`
+> Tip: Run `npx plugins add vercel/vercel-plugin` to enhance your agent experience

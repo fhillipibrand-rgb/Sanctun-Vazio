@@ -15,6 +15,8 @@ import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { isDemoMode } from "../lib/demoMode";
+import { DEMO_MOCK_DATA } from "../lib/demoMock";
 
 const Nutrition = () => {
   const { user } = useAuth();
@@ -37,6 +39,17 @@ const Nutrition = () => {
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
     
+    if (isDemoMode()) {
+      setWater({ current: 7, target: 12 });
+      setMeals({ breakfast: true, lunch: true, afternoon: false, dinner: false });
+      setSupps([
+        { name: "Wegovy", time: "Manhã", done: true },
+        { name: "Multivitamínico Otimizado", time: "Almoço", done: true }
+      ]);
+      setLoading(false);
+      return;
+    }
+
     // Water
     const { data: waterData } = await supabase
       .from('nutrition_water')

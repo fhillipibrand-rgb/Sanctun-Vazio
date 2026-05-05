@@ -5,6 +5,26 @@ import { supabase } from "../lib/supabase";
 import GlassCard from "../components/ui/GlassCard";
 import { useNavigate, Link } from "react-router-dom";
 
+// Rate limiting: máx 5 tentativas em 5 minutos
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+
+const getAttempts = () => {
+  try {
+    const raw = sessionStorage.getItem("sanctum_login_attempts");
+    return raw ? JSON.parse(raw) : { count: 0, since: Date.now() };
+  } catch { return { count: 0, since: Date.now() }; }
+};
+
+const recordAttempt = () => {
+  const a = getAttempts();
+  const now = Date.now();
+  const reset = now - a.since > LOCKOUT_MS;
+  const next = { count: reset ? 1 : a.count + 1, since: reset ? now : a.since };
+  sessionStorage.setItem("sanctum_login_attempts", JSON.stringify(next));
+  return next;
+};
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,11 +36,13 @@ const Login = () => {
   const navigate = useNavigate();
 
   React.useEffect(() => {
+    // Limpar senha antiga salva inseguramente (migração de segurança)
+    localStorage.removeItem("sanctum_remember_pwd");
+
+    // Restaurar apenas o email (seguro)
     const savedEmail = localStorage.getItem("sanctum_remember_email");
-    const savedPwd = localStorage.getItem("sanctum_remember_pwd");
-    if (savedEmail && savedPwd) {
+    if (savedEmail) {
       setEmail(savedEmail);
-      setPassword(savedPwd);
       setRememberMe(true);
     }
   }, []);
@@ -49,20 +71,34 @@ const Login = () => {
         if (error) throw error;
         alert("Verifique seu e-mail para confirmar o cadastro!");
       } else {
+        // Verificar rate limit antes de tentar autenticar
+        const attempts = getAttempts();
+        const timeSince = Date.now() - attempts.since;
+        if (attempts.count >= MAX_ATTEMPTS && timeSince < LOCKOUT_MS) {
+          const minutesLeft = Math.ceil((LOCKOUT_MS - timeSince) / 60000);
+          throw new Error(`Muitas tentativas. Tente novamente em ${minutesLeft} minuto(s).`);
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) throw error;
-        
+
+        if (error) {
+          recordAttempt();
+          throw error;
+        }
+
+        // Resetar tentativas após login bem-sucedido
+        sessionStorage.removeItem("sanctum_login_attempts");
+
+        // Salvar apenas o email (nunca a senha)
         if (rememberMe) {
           localStorage.setItem("sanctum_remember_email", email);
-          localStorage.setItem("sanctum_remember_pwd", password);
         } else {
           localStorage.removeItem("sanctum_remember_email");
-          localStorage.removeItem("sanctum_remember_pwd");
         }
-        
+
         navigate("/");
       }
     } catch (err: any) {

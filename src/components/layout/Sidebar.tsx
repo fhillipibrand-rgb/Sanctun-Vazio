@@ -2,7 +2,8 @@ import { useState } from "react";
 import { 
   Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, 
   Settings, ChevronLeft, FolderKanban, Target, Activity, PieChart, 
-  Clock, Utensils, TrendingUp, LayoutList, ChevronDown 
+  Clock, Utensils, TrendingUp, LayoutList, ChevronDown, Dumbbell,
+  BookOpen, Sparkles, Moon
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";

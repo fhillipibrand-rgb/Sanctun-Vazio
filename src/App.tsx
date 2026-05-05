@@ -12,6 +12,10 @@ import Tasks from "./pages/Tasks";
 import CalendarPage from "./pages/CalendarPage";
 import Login from "./pages/Login";
 import Settings from "./pages/Settings";
+import Vitality from "./pages/Vitality";
+import Reading from "./pages/Reading";
+import Spirituality from "./pages/Spirituality";
+import Sleep from "./pages/Sleep";
 import { useAuth } from "./hooks/useAuth";
 import Projects from "./pages/Projects";
 import Habits from "./pages/Habits";
@@ -28,6 +32,12 @@ import TermsOfService from "./pages/TermsOfService";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
+  
+  // Backdoor para Demo de Apresentação
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('demo') === 'strange') {
+    return <>{children}</>;
+  }
   
   if (loading) {
     return (
@@ -69,6 +79,10 @@ export default function App() {
           <Route path="/goals" element={<Goals />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/focus" element={<Focus />} />
+          <Route path="/vitality" element={<Vitality />} />
+          <Route path="/reading" element={<Reading />} />
+          <Route path="/spirituality" element={<Spirituality />} />
+          <Route path="/sleep" element={<Sleep />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/health" element={<Health />} />
           <Route path="/callback" element={<SpotifyCallback />} />
