@@ -57,8 +57,20 @@ const Settings = () => {
       }
 
       const file = event.target.files[0];
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user?.id}/${Math.random()}.${fileExt}`;
+
+      // Validação de tipo e tamanho (defesa em profundidade além do accept="image/*")
+      const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      const MAX_SIZE_MB = 5;
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        throw new Error('Tipo de arquivo não permitido. Use JPG, PNG, WebP ou GIF.');
+      }
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        throw new Error(`Arquivo muito grande. Máximo permitido: ${MAX_SIZE_MB}MB.`);
+      }
+
+      const fileExt = file.name.split(".").pop()?.toLowerCase();
+      // crypto.randomUUID() é criptograficamente seguro (sem colisões)
+      const fileName = `${user?.id}/${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       // 1. Upload da imagem para o bucket 'avatars'

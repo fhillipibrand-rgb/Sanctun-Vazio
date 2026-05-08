@@ -33,12 +33,6 @@ import TermsOfService from "./pages/TermsOfService";
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
   
-  // Backdoor para Demo de Apresentação
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('demo') === 'strange') {
-    return <>{children}</>;
-  }
-  
   if (loading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-surface">

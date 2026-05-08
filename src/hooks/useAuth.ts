@@ -25,9 +25,10 @@ export const useAuth = () => {
 
     // Buscar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // Lógica de Acesso Demo para Apresentação
+      // Lógica de Acesso Demo para Apresentação (apenas se VITE_DEMO_ENABLED=true)
+      const demoEnabled = import.meta.env.VITE_DEMO_ENABLED === 'true';
       const params = new URLSearchParams(window.location.search);
-      if (params.get('demo') === 'musk') {
+      if (demoEnabled && params.get('demo') === 'musk') {
         const demoUser = { id: 'd892ae4b-9921-4f44-be4e-3ad6eacf3674', email: 'elon.musk@sanctum.app' };
         const demoSession = { access_token: 'demo-token', user: demoUser };
         setSession(demoSession as any);

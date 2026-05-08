@@ -246,7 +246,7 @@ const Focus = () => {
   // Spotify SDK State
   const [spotifyToken, setSpotifyToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem("spotify_access_token");
+    return sessionStorage.getItem("spotify_access_token");
   });
   const [player, setPlayer] = useState<any>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -899,7 +899,7 @@ const Focus = () => {
                             </button>
                             <button onClick={skipNext} className="opacity-40 hover:opacity-100 transition-opacity"><SkipForward size={18} fill="currentColor" /></button>
                          </div>
-                         <button onClick={() => { localStorage.removeItem("spotify_access_token"); setSpotifyToken(null); }} className="w-full text-[8px] opacity-20 hover:opacity-100 py-2 border-t border-[var(--glass-border)] transition-opacity uppercase tracking-widest">Desconectar Conta</button>
+                         <button onClick={() => { sessionStorage.removeItem("spotify_access_token"); setSpotifyToken(null); }} className="w-full text-[8px] opacity-20 hover:opacity-100 py-2 border-t border-[var(--glass-border)] transition-opacity uppercase tracking-widest">Desconectar Conta</button>
                        </div>
                      )}
                    </div>

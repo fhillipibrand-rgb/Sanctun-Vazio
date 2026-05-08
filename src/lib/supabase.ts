@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { DEMO_MOCK_DATA } from './demoMock';
 
+// SECURITY: Demo mode is only available when VITE_DEMO_ENABLED=true
+const DEMO_ENABLED = import.meta.env.VITE_DEMO_ENABLED === 'true';
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -16,6 +19,7 @@ const baseClient = createClient(supabaseUrl || '', supabaseKey || '');
  * does NOT break the mock data injection.
  */
 const isDemo = (): boolean => {
+  if (!DEMO_ENABLED) return false;
   try {
     const fromUrl = new URLSearchParams(window.location.search).get('demo') === 'musk';
     if (fromUrl) {

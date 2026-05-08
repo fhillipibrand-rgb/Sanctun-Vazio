@@ -12,8 +12,8 @@ const SpotifyCallback = () => {
       const expiresIn = params.get("expires_in");
 
       if (accessToken) {
-        localStorage.setItem("spotify_access_token", accessToken);
-        localStorage.setItem("spotify_token_expiry", (Date.now() + Number(expiresIn) * 1000).toString());
+        sessionStorage.setItem("spotify_access_token", accessToken);
+        sessionStorage.setItem("spotify_token_expiry", (Date.now() + Number(expiresIn) * 1000).toString());
         
         // Redireciona de volta para a página de Foco
         navigate("/focus");
