@@ -14,6 +14,7 @@ const CalendarPage = () => {
   const [newEvent, setNewEvent] = useState({ title: "", location: "", start_time: "" });
   
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'events' | 'projects' | 'tasks'>('all');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
 
@@ -51,19 +52,40 @@ const CalendarPage = () => {
       .select('*')
       .not('deadline', 'is', null);
 
-    if (eventsError || projectsError) {
-      console.error("Erro ao buscar dados do calendário:", eventsError || projectsError);
+    // Busca tarefas para extrair prazos
+    const { data: tasksData, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .not('due_date', 'is', null)
+      .eq('is_completed', false);
+
+    if (eventsError || projectsError || tasksError) {
+      console.error("Erro ao buscar dados do calendário:", eventsError || projectsError || tasksError);
     } else {
       // Converte projetos em eventos virtuais
       const projectEvents = (projectsData || []).map(p => ({
         id: `proj-${p.id}`,
         title: `ENTREGA: ${p.name}`,
         start_time: p.deadline,
-        isProjectDeadline: true,
+        type: 'project',
         color: p.color
       }));
 
-      setEvents([...(eventsData || []), ...projectEvents]);
+      // Converte tarefas em eventos virtuais
+      const taskEvents = (tasksData || []).map(t => ({
+        id: `task-${t.id}`,
+        title: `${t.title}`,
+        start_time: t.due_date,
+        type: 'task',
+        color: t.is_critical ? '#ef4444' : '#3b82f6'
+      }));
+
+      const normalEvents = (eventsData || []).map(e => ({
+        ...e,
+        type: 'event'
+      }));
+
+      setEvents([...normalEvents, ...projectEvents, ...taskEvents]);
     }
     setLoading(false);
   };
@@ -91,7 +113,14 @@ const CalendarPage = () => {
     }
   };
 
-  // Lógica do Calendário Grid (Mês)
+  // Lógica de Filtros e Calendário Grid
+  const filteredEvents = events.filter(e => {
+    if (activeFilter === 'events') return e.type === 'event';
+    if (activeFilter === 'projects') return e.type === 'project';
+    if (activeFilter === 'tasks') return e.type === 'task';
+    return true; // 'all'
+  });
+
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const startDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
@@ -114,7 +143,7 @@ const CalendarPage = () => {
       const isToday = new Date().toDateString() === dateStr;
       const isSelected = selectedDate.toDateString() === dateStr;
       
-      const dayEvents = events.filter(e => new Date(e.start_time).toDateString() === dateStr);
+      const dayEvents = filteredEvents.filter(e => new Date(e.start_time).toDateString() === dateStr);
       
       cells.push(
         <div 
@@ -137,11 +166,15 @@ const CalendarPage = () => {
               <div 
                 key={idx} 
                 className={`text-[9px] truncate px-1.5 py-0.5 rounded font-bold ${
-                  event.isProjectDeadline ? 'bg-secondary/20 text-secondary border border-secondary/30' : 'bg-primary/20 text-primary'
+                  event.type === 'project' ? 'bg-secondary/20 text-secondary border border-secondary/30' : 
+                  event.type === 'task' ? 'bg-primary/20 text-primary border border-primary/30' :
+                  'bg-on-surface/10 text-on-surface border border-[var(--glass-border)]'
                 }`}
-                style={event.isProjectDeadline ? { color: event.color, backgroundColor: `${event.color}20`, borderColor: `${event.color}40` } : {}}
+                style={event.type === 'project' || event.type === 'task' ? { color: event.color, backgroundColor: `${event.color}20`, borderColor: `${event.color}40` } : {}}
               >
-                {event.isProjectDeadline && "🚀 "}{event.title}
+                {event.type === 'project' && "🚀 "}
+                {event.type === 'task' && "✓ "}
+                {event.title}
               </div>
             ))}
             {dayEvents.length > 2 && (
@@ -175,7 +208,7 @@ const CalendarPage = () => {
         {weekDays.map((day, idx) => {
           const dateStr = day.toDateString();
           const isToday = new Date().toDateString() === dateStr;
-          const dayEvents = events.filter(e => new Date(e.start_time).toDateString() === dateStr);
+          const dayEvents = filteredEvents.filter(e => new Date(e.start_time).toDateString() === dateStr);
           
           return (
             <div key={idx} className="min-h-[400px] bg-surface/50 p-4 space-y-4">
@@ -188,9 +221,11 @@ const CalendarPage = () => {
                   <div 
                     key={eIdx}
                     className={`p-2 rounded-xl text-[10px] font-bold border transition-all ${
-                      event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30' : 'bg-primary/5 border-primary/20'
+                      event.type === 'project' ? 'bg-secondary/5 border-secondary/30' : 
+                      event.type === 'task' ? 'bg-primary/5 border-primary/30' :
+                      'bg-on-surface/[0.03] border-[var(--glass-border)]'
                     }`}
-                    style={event.isProjectDeadline ? { color: event.color, borderColor: `${event.color}30` } : {}}
+                    style={event.type === 'project' || event.type === 'task' ? { color: event.color, borderColor: `${event.color}30` } : {}}
                   >
                     <div className="flex items-center gap-1.5 opacity-60 mb-1">
                       <Clock size={10} />
@@ -208,7 +243,7 @@ const CalendarPage = () => {
   };
 
   const renderDayView = () => {
-    const dayEvents = events.filter(e => new Date(e.start_time).toDateString() === viewDate.toDateString());
+    const dayEvents = filteredEvents.filter(e => new Date(e.start_time).toDateString() === viewDate.toDateString());
     
     return (
       <div className="p-8 space-y-6 min-h-[400px]">
@@ -232,8 +267,10 @@ const CalendarPage = () => {
               <div className="flex-1 pb-6 border-l-2 border-[var(--glass-border)] pl-6 relative">
                 <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-primary" />
                 <div className={`p-4 rounded-2xl border transition-all ${
-                  event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30' : 'bg-on-surface/[0.03] border-[var(--glass-border)]'
-                }`} style={event.isProjectDeadline ? { color: event.color, borderColor: `${event.color}30` } : {}}>
+                  event.type === 'project' ? 'bg-secondary/5 border-secondary/30' : 
+                  event.type === 'task' ? 'bg-primary/5 border-primary/30' :
+                  'bg-on-surface/[0.03] border-[var(--glass-border)]'
+                }`} style={event.type === 'project' || event.type === 'task' ? { color: event.color, borderColor: `${event.color}30` } : {}}>
                   <h5 className="font-bold">{event.title}</h5>
                   {event.location && (
                     <div className="flex items-center gap-1.5 text-[10px] opacity-40 mt-2">
@@ -267,7 +304,7 @@ const CalendarPage = () => {
     setViewDate(newDate);
   };
 
-  const upcomingEvents = events
+  const upcomingEvents = filteredEvents
     .filter(e => new Date(e.start_time) > new Date())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .slice(0, 10);
@@ -284,6 +321,25 @@ const CalendarPage = () => {
         </div>
         
         <div className="flex items-center gap-4">
+          <div className="hidden lg:flex bg-surface/50 border border-[var(--glass-border)] rounded-full p-1 mr-2">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'events', label: 'Agenda' },
+              { id: 'projects', label: 'Projetos' },
+              { id: 'tasks', label: 'Tarefas' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setActiveFilter(f.id as any)}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-widest ${
+                  activeFilter === f.id ? 'bg-on-surface/10 text-on-surface shadow-md' : 'text-on-surface/50 hover:bg-on-surface/5'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex bg-surface/50 border border-[var(--glass-border)] rounded-full p-1">
             {(['day', 'week', 'month'] as const).map(mode => (
               <button
@@ -399,7 +455,9 @@ const CalendarPage = () => {
                   
                   return (
                     <div key={i} className={`p-4 rounded-2xl border space-y-3 group transition-all cursor-pointer ${
-                      event.isProjectDeadline ? 'bg-secondary/5 border-secondary/30 hover:bg-secondary/10' : 'bg-on-surface/[0.03] border-[var(--glass-border)] hover:bg-primary/5'
+                      event.type === 'project' ? 'bg-secondary/5 border-secondary/30 hover:bg-secondary/10' : 
+                      event.type === 'task' ? 'bg-primary/5 border-primary/30 hover:bg-primary/10' :
+                      'bg-on-surface/[0.03] border-[var(--glass-border)] hover:bg-on-surface/5'
                     }`} onClick={() => {
                       setViewDate(eventDate);
                       setViewMode('day');
@@ -417,7 +475,8 @@ const CalendarPage = () => {
                       <div className="flex items-center gap-3 opacity-60 text-[10px] font-medium flex-wrap">
                          <span className="flex items-center gap-1.5"><Clock size={12} /> {eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                          {!isToday && !isTomorrow && <span className="flex items-center gap-1.5"><Calendar size={12} /> {eventDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>}
-                         {event.isProjectDeadline && <span className="text-secondary font-bold uppercase text-[8px] tracking-widest border border-secondary/30 px-1.5 py-0.5 rounded">Projeto</span>}
+                         {event.type === 'project' && <span className="text-secondary font-bold uppercase text-[8px] tracking-widest border border-secondary/30 px-1.5 py-0.5 rounded">Projeto</span>}
+                         {event.type === 'task' && <span className="text-primary font-bold uppercase text-[8px] tracking-widest border border-primary/30 px-1.5 py-0.5 rounded">Tarefa</span>}
                       </div>
                     </div>
                   );

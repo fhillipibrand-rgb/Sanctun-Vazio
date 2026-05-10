@@ -316,6 +316,10 @@ const Projects = () => {
           title: dt.title,
           project_id: projectId,
           user_id: user?.id,
+          energy_level: 'medium',
+          is_critical: false,
+          status: 'todo',
+          is_completed: false,
           subtasks: dt.subtasks.map(s => ({ id: crypto.randomUUID(), title: s.title, is_completed: false }))
         }])
         .select()

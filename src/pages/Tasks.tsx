@@ -191,8 +191,8 @@ const Tasks = () => {
         due_date: newDueDate ? new Date(newDueDate).toISOString() : null,
         is_critical: newCritical,
         is_completed: false,
-        // status: "todo", // Removido temporariamente para evitar erro PGRST204
-        // project_id: newProject || null // Removido temporariamente para evitar erro PGRST204
+        status: "todo",
+        project_id: newProject || null
       }])
       .select();
 
