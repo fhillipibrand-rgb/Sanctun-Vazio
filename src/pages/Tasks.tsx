@@ -454,7 +454,12 @@ const Tasks = () => {
   // Helper: tarefa atrasada = prazo vencido e não concluída
   const isOverdue = (task: Task) => {
     if (task.is_completed || !task.due_date) return false;
-    return new Date(task.due_date) < new Date();
+    // Compara apenas as datas (YYYY-MM-DD) para evitar problemas de fuso horário
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const taskDate = new Date(task.due_date);
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate < today;
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -533,8 +538,10 @@ const Tasks = () => {
       // Filtragem robusta ignorando timezone/horas - RESPEITANDO FILTRO ATIVO
       const dayTasks = filteredTasks.filter(t => {
         if (!t.due_date) return false;
+        // Normalização para comparação segura YYYY-MM-DD
         const d = new Date(t.due_date);
-        return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+        return d.getUTCFullYear() === year && d.getUTCMonth() === month && d.getUTCDate() === day || 
+               d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
       });
 
       // Ordenar por prioridade e conclusão
