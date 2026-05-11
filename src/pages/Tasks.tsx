@@ -567,7 +567,7 @@ const Tasks = () => {
 
     // Dias vazios do mês anterior
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`empty-${i}`} className="h-32 bg-on-surface/[0.01] border-b border-r border-[var(--glass-border)] opacity-20" />);
+      cells.push(<div key={`prev-${i}`} className="min-h-[80px] md:h-32 bg-on-surface/[0.01] border-b border-r border-[var(--glass-border)] opacity-20" />);
     }
     
     // Dias do mês atual
@@ -602,15 +602,12 @@ const Tasks = () => {
           onDragOver={(e) => handleDragOver(e, `day-${day}`)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleCalendarDrop(e, currentCellDate)}
-          className={`h-32 border-b border-r border-[var(--glass-border)] p-2 hover:bg-primary/[0.03] transition-all cursor-pointer group relative ${isToday ? 'bg-primary/[0.01]' : ''} ${activeDropCol === `day-${day}` ? 'bg-primary/10' : ''}`}
+          className={`min-h-[80px] md:h-32 border-b border-r border-[var(--glass-border)] p-1 md:p-2 hover:bg-primary/[0.03] transition-all cursor-pointer group relative ${isToday ? 'bg-primary/[0.01]' : ''} ${activeDropCol === `day-${day}` ? 'bg-primary/10' : ''}`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg transition-all ${isToday ? 'bg-primary text-surface shadow-lg shadow-primary/20 scale-110' : 'opacity-20 group-hover:opacity-100 group-hover:text-primary'}`}>
+          <div className="flex items-center justify-between mb-1 md:mb-2">
+            <span className={`text-[10px] md:text-xs font-black w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-lg transition-all ${isToday ? 'bg-primary text-surface shadow-lg shadow-primary/20 scale-110' : 'opacity-20 group-hover:opacity-100 group-hover:text-primary'}`}>
               {day}
             </span>
-            {dayTasks.length > 0 && (
-              <div className="w-1 h-1 rounded-full bg-primary/40" />
-            )}
           </div>
           
           <div className="space-y-1">
@@ -648,6 +645,13 @@ const Tasks = () => {
           </div>
         </div>
       );
+    }
+
+    // Preencher dias vazios do próximo mês para completar 42 células (6 semanas)
+    const totalCellsNeeded = 42;
+    const currentCellsCount = cells.length;
+    for (let i = 0; i < (totalCellsNeeded - currentCellsCount); i++) {
+      cells.push(<div key={`next-${i}`} className="min-h-[80px] md:h-32 bg-on-surface/[0.01] border-b border-r border-[var(--glass-border)] opacity-20" />);
     }
 
     return (
@@ -1051,7 +1055,7 @@ const Tasks = () => {
   };
 
   return (
-    <div className={`space-y-8 mx-auto pb-20 ${viewMode === 'list' ? 'max-w-3xl' : 'max-w-6xl'}`}>
+    <div className="space-y-8 mx-auto pb-20 max-w-6xl">
       {/* Banner de Modo Demo */}
       {usingMockData && (
         <motion.div 
@@ -1185,13 +1189,30 @@ const Tasks = () => {
         )}
       </AnimatePresence>
 
-      <div className="flex gap-2 flex-wrap">
-        {filterTabs.map(tab => (
-          <button key={tab.key} onClick={() => setFilter(tab.key)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold border transition-all ${filter === tab.key ? "bg-primary/10 text-primary border-primary/30" : "border-[var(--glass-border)] opacity-50 hover:opacity-80"}`}>
-            <Filter size={10} /> {tab.label.toUpperCase()}
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] ${filter === tab.key ? "bg-primary/20" : "bg-on-surface/10"}`}>{tab.count}</span>
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between border-b border-[var(--glass-border)] pb-6">
+        <div className="flex p-1.5 bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-2xl gap-1 overflow-x-auto no-scrollbar max-w-full">
+          {filterTabs.map(tab => (
+            <button 
+              key={tab.key} 
+              onClick={() => setFilter(tab.key)} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] md:text-[11px] font-black transition-all whitespace-nowrap ${
+                filter === tab.key 
+                ? "bg-primary text-surface shadow-lg shadow-primary/20" 
+                : "text-on-surface/40 hover:text-on-surface/70 hover:bg-on-surface/5"
+              }`}
+            >
+              {tab.label.toUpperCase()}
+              <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] ${filter === tab.key ? "bg-surface/20" : "bg-on-surface/10"}`}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
+        
+        {overdueCount > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400">
+            <Clock size={12} className="animate-pulse" />
+            <span className="text-[10px] font-black tracking-widest uppercase">{overdueCount} ATRASADAS</span>
+          </div>
+        )}
       </div>
 
       {loading ? (
