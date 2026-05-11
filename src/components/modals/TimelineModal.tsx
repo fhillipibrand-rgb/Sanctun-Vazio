@@ -169,16 +169,16 @@ export const TimelineModal: React.FC<TimelineModalProps> = ({ isOpen, onClose })
                 </button>
               </div>
 
-              {/* Filters */}
-              <div className="px-6 py-4 border-b border-[var(--glass-border)] overflow-x-auto flex gap-2">
+              {/* Filters - Fixed and Proportional */}
+              <div className="p-1.5 bg-on-surface/[0.03] border-b border-[var(--glass-border)] grid grid-cols-5 gap-1">
                 {['Todos', 'Tarefas', 'Finanças', 'Hábitos', 'Calendário'].map(f => (
                   <button
                     key={f}
                     onClick={() => setFilter(f as any)}
-                    className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
+                    className={`py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
                       filter === f 
-                        ? 'bg-on-surface text-surface shadow-md' 
-                        : 'bg-on-surface/5 hover:bg-on-surface/10 text-on-surface/60'
+                        ? 'bg-on-surface text-surface shadow-lg' 
+                        : 'text-on-surface/40 hover:text-on-surface/70 hover:bg-on-surface/5'
                     }`}
                   >
                     {f}
