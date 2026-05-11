@@ -498,13 +498,18 @@ const Tasks = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
+    // Se o filtro for 'all', mostramos tudo o que não foi deletado
+    if (filter === "all") return true;
+    
     if (filter === "active") return !t.is_completed;
     if (filter === "completed") return t.is_completed;
+    
     if (filter === "critical") {
       const project = projects.find(p => p.id === t.project_id);
       const isProjectCritical = project?.priority === 'Crítica' || project?.priority === 'Alta';
       const isCritical = t.is_critical === true || String(t.is_critical) === 'true';
-      return (isCritical || isOverdue(t) || isProjectCritical) && !t.is_completed;
+      const overdue = isOverdue(t);
+      return (isCritical || overdue || isProjectCritical) && !t.is_completed;
     }
     return true;
   });
@@ -960,13 +965,25 @@ const Tasks = () => {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col gap-1">
                         <span className={`text-sm font-bold tracking-wide ${task.is_completed ? 'line-through' : ''}`}>
                           {task.title}
                         </span>
-                        {task.is_critical && (
-                          <span className="text-[8px] font-bold text-red-400 uppercase tracking-tighter">Prioridade Crítica</span>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {task.is_critical && (
+                            <span className="text-[7px] font-black bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-red-500/20">Crítica</span>
+                          )}
+                          {overdue && (
+                            <span className="text-[7px] font-black bg-orange-500/10 text-orange-400 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-orange-500/20">Atrasada</span>
+                          )}
+                          {(() => {
+                            const p = projects.find(proj => proj.id === task.project_id);
+                            if (p?.priority === 'Crítica' || p?.priority === 'Alta') {
+                              return <span className="text-[7px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-tighter border border-primary/20">Proj. Prioritário</span>;
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
