@@ -530,8 +530,8 @@ const Tasks = () => {
       const currentCellDate = new Date(year, month, day);
       const isToday = new Date().toDateString() === currentCellDate.toDateString();
       
-      // Filtragem robusta ignorando timezone/horas
-      const dayTasks = tasks.filter(t => {
+      // Filtragem robusta ignorando timezone/horas - RESPEITANDO FILTRO ATIVO
+      const dayTasks = filteredTasks.filter(t => {
         if (!t.due_date) return false;
         const d = new Date(t.due_date);
         return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
