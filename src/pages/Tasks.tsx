@@ -451,6 +451,41 @@ const Tasks = () => {
     }
   };
 
+  const handleCalendarDrop = async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    setActiveDropCol(null);
+    
+    let taskId = e.dataTransfer.getData("text/plain");
+    if (!taskId) taskId = draggedTaskId || "";
+    if (!taskId) return;
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newDueDate = targetDate.toISOString();
+    
+    // Atualização otimista
+    lastUpdateTime.current = Date.now();
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, due_date: newDueDate } : t
+    ));
+
+    if (!task.is_mock) {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ due_date: newDueDate })
+        .eq("id", taskId);
+        
+      if (error) {
+        console.error("Erro ao mover data da tarefa:", error);
+        // Rollback
+        setTasks(prev => prev.map(t =>
+          t.id === taskId ? { ...t, due_date: task.due_date } : t
+        ));
+      }
+    }
+  };
+
   // Helper: tarefa atrasada = prazo vencido e não concluída
   const isOverdue = (task: Task) => {
     if (task.is_completed || !task.due_date) return false;
@@ -559,7 +594,10 @@ const Tasks = () => {
         <div 
           key={day} 
           onClick={() => dayTasks.length > 0 && setSelectedDayTasks({ date: currentCellDate, tasks: sortedDayTasks })}
-          className={`h-32 border-b border-r border-[var(--glass-border)] p-2 hover:bg-primary/[0.03] transition-all cursor-pointer group relative ${isToday ? 'bg-primary/[0.01]' : ''}`}
+          onDragOver={(e) => handleDragOver(e, `day-${day}`)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleCalendarDrop(e, currentCellDate)}
+          className={`h-32 border-b border-r border-[var(--glass-border)] p-2 hover:bg-primary/[0.03] transition-all cursor-pointer group relative ${isToday ? 'bg-primary/[0.01]' : ''} ${activeDropCol === `day-${day}` ? 'bg-primary/10' : ''}`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg transition-all ${isToday ? 'bg-primary text-surface shadow-lg shadow-primary/20 scale-110' : 'opacity-20 group-hover:opacity-100 group-hover:text-primary'}`}>
@@ -577,8 +615,11 @@ const Tasks = () => {
               return (
                 <div 
                   key={task.id} 
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, task.id)}
+                  onDragEnd={(e) => handleDragEnd(e, task.id)}
                   onClick={(e) => { e.stopPropagation(); setExpandedTask(task); }}
-                  className={`text-[9px] px-1.5 py-1 rounded-md truncate font-bold border flex items-center gap-1 transition-all hover:scale-[1.03] ${
+                  className={`text-[9px] px-1.5 py-1 rounded-md truncate font-bold border flex items-center gap-1 transition-all hover:scale-[1.03] cursor-grab active:cursor-grabbing ${
                     task.is_completed ? 'bg-green-500/5 text-green-400 border-green-500/10 grayscale opacity-40' : 
                     overdue ? 'bg-orange-500/10 text-orange-400 border-orange-500/30 shadow-sm shadow-orange-500/5' :
                     task.is_critical ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-sm shadow-red-500/5' : 
