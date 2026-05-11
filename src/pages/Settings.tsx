@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, Camera, Save, ArrowLeft, Loader2, Mail, Phone, MapPin } from "lucide-react";
+import { User, Camera, Save, ArrowLeft, Loader2, Mail, Phone, MapPin, Lock, HelpCircle, Database, Zap, AlignLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
@@ -8,6 +8,7 @@ import GlassCard from "../components/ui/GlassCard";
 const Settings = () => {
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState('profile');
   const [profile, setProfile] = useState<{ 
     full_name: string; 
     avatar_url: string;
@@ -58,7 +59,6 @@ const Settings = () => {
 
       const file = event.target.files[0];
 
-      // Validação de tipo e tamanho (defesa em profundidade além do accept="image/*")
       const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
       const MAX_SIZE_MB = 5;
       if (!ALLOWED_TYPES.includes(file.type)) {
@@ -69,23 +69,19 @@ const Settings = () => {
       }
 
       const fileExt = file.name.split(".").pop()?.toLowerCase();
-      // crypto.randomUUID() é criptograficamente seguro (sem colisões)
       const fileName = `${user?.id}/${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // 1. Upload da imagem para o bucket 'avatars'
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Obter URL pública
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
-      // 3. Atualizar tabela de perfis
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -124,6 +120,94 @@ const Settings = () => {
     setLoading(false);
   };
 
+  const handleGenerateTestData = async () => {
+    if (!user) return;
+    if (!confirm("Isso criará 10 projetos, 100 tarefas, 1000 subtarefas e outros dados no seu usuário. Deseja continuar?")) return;
+
+    setLoading(true);
+    try {
+      const projects = [];
+      const projectIcons = ["Rocket", "Target", "Briefcase", "Code", "Zap", "Shield", "Globe", "Award", "Database", "Terminal"];
+      const projectColors = ["#5e9eff", "#a855f7", "#00f5a0", "#ff6b6b", "#f5a623", "#3b82f6", "#ec4899", "#8b5cf6", "#10b981", "#f43f5e"];
+
+      for (let i = 1; i <= 10; i++) {
+        const { data: proj, error: projErr } = await supabase.from('projects').insert([{
+          user_id: user.id,
+          name: `Projeto Estratégico ${i.toString().padStart(2, '0')}`,
+          description: `Escopo detalhado para o projeto de expansão número ${i}. Foco em resultados trimestrais.`,
+          color: projectColors[i-1],
+          icon: projectIcons[i-1],
+          status: i % 3 === 0 ? 'Andamento' : 'Planejamento',
+          priority: i % 4 === 0 ? 'Crítica' : 'Média'
+        }]).select().single();
+
+        if (proj) projects.push(proj);
+      }
+
+      for (const proj of projects) {
+        for (let j = 1; j <= 10; j++) {
+          const subtasks = Array.from({ length: 10 }, (_, k) => ({
+            id: Math.random().toString(36).substring(2, 11),
+            title: `Sub-etapa ${k + 1} da Tarefa ${j}`,
+            is_completed: false
+          }));
+
+          await supabase.from('tasks').insert([{
+            user_id: user.id,
+            project_id: proj.id,
+            title: `Tarefa ${j} do ${proj.name}`,
+            energy_level: j % 3 === 0 ? 'high' : 'medium',
+            is_critical: proj.priority === 'Crítica',
+            status: 'todo',
+            is_completed: false,
+            subtasks: subtasks
+          }]);
+        }
+      }
+
+      const events = [];
+      for (let i = 1; i <= 10; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        date.setHours(9 + i, 0, 0, 0);
+
+        events.push({
+          user_id: user.id,
+          title: `Reunião de Alinhamento ${i}`,
+          location: `Sala de Conferência ${i}`,
+          start_time: date.toISOString()
+        });
+      }
+      await supabase.from('events').insert(events);
+
+      const nutritionLogs = [];
+      const meals = ["Café da Manhã", "Almoço", "Lanche", "Jantar"];
+      for (let i = 0; i < 5; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        for (const meal of meals) {
+          nutritionLogs.push({
+             user_id: user.id,
+             meal_type: meal,
+             food_name: "Refeição Equilibrada (Mock)",
+             calories: 450,
+             protein: 30,
+             carbs: 50,
+             fat: 15,
+             logged_at: date.toISOString()
+          });
+        }
+      }
+      await supabase.from('nutrition_logs').insert(nutritionLogs);
+
+      alert("🚀 ECOSSISTEMA GERADO COM SUCESSO!\n\n10 Projetos, 100 Tarefas, 1000 Subtarefas e dados de agenda/nutrição foram inseridos.");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao gerar dados. Verifique o console.");
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto pb-12">
       <header className="flex items-center gap-4">
@@ -134,7 +218,6 @@ const Settings = () => {
       </header>
 
       <GlassCard className="p-8 space-y-10" orb>
-        {/* Avatar Section */}
         <div className="flex flex-col items-center gap-6">
           <div className="relative group">
             <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl relative">
@@ -168,7 +251,6 @@ const Settings = () => {
 
         <form onSubmit={updateProfile} className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Nome Completo */}
             <div className="space-y-2">
               <label className="editorial-label text-[10px] opacity-60 ml-1">NOME COMPLETO</label>
               <div className="relative">
@@ -183,7 +265,6 @@ const Settings = () => {
               </div>
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
               <label className="editorial-label text-[10px] opacity-60 ml-1">E-MAIL DE CONTATO</label>
               <div className="relative">
@@ -198,7 +279,6 @@ const Settings = () => {
               </div>
             </div>
 
-            {/* Telefone */}
             <div className="space-y-2">
               <label className="editorial-label text-[10px] opacity-60 ml-1">TELEFONE</label>
               <div className="relative">
@@ -213,7 +293,6 @@ const Settings = () => {
               </div>
             </div>
 
-            {/* Endereço */}
             <div className="space-y-2">
               <label className="editorial-label text-[10px] opacity-60 ml-1">ENDEREÇO</label>
               <div className="relative">
@@ -241,28 +320,51 @@ const Settings = () => {
       </GlassCard>
 
       <div className="pt-8 border-t border-[var(--glass-border)] space-y-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
+                <Database size={12} /> Testes de Sistema
+              </p>
+              <p className="text-[11px] opacity-40">Gere dados fictícios para sua conta.</p>
+            </div>
+            <button 
+              onClick={handleGenerateTestData}
+              disabled={loading}
+              className="px-4 py-2 bg-primary text-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-40"
+            >
+              Gerar Ecossistema
+            </button>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-on-surface/[0.02] border border-[var(--glass-border)] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <HelpCircle size={20} className="text-primary opacity-60" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest">Tutorial do Sistema</p>
+                <p className="text-[11px] opacity-40">Reveja o tour guiado.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('has_completed_tour');
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-on-surface/5 hover:bg-on-surface/10 border border-[var(--glass-border)] rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+            >
+              Reiniciar Tour
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-[var(--glass-border)] opacity-40">
            <div className="flex items-center gap-6">
-              <Link to="/terms" className="editorial-label text-[9px] opacity-40 hover:opacity-100 transition-opacity">Termos de Uso</Link>
-              <Link to="/privacy" className="editorial-label text-[9px] opacity-40 hover:opacity-100 transition-opacity">Política de Privacidade</Link>
+              <Link to="/terms" className="text-[9px] uppercase tracking-widest hover:opacity-100 transition-opacity">Termos</Link>
+              <Link to="/privacy" className="text-[9px] uppercase tracking-widest hover:opacity-100 transition-opacity">Privacidade</Link>
            </div>
-           <p className="text-[9px] text-on-surface-variant opacity-40 uppercase tracking-[0.2em]">
+           <p className="text-[9px] uppercase tracking-[0.2em]">
              Sincronizado via Supabase Cloud
            </p>
-        </div>
-        
-        <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10">
-          <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Lock size={12} /> Proteção de Dados (LGPD)
-          </p>
-          <p className="text-[11px] opacity-60 leading-relaxed">
-            Seus dados são criptografados em repouso e em trânsito. Você possui total controle sobre suas informações, podendo solicitar a exportação ou exclusão total dos seus dados a qualquer momento através do suporte.
-          </p>
-          {profile.accepted_terms_at && (
-            <p className="text-[9px] mt-4 opacity-40 uppercase tracking-widest font-bold">
-              Termos aceitos em: {new Date(profile.accepted_terms_at).toLocaleDateString('pt-BR')} às {new Date(profile.accepted_terms_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          )}
         </div>
       </div>
     </div>

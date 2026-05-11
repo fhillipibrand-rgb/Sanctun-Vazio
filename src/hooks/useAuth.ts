@@ -6,6 +6,7 @@ export interface Profile {
   full_name: string;
   avatar_url: string;
   accepted_terms_at?: string | null;
+  has_completed_tour?: boolean;
 }
 
 export const useAuth = () => {
@@ -68,7 +69,7 @@ export const useAuth = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url, accepted_terms_at')
+        .select('full_name, avatar_url, accepted_terms_at, has_completed_tour')
         .eq('id', userId)
         .single();
       

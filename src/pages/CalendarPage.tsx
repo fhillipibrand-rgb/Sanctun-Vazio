@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, ChevronRight, ChevronLeft, Plus, MapPin, Clock } from "lucide-react";
+import { Calendar, ChevronRight, ChevronLeft, Plus, MapPin, Clock, Trash2, Edit2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
@@ -8,9 +9,11 @@ import { DEMO_MOCK_DATA } from "../lib/demoMock";
 
 const CalendarPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
   const [newEvent, setNewEvent] = useState({ title: "", location: "", start_time: "" });
   
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
@@ -90,26 +93,90 @@ const CalendarPage = () => {
     setLoading(false);
   };
 
-  const handleAddEvent = async (e: React.FormEvent) => {
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newEvent.title || !newEvent.start_time) return;
 
+    const eventData = {
+      user_id: user.id,
+      title: newEvent.title,
+      location: newEvent.location,
+      start_time: new Date(newEvent.start_time).toISOString()
+    };
+
+    if (editingEvent) {
+      const { error } = await supabase
+        .from('events')
+        .update(eventData)
+        .eq('id', editingEvent.id);
+
+      if (error) {
+         console.error("Erro ao atualizar evento:", error);
+         alert("ERRO AO ATUALIZAR: " + error.message);
+      } else {
+        fetchEvents();
+        setNewEvent({ title: "", location: "", start_time: "" });
+        setEditingEvent(null);
+        setIsAdding(false);
+      }
+    } else {
+      const { error } = await supabase
+        .from('events')
+        .insert([eventData]);
+
+      if (error) {
+         console.error("Erro ao salvar evento:", error);
+         alert("ERRO AO SALVAR: " + error.message);
+      } else {
+        fetchEvents();
+        setNewEvent({ title: "", location: "", start_time: "" });
+        setIsAdding(false);
+      }
+    }
+  };
+
+  const openEditForm = (e: React.MouseEvent, event: any) => {
+    e.stopPropagation();
+    
+    if (event.type === 'task') {
+      navigate(`/tasks?edit=${event.id}`);
+      return;
+    }
+    
+    if (event.type === 'project') {
+      navigate('/tasks/projects');
+      return;
+    }
+
+    setEditingEvent(event);
+    setNewEvent({
+      title: event.title,
+      location: event.location || "",
+      start_time: new Date(event.start_time).toISOString().slice(0, 16)
+    });
+    setIsAdding(true);
+  };
+  
+  const handleDeleteEvent = async (e: React.MouseEvent, eventId: string, type: string) => {
+    e.stopPropagation();
+    
+    if (type !== 'event') {
+      alert("Para excluir prazos de projetos ou tarefas, gerencie-os em suas respectivas páginas.");
+      return;
+    }
+
+    if (!confirm("Tem certeza que deseja excluir este compromisso?")) return;
+
     const { error } = await supabase
       .from('events')
-      .insert([{
-        user_id: user.id,
-        title: newEvent.title,
-        location: newEvent.location,
-        start_time: new Date(newEvent.start_time).toISOString()
-      }]);
+      .delete()
+      .eq('id', eventId);
 
     if (error) {
-       console.error("Erro ao salvar evento:", error);
-       alert("ERRO AO SALVAR: " + error.message);
+      console.error("Erro ao excluir:", error);
+      alert("Erro ao excluir: " + error.message);
     } else {
       fetchEvents();
-      setNewEvent({ title: "", location: "", start_time: "" });
-      setIsAdding(false);
     }
   };
 
@@ -227,9 +294,28 @@ const CalendarPage = () => {
                     }`}
                     style={event.type === 'project' || event.type === 'task' ? { color: event.color, borderColor: `${event.color}30` } : {}}
                   >
-                    <div className="flex items-center gap-1.5 opacity-60 mb-1">
-                      <Clock size={10} />
-                      {new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5 opacity-60">
+                        <Clock size={10} />
+                        {new Date(event.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={(e) => openEditForm(e, event)}
+                          className="p-1 hover:text-primary transition-colors"
+                          title={event.type === 'event' ? 'Editar Compromisso' : `Ir para ${event.type === 'task' ? 'Tarefas' : 'Projetos'}`}
+                        >
+                          <Edit2 size={10} />
+                        </button>
+                        {event.type === 'event' && (
+                          <button 
+                            onClick={(e) => handleDeleteEvent(e, event.id, event.type)}
+                            className="p-1 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {event.title}
                   </div>
@@ -266,12 +352,31 @@ const CalendarPage = () => {
               </div>
               <div className="flex-1 pb-6 border-l-2 border-[var(--glass-border)] pl-6 relative">
                 <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-primary" />
-                <div className={`p-4 rounded-2xl border transition-all ${
+                <div className={`p-4 rounded-2xl border transition-all relative group/event ${
                   event.type === 'project' ? 'bg-secondary/5 border-secondary/30' : 
                   event.type === 'task' ? 'bg-primary/5 border-primary/30' :
                   'bg-on-surface/[0.03] border-[var(--glass-border)]'
                 }`} style={event.type === 'project' || event.type === 'task' ? { color: event.color, borderColor: `${event.color}30` } : {}}>
-                  <h5 className="font-bold">{event.title}</h5>
+                  <div className="flex items-start justify-between">
+                    <h5 className="font-bold">{event.title}</h5>
+                    <div className="flex items-center gap-1 opacity-0 group-hover/event:opacity-40 transition-all">
+                      <button 
+                        onClick={(e) => openEditForm(e, event)}
+                        className="p-1.5 hover:!opacity-100 hover:text-primary transition-all"
+                        title={event.type === 'event' ? 'Editar' : `Ver em ${event.type === 'task' ? 'Tarefas' : 'Projetos'}`}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      {event.type === 'event' && (
+                        <button 
+                          onClick={(e) => handleDeleteEvent(e, event.id, event.type)}
+                          className="p-1.5 hover:!opacity-100 hover:text-red-500 transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   {event.location && (
                     <div className="flex items-center gap-1.5 text-[10px] opacity-40 mt-2">
                       <MapPin size={12} /> {event.location}
@@ -321,41 +426,12 @@ const CalendarPage = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="hidden lg:flex bg-surface/50 border border-[var(--glass-border)] rounded-full p-1 mr-2">
-            {[
-              { id: 'all', label: 'Todos' },
-              { id: 'events', label: 'Agenda' },
-              { id: 'projects', label: 'Projetos' },
-              { id: 'tasks', label: 'Tarefas' }
-            ].map(f => (
-              <button
-                key={f.id}
-                onClick={() => setActiveFilter(f.id as any)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-widest ${
-                  activeFilter === f.id ? 'bg-on-surface/10 text-on-surface shadow-md' : 'text-on-surface/50 hover:bg-on-surface/5'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex bg-surface/50 border border-[var(--glass-border)] rounded-full p-1">
-            {(['day', 'week', 'month'] as const).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all uppercase tracking-widest ${
-                  viewMode === mode ? 'bg-primary text-surface shadow-md' : 'text-on-surface/50 hover:bg-on-surface/5'
-                }`}
-              >
-                {mode === 'day' ? 'Dia' : mode === 'week' ? 'Semana' : 'Mês'}
-              </button>
-            ))}
-          </div>
-
           <button 
-            onClick={() => setIsAdding(!isAdding)}
+            onClick={() => {
+              setEditingEvent(null);
+              setNewEvent({ title: "", location: "", start_time: "" });
+              setIsAdding(!isAdding);
+            }}
             className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-full font-bold text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-all"
           >
             <Plus size={18} />
@@ -368,33 +444,59 @@ const CalendarPage = () => {
         <div className="space-y-6">
           {isAdding && (
             <GlassCard className="p-6 border-primary/30 border-2">
-              <form onSubmit={handleAddEvent} className="space-y-4">
-                 <h4 className="editorial-label text-xs mb-4">AGENDAR COMPROMISSO</h4>
+              <form onSubmit={handleSaveEvent} className="space-y-4">
+                 <h4 className="editorial-label text-xs mb-4">
+                   {editingEvent ? "EDITAR COMPROMISSO" : "AGENDAR COMPROMISSO"}
+                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                     <label className="editorial-label text-[10px] opacity-60">TÍTULO</label>
-                     <input 
-                       type="text" 
-                       value={newEvent.title}
-                       onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
-                       className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-primary/50 transition-all font-medium text-sm"
-                       required
-                     />
-                  </div>
-                  <div className="space-y-2">
-                     <label className="editorial-label text-[10px] opacity-60">DATA E HORA</label>
-                     <input 
-                       type="datetime-local" 
-                       value={newEvent.start_time}
-                       onChange={(e) => setNewEvent({...newEvent, start_time: e.target.value})}
-                       className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-primary/50 transition-all font-medium text-sm"
-                       required
-                     />
-                  </div>
+                   <div className="space-y-2">
+                      <label className="editorial-label text-[10px] opacity-60">TÍTULO</label>
+                      <input 
+                        type="text" 
+                        value={newEvent.title}
+                        onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                        className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-primary/50 transition-all font-medium text-sm"
+                        required
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="editorial-label text-[10px] opacity-60">DATA E HORA</label>
+                      <input 
+                        type="datetime-local" 
+                        value={newEvent.start_time}
+                        onChange={(e) => setNewEvent({...newEvent, start_time: e.target.value})}
+                        className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 px-4 outline-none focus:border-primary/50 transition-all font-medium text-sm"
+                        required
+                      />
+                   </div>
+                   <div className="space-y-2 md:col-span-2">
+                      <label className="editorial-label text-[10px] opacity-60">LOCALIZAÇÃO (OPCIONAL)</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40" size={16} />
+                        <input 
+                          type="text" 
+                          value={newEvent.location}
+                          onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
+                          className="w-full bg-on-surface/[0.03] border border-[var(--glass-border)] rounded-xl py-3 pl-12 pr-4 outline-none focus:border-primary/50 transition-all font-medium text-sm"
+                        />
+                      </div>
+                   </div>
                 </div>
                 <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => setIsAdding(false)} className="px-6 py-2 rounded-full border border-[var(--glass-border)] text-xs font-bold">CANCELAR</button>
-                  <button type="submit" className="px-6 py-2 rounded-full bg-primary text-surface text-xs font-bold">SALVAR</button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsAdding(false);
+                      setEditingEvent(null);
+                      setNewEvent({ title: "", location: "", start_time: "" });
+                    }} 
+                    className="px-6 py-2 rounded-full border border-[var(--glass-border)] text-xs font-bold"
+                  >
+                    CANCELAR
+                  </button>
+                  <button type="submit" className="px-6 py-2 rounded-full bg-primary text-surface text-xs font-bold uppercase tracking-widest">
+                    {editingEvent ? "SALVAR ALTERAÇÕES" : "SALVAR"}
+                  </button>
                 </div>
               </form>
             </GlassCard>
@@ -411,10 +513,26 @@ const CalendarPage = () => {
                    : viewDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
                  }
                </h3>
-               <div className="flex items-center gap-1">
-                 <button onClick={prevView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronLeft size={20} /></button>
-                 <button onClick={() => setViewDate(new Date())} className="px-3 py-1.5 text-[10px] font-bold border border-[var(--glass-border)] rounded-md hover:bg-on-surface/5 transition-all uppercase tracking-widest">Hoje</button>
-                 <button onClick={nextView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronRight size={20} /></button>
+               <div className="flex items-center gap-4">
+                 <div className="flex bg-on-surface/5 border border-[var(--glass-border)] rounded-full p-0.5">
+                    {(['month', 'week', 'day'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setViewMode(mode)}
+                        className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all uppercase tracking-widest ${
+                          viewMode === mode ? 'bg-primary text-surface shadow-sm' : 'text-on-surface/40 hover:text-on-surface/70'
+                        }`}
+                      >
+                        {mode === 'day' ? 'Dia' : mode === 'week' ? 'Semana' : 'Mês'}
+                      </button>
+                    ))}
+                 </div>
+
+                 <div className="flex items-center gap-1">
+                   <button onClick={prevView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronLeft size={20} /></button>
+                   <button onClick={() => setViewDate(new Date())} className="px-3 py-1.5 text-[10px] font-bold border border-[var(--glass-border)] rounded-md hover:bg-on-surface/5 transition-all uppercase tracking-widest">Hoje</button>
+                   <button onClick={nextView} className="p-2 hover:bg-on-surface/5 rounded-lg transition-all"><ChevronRight size={20} /></button>
+                 </div>
                </div>
             </div>
 
@@ -441,6 +559,25 @@ const CalendarPage = () => {
         {/* Lateral de Próximos Compromissos */}
         <div className="space-y-6">
           <GlassCard className="p-6 border border-[var(--glass-border)] bg-surface-variant/30 h-full flex flex-col">
+            <div className="mb-8 p-1.5 bg-on-surface/5 border border-[var(--glass-border)] rounded-2xl flex flex-wrap gap-1">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'events', label: 'Agenda' },
+                { id: 'projects', label: 'Projetos' },
+                { id: 'tasks', label: 'Tarefas' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFilter(f.id as any)}
+                  className={`flex-1 px-2 py-2 rounded-xl text-[9px] font-bold transition-all uppercase tracking-widest ${
+                    activeFilter === f.id ? 'bg-primary text-surface shadow-lg' : 'text-on-surface/40 hover:text-on-surface/70'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             <h4 className="editorial-label mb-6 text-primary flex items-center justify-between">
               PRÓXIMOS COMPROMISSOS 
               <span className="opacity-40">{upcomingEvents.length} TOTAL</span>
@@ -466,11 +603,30 @@ const CalendarPage = () => {
                          <h5 className="font-bold text-sm leading-tight flex-1">
                            {event.title}
                          </h5>
-                         {isToday ? (
-                           <span className="text-[8px] font-bold bg-primary text-surface px-1.5 py-0.5 rounded uppercase ml-2 animate-pulse">Hoje</span>
-                         ) : isTomorrow ? (
-                           <span className="text-[8px] font-bold border border-primary/40 text-primary px-1.5 py-0.5 rounded uppercase ml-2">Amanhã</span>
-                         ) : null}
+                         <div className="flex items-center gap-2">
+                            {isToday ? (
+                              <span className="text-[8px] font-bold bg-primary text-surface px-1.5 py-0.5 rounded uppercase animate-pulse">Hoje</span>
+                            ) : isTomorrow ? (
+                              <span className="text-[8px] font-bold border border-primary/40 text-primary px-1.5 py-0.5 rounded uppercase">Amanhã</span>
+                            ) : null}
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onClick={(e) => openEditForm(e, event)}
+                                className="p-1.5 opacity-20 hover:opacity-100 hover:text-primary transition-all"
+                                title={event.type === 'event' ? 'Editar' : 'Ir para origem'}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              {event.type === 'event' && (
+                                <button 
+                                  onClick={(e) => handleDeleteEvent(e, event.id, event.type)}
+                                  className="p-1.5 opacity-20 hover:opacity-100 hover:text-red-500 transition-all"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                         </div>
                       </div>
                       <div className="flex items-center gap-3 opacity-60 text-[10px] font-medium flex-wrap">
                          <span className="flex items-center gap-1.5"><Clock size={12} /> {eventDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>

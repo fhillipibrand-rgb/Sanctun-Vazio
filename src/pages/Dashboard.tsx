@@ -159,7 +159,7 @@ const Dashboard = () => {
       desc: 'Prazo vencendo em menos de uma semana',
       icon: Rocket,
       color: 'text-primary',
-      route: '/projects'
+      route: '/tasks/projects'
     }))),
     ...(stats.health.lowStockMeds > 0 ? [{
       id: 'med-alert',
@@ -364,7 +364,7 @@ const Dashboard = () => {
               <div className="w-1.5 h-6 bg-primary rounded-full" />
               <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase transition-opacity">Projetos em Foco</h3>
            </div>
-           <Link to="/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
+           <Link to="/tasks/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
              GERENCIAR <ChevronRight size={12} />
            </Link>
         </div>
@@ -379,8 +379,11 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <Link to="/projects">
-                  <GlassCard className="p-5 group hover:border-primary/40 transition-all relative overflow-hidden h-full">
+                <div 
+                  onClick={() => navigate(`/tasks/projects?id=${proj.id}`)}
+                  className="cursor-pointer"
+                >
+                  <GlassCard className="p-5 group hover:border-primary/40 transition-all relative overflow-hidden h-full active:scale-95">
                     <div className="absolute -right-2 -top-2 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
                        <IconComp size={80} style={{ color: proj.color }} />
                     </div>
@@ -411,7 +414,7 @@ const Dashboard = () => {
                        </div>
                     </div>
                   </GlassCard>
-                </Link>
+                </div>
               </motion.div>
             );
           })}
@@ -462,44 +465,49 @@ const Dashboard = () => {
               </div>
               <div className="space-y-3 relative z-10">
                 {stats.tasks.urgentTasks.slice(0, 4).map((t, i) => (
-                  <motion.div
+                  <Link
                     key={t.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border ${
-                      t.reason === 'critical'
-                        ? 'bg-red-500/[0.06] border-red-500/20'
-                        : 'bg-orange-500/[0.06] border-orange-500/20'
-                    }`}
+                    to={`/tasks?edit=${t.id}`}
+                    className="block group/task"
                   >
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                      t.reason === 'critical' ? 'bg-red-500/20' : 'bg-orange-500/20'
-                    }`}>
-                      {t.reason === 'critical'
-                        ? <Zap size={11} className="text-red-400" fill="currentColor" />
-                        : <Clock size={11} className="text-orange-400" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{t.title}</p>
-                      {t.due_date && (
-                        <p className={`text-[9px] font-bold mt-0.5 ${
-                          t.reason === 'overdue' ? 'text-orange-400' : 'opacity-40'
-                        }`}>
-                          {t.reason === 'overdue' ? '⚠ Prazo: ' : 'Prazo: '}
-                          {new Date(t.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </p>
-                      )}
-                    </div>
-                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                      t.reason === 'critical'
-                        ? 'text-red-400 border-red-500/30 bg-red-500/10'
-                        : 'text-orange-400 border-orange-500/30 bg-orange-500/10'
-                    }`}>
-                      {t.reason === 'critical' ? 'CRÍTICA' : 'ATRASADA'}
-                    </span>
-                  </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all group-hover/task:border-primary/40 group-hover/task:bg-on-surface/5 ${
+                        t.reason === 'critical'
+                          ? 'bg-red-500/[0.06] border-red-500/20'
+                          : 'bg-orange-500/[0.06] border-orange-500/20'
+                      }`}
+                    >
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                        t.reason === 'critical' ? 'bg-red-500/20' : 'bg-orange-500/20'
+                      }`}>
+                        {t.reason === 'critical'
+                          ? <Zap size={11} className="text-red-400" fill="currentColor" />
+                          : <Clock size={11} className="text-orange-400" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate group-hover/task:text-primary transition-colors">{t.title}</p>
+                        {t.due_date && (
+                          <p className={`text-[9px] font-bold mt-0.5 ${
+                            t.reason === 'overdue' ? 'text-orange-400' : 'opacity-40'
+                          }`}>
+                            {t.reason === 'overdue' ? '⚠ Prazo: ' : 'Prazo: '}
+                            {new Date(t.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </p>
+                        )}
+                      </div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                        t.reason === 'critical'
+                          ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                          : 'text-orange-400 border-orange-500/30 bg-orange-500/10'
+                      }`}>
+                        {t.reason === 'critical' ? 'CRÍTICA' : 'ATRASADA'}
+                      </span>
+                    </motion.div>
+                  </Link>
                 ))}
               </div>
               <Link to="/tasks" className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-on-surface/5 hover:bg-red-500/10 border border-[var(--glass-border)] hover:border-red-500/20 text-[10px] font-bold tracking-widest transition-all relative z-10">
@@ -590,7 +598,11 @@ const Dashboard = () => {
             </div>
             <div className="space-y-7">
               {activities.length > 0 ? activities.map((act) => (
-                <div key={act.id} className="flex gap-4 items-start group cursor-pointer">
+                <Link 
+                  key={act.id} 
+                  to={act.category === 'Tarefas' ? `/tasks?edit=${act.id}` : act.category === 'Finanças' ? '/finance' : act.category === 'Calendário' ? '/calendar' : '/health'}
+                  className="flex gap-4 items-start group cursor-pointer"
+                >
                   <div className={`w-9 h-9 rounded-2xl bg-on-surface/[0.03] flex items-center justify-center shrink-0 ${act.color} transition-all group-hover:bg-on-surface/10 group-hover:rotate-12`}>
                     <act.icon size={18} />
                   </div>
@@ -599,7 +611,7 @@ const Dashboard = () => {
                     <p className="text-[10px] opacity-40 uppercase tracking-tighter mt-1">{act.category} • {act.time}</p>
                   </div>
                   <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-30 transition-all -translate-x-2 group-hover:translate-x-0" />
-                </div>
+                </Link>
               )) : (
                 <div className="text-center py-12 opacity-20 flex flex-col items-center gap-3">
                    <Target size={24} />

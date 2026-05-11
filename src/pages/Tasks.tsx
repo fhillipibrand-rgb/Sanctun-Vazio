@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Plus, CheckCircle2, Circle, Trash2, Zap, Flag, Calendar, Filter, AlignLeft, Star, LayoutList, Columns, Clock, Table, FolderKanban, Edit2, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Plus, CheckCircle2, Circle, Trash2, Zap, Flag, Calendar, Filter, AlignLeft, Star, LayoutList, Columns, Clock, Table, FolderKanban, Edit2, X, ChevronRight } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
@@ -71,6 +72,8 @@ const Tasks = () => {
 
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [activeDropCol, setActiveDropCol] = useState<string | null>(null);
+  const [selectedDayTasks, setSelectedDayTasks] = useState<{ date: Date, tasks: Task[] } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (user) {
@@ -157,6 +160,21 @@ const Tasks = () => {
     }
     setLoading(false);
   };
+
+  // Efeito para Deep Linking (Abrir tarefa via URL ?edit=ID)
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && tasks.length > 0) {
+      const task = tasks.find(t => t.id === editId);
+      if (task) {
+        setExpandedTask(task);
+        // Limpa o parâmetro da URL para não reabrir ao atualizar
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('edit');
+        setSearchParams(newParams);
+      }
+    }
+  }, [searchParams, tasks]);
 
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,10 +451,21 @@ const Tasks = () => {
     }
   };
 
+  // Helper: tarefa atrasada = prazo vencido e não concluída
+  const isOverdue = (task: Task) => {
+    if (task.is_completed || !task.due_date) return false;
+    return new Date(task.due_date) < new Date();
+  };
+
   const filteredTasks = tasks.filter(t => {
     if (filter === "active") return !t.is_completed;
     if (filter === "completed") return t.is_completed;
-    if (filter === "critical") return (t.is_critical || isOverdue(t)) && !t.is_completed;
+    if (filter === "critical") {
+      const project = projects.find(p => p.id === t.project_id);
+      const isProjectCritical = project?.priority === 'Crítica' || project?.priority === 'Alta';
+      const isCritical = t.is_critical === true || String(t.is_critical) === 'true';
+      return (isCritical || isOverdue(t) || isProjectCritical) && !t.is_completed;
+    }
     return true;
   });
 
@@ -444,18 +473,17 @@ const Tasks = () => {
   const totalCount = tasks.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
-  // Helper: tarefa atrasada = prazo vencido e não concluída
-  const isOverdue = (task: Task) => {
-    if (task.is_completed || !task.due_date) return false;
-    return new Date(task.due_date) < new Date();
-  };
-
   const overdueCount = tasks.filter(isOverdue).length;
 
   const filterTabs: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "Todas", count: tasks.length },
     { key: "active", label: "Ativas", count: tasks.filter(t => !t.is_completed).length },
-    { key: "critical", label: "Críticas", count: tasks.filter(t => (t.is_critical || isOverdue(t)) && !t.is_completed).length },
+    { key: "critical", label: "Críticas", count: tasks.filter(t => {
+      const project = projects.find(p => p.id === t.project_id);
+      const isProjectCritical = project?.priority === 'Crítica' || project?.priority === 'Alta';
+      const isCritical = t.is_critical === true || String(t.is_critical) === 'true';
+      return (isCritical || isOverdue(t) || isProjectCritical) && !t.is_completed;
+    }).length },
     { key: "completed", label: "Concluídas", count: tasks.filter(t => t.is_completed).length },
   ];
 
@@ -476,62 +504,165 @@ const Tasks = () => {
     const firstDay = startDayOfMonth(year, month);
     const cells = [];
     
+    // Header do Calendário
+    const calendarHeader = (
+      <div className="p-4 border-b border-[var(--glass-border)] flex items-center justify-between bg-on-surface/[0.02]">
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-bold uppercase tracking-wider text-primary">
+            {viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+          </h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-2 hover:bg-on-surface/5 rounded-xl border border-[var(--glass-border)] transition-all"><AlignLeft size={16} className="rotate-90" /></button>
+          <button onClick={() => setViewDate(new Date())} className="px-4 py-2 text-[10px] font-bold border border-primary/30 text-primary rounded-full hover:bg-primary/5 transition-all">HOJE</button>
+          <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-2 hover:bg-on-surface/5 rounded-xl border border-[var(--glass-border)] transition-all"><AlignLeft size={16} className="-rotate-90" /></button>
+        </div>
+      </div>
+    );
+
+    // Dias vazios do mês anterior
     for (let i = 0; i < firstDay; i++) {
-      cells.push(<div key={`empty-${i}`} className="h-28 bg-on-surface/[0.01] border border-[var(--glass-border)] opacity-20" />);
+      cells.push(<div key={`empty-${i}`} className="h-32 bg-on-surface/[0.01] border-b border-r border-[var(--glass-border)] opacity-20" />);
     }
     
+    // Dias do mês atual
     for (let day = 1; day <= daysCount; day++) {
-      const dateStr = new Date(year, month, day).toDateString();
-      const isToday = new Date().toDateString() === dateStr;
-      const dayTasks = filteredTasks.filter(t => t.due_date && new Date(t.due_date).toDateString() === dateStr);
+      const currentCellDate = new Date(year, month, day);
+      const isToday = new Date().toDateString() === currentCellDate.toDateString();
+      
+      // Filtragem robusta ignorando timezone/horas
+      const dayTasks = tasks.filter(t => {
+        if (!t.due_date) return false;
+        const d = new Date(t.due_date);
+        return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+      });
+
+      // Ordenar por prioridade e conclusão
+      const sortedDayTasks = [...dayTasks].sort((a, b) => {
+        if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
+        if (a.is_critical !== b.is_critical) return a.is_critical ? -1 : 1;
+        return 0;
+      });
+
+      const maxVisible = 3;
+      const visibleTasks = sortedDayTasks.slice(0, maxVisible);
+      const hiddenCount = sortedDayTasks.length - maxVisible;
       
       cells.push(
-        <div key={day} className="h-28 border border-[var(--glass-border)] p-2 hover:bg-on-surface/[0.02] transition-colors overflow-hidden">
-          <span className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'bg-primary text-surface' : 'opacity-30'}`}>
-            {day}
-          </span>
-          <div className="mt-1 space-y-1">
-            {dayTasks.map(task => {
+        <div 
+          key={day} 
+          onClick={() => dayTasks.length > 0 && setSelectedDayTasks({ date: currentCellDate, tasks: sortedDayTasks })}
+          className={`h-32 border-b border-r border-[var(--glass-border)] p-2 hover:bg-primary/[0.03] transition-all cursor-pointer group relative ${isToday ? 'bg-primary/[0.01]' : ''}`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg transition-all ${isToday ? 'bg-primary text-surface shadow-lg shadow-primary/20 scale-110' : 'opacity-20 group-hover:opacity-100 group-hover:text-primary'}`}>
+              {day}
+            </span>
+            {dayTasks.length > 0 && (
+              <div className="w-1 h-1 rounded-full bg-primary/40" />
+            )}
+          </div>
+          
+          <div className="space-y-1">
+            {visibleTasks.map(task => {
               const overdue = isOverdue(task);
+              const project = projects.find(p => p.id === task.project_id);
               return (
-              <div 
-                key={task.id} 
-                className={`text-[9px] px-1.5 py-0.5 rounded truncate font-bold border ${
-                  task.is_completed ? 'bg-green-500/10 text-green-400 border-green-500/20 grayscale opacity-40' : 
-                  overdue ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                  task.is_critical ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
-                  'bg-primary/10 text-primary border-primary/20'
-                }`}
+                <div 
+                  key={task.id} 
+                  onClick={(e) => { e.stopPropagation(); setExpandedTask(task); }}
+                  className={`text-[9px] px-1.5 py-1 rounded-md truncate font-bold border flex items-center gap-1 transition-all hover:scale-[1.03] ${
+                    task.is_completed ? 'bg-green-500/5 text-green-400 border-green-500/10 grayscale opacity-40' : 
+                    overdue ? 'bg-orange-500/10 text-orange-400 border-orange-500/30 shadow-sm shadow-orange-500/5' :
+                    task.is_critical ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-sm shadow-red-500/5' : 
+                    'bg-on-surface/5 text-on-surface/70 border-[var(--glass-border)] hover:border-primary/30'
+                  }`}
+                  style={{ borderLeftColor: project?.color, borderLeftWidth: project ? '3px' : '1px' }}
+                >
+                  {task.is_critical && <Zap size={8} fill="currentColor" />}
+                  {task.title}
+                </div>
+              );
+            })}
+            
+            {hiddenCount > 0 && (
+              <button 
+                className="w-full text-[9px] font-black text-primary/60 hover:text-primary transition-colors py-1 text-center bg-primary/5 rounded-md border border-dashed border-primary/20"
               >
-                {overdue ? '⚠ ' : ''}{task.title}
-              </div>
-            )})}
+                + {hiddenCount} TAREFAS
+              </button>
+            )}
           </div>
         </div>
       );
     }
 
     return (
-      <GlassCard className="p-0 overflow-hidden border border-[var(--glass-border)]">
-        <div className="p-4 border-b border-[var(--glass-border)] flex items-center justify-between bg-on-surface/[0.02]">
-           <h3 className="text-sm font-bold uppercase tracking-wider">
-             {viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
-           </h3>
-           <div className="flex items-center gap-1">
-             <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 hover:bg-on-surface/5 rounded-lg"><Table size={14} /></button>
-             <button onClick={() => setViewDate(new Date())} className="px-2 py-1 text-[9px] font-bold border border-[var(--glass-border)] rounded">HOJE</button>
-             <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 hover:bg-on-surface/5 rounded-lg"><Table size={14} className="rotate-180" /></button>
-           </div>
-        </div>
-        <div className="grid grid-cols-7 border-b border-[var(--glass-border)] bg-on-surface/[0.01]">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-            <div key={d} className="py-2 text-center text-[9px] font-bold opacity-30 uppercase">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {cells}
-        </div>
-      </GlassCard>
+      <div className="space-y-6">
+        <GlassCard className="p-0 overflow-hidden border border-[var(--glass-border)] shadow-2xl">
+          {calendarHeader}
+          <div className="grid grid-cols-7 bg-on-surface/[0.01]">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+              <div key={d} className="py-3 text-center text-[10px] font-black opacity-20 uppercase tracking-[0.2em]">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 border-t border-[var(--glass-border)]">
+            {cells}
+          </div>
+        </GlassCard>
+
+        {/* Modal de Detalhes do Dia */}
+        <AnimatePresence>
+          {selectedDayTasks && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setSelectedDayTasks(null)}
+                className="absolute inset-0 bg-background/80 backdrop-blur-xl"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-lg"
+              >
+                <GlassCard className="p-8 border-primary/20 shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <p className="editorial-label text-[10px] text-primary font-black tracking-[0.2em] mb-1 uppercase">Cronograma Diário</p>
+                      <h4 className="text-2xl font-bold">
+                        {selectedDayTasks.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                      </h4>
+                    </div>
+                    <button onClick={() => setSelectedDayTasks(null)} className="p-2 hover:bg-on-surface/5 rounded-full transition-colors"><X size={20} /></button>
+                  </div>
+
+                  <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                    {selectedDayTasks.tasks.map(task => (
+                      <div 
+                        key={task.id} 
+                        onClick={() => { setExpandedTask(task); setSelectedDayTasks(null); }}
+                        className="p-4 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] hover:border-primary/40 transition-all cursor-pointer group flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`w-2 h-2 rounded-full ${task.is_completed ? 'bg-green-500' : task.is_critical ? 'bg-red-500' : 'bg-primary'}`} />
+                          <span className={`font-bold text-sm truncate ${task.is_completed ? 'line-through opacity-40' : ''}`}>{task.title}</span>
+                        </div>
+                        <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-all text-primary" />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={() => { resetForm(); setNewDueDate(selectedDayTasks.date.toISOString().split('T')[0]); setShowForm(true); setSelectedDayTasks(null); }}
+                    className="mt-8 w-full py-4 rounded-2xl bg-primary text-surface font-black text-xs tracking-widest uppercase shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    + ADICIONAR TAREFA NESTE DIA
+                  </button>
+                </GlassCard>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   };
   
@@ -827,20 +958,22 @@ const Tasks = () => {
                       {overdue && <span className="ml-1 text-orange-400 animate-pulse text-[10px]">⚠</span>}
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => setEditingTask(task)} 
-                          className="p-1.5 hover:bg-on-surface/5 rounded-lg text-on-surface/60 hover:text-primary transition-all"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button 
-                          onClick={() => deleteTask(task.id)} 
-                          className="p-1.5 hover:bg-red-500/10 rounded-lg text-on-surface/60 hover:text-red-500 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button 
+                            onClick={() => setExpandedTask(task)}
+                            className="p-2 hover:bg-on-surface/5 rounded-full transition-colors text-on-surface/60 hover:text-primary"
+                            title="Editar Detalhes"
+                         >
+                           <Edit2 size={14} />
+                         </button>
+                         <button 
+                            onClick={() => deleteTask(task.id)}
+                            className="p-2 hover:bg-red-500/10 rounded-full transition-colors text-red-500/40 hover:text-red-500"
+                            title="Excluir"
+                         >
+                           <Trash2 size={14} />
+                         </button>
+                       </div>
                     </td>
                   </tr>
                 );

@@ -5,6 +5,8 @@ import {
   Wallet, Droplets, Zap, PartyPopper, Bell, User, FolderKanban, 
   Calendar, Target, Utensils, Activity 
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 interface Step {
   title: string;
@@ -75,6 +77,7 @@ const steps: Step[] = [
 ];
 
 export const OnboardingTour = () => {
+  const { user, profile, refreshProfile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -88,20 +91,37 @@ export const OnboardingTour = () => {
 
     window.addEventListener('sanctum:open-tour', handleOpenTour);
     
-    const hasCompletedTour = localStorage.getItem('sanctum_tour_completed');
-    if (!hasCompletedTour) {
+    // Auto-open logic
+    const checkTourStatus = () => {
+      const hasCompletedLocal = localStorage.getItem('sanctum_tour_completed');
+      
+      // Se já concluiu localmente, não faz nada
+      if (hasCompletedLocal === 'true') return;
+
+      // Se o perfil ainda não carregou, esperamos
+      if (!profile) return;
+
+      // Se já concluiu no banco, salva localmente e não abre
+      if (profile.has_completed_tour) {
+        localStorage.setItem('sanctum_tour_completed', 'true');
+        return;
+      }
+
+      // Se chegou aqui, é porque realmente não concluiu em nenhum lugar
       const timer = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('sanctum:toggle-sidebar', { detail: { open: true } }));
         setIsOpen(true);
-      }, 1500);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('sanctum:open-tour', handleOpenTour);
-      };
+      }, 2000); // 2 segundos de margem para o sistema estabilizar
+
+      return () => clearTimeout(timer);
+    };
+
+    if (user) {
+      return checkTourStatus();
     }
     
     return () => window.removeEventListener('sanctum:open-tour', handleOpenTour);
-  }, []);
+  }, [user, profile]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -170,9 +190,19 @@ export const OnboardingTour = () => {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     setIsOpen(false);
     localStorage.setItem('sanctum_tour_completed', 'true');
+    
+    // Update database for persistence
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ has_completed_tour: true })
+        .eq('id', user.id);
+      
+      refreshProfile?.();
+    }
   };
 
   const getActualPosition = () => {

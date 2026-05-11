@@ -50,7 +50,7 @@ const Nutrition = () => {
       return;
     }
 
-    // Water
+    // 1. Water
     const { data: waterData } = await supabase
       .from('nutrition_water')
       .select('*')
@@ -61,8 +61,47 @@ const Nutrition = () => {
     if (waterData) {
       setWater({ current: waterData.amount, target: waterData.target });
     } else {
-      // Create record for today if not exists
       await supabase.from('nutrition_water').insert([{ user_id: user?.id, date: today, amount: 0, target: 12 }]);
+    }
+
+    // 2. Meals
+    const { data: mealData } = await supabase
+      .from('nutrition_meals')
+      .select('*')
+      .eq('user_id', user?.id)
+      .eq('date', today)
+      .single();
+
+    if (mealData) {
+      setMeals({ 
+        breakfast: mealData.breakfast, 
+        lunch: mealData.lunch, 
+        afternoon: mealData.afternoon, 
+        dinner: mealData.dinner 
+      });
+    } else {
+      await supabase.from('nutrition_meals').insert([{ 
+        user_id: user?.id, 
+        date: today, 
+        breakfast: false, 
+        lunch: false, 
+        afternoon: false, 
+        dinner: false 
+      }]);
+    }
+
+    // 3. Supplements
+    const { data: suppData } = await supabase
+      .from('nutrition_supplements')
+      .select('*')
+      .eq('user_id', user?.id)
+      .eq('date', today);
+
+    if (suppData && suppData.length > 0) {
+      setSupps(prev => prev.map(s => {
+        const found = suppData.find(sd => sd.name === s.name);
+        return found ? { ...s, done: found.is_completed } : s;
+      }));
     }
     
     setLoading(false);
@@ -81,12 +120,54 @@ const Nutrition = () => {
     }
   };
 
-  const toggleSupp = (name: string) => {
-    setSupps(supps.map(s => s.name === name ? { ...s, done: !s.done } : s));
+  const toggleSupp = async (name: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const current = supps.find(s => s.name === name);
+    const newState = !current?.done;
+
+    // Atualização otimista
+    setSupps(prev => prev.map(s => s.name === name ? { ...s, done: newState } : s));
+
+    if (isDemoMode()) return;
+
+    const { error } = await supabase
+      .from('nutrition_supplements')
+      .upsert({ 
+        user_id: user?.id, 
+        date: today, 
+        name: name, 
+        is_completed: newState 
+      }, { onConflict: 'user_id,date,name' });
+
+    if (error) {
+      console.error("Erro ao salvar suplemento:", error);
+      // Rollback se falhar
+      setSupps(prev => prev.map(s => s.name === name ? { ...s, done: !newState } : s));
+    }
   };
 
-  const toggleMeal = (mealKey: string) => {
-    setMeals(prev => ({ ...prev, [mealKey]: !prev[mealKey as keyof typeof meals] }));
+  const toggleMeal = async (mealKey: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newState = !meals[mealKey as keyof typeof meals];
+
+    // Atualização otimista
+    setMeals(prev => ({ ...prev, [mealKey]: newState }));
+
+    if (isDemoMode()) return;
+
+    const { error } = await supabase
+      .from('nutrition_meals')
+      .upsert({ 
+        user_id: user?.id, 
+        date: today, 
+        [mealKey]: newState 
+      }, { onConflict: 'user_id,date' });
+
+    if (error) {
+      console.error("Erro ao salvar refeição:", error);
+      // Rollback se falhar
+      setMeals(prev => ({ ...prev, [mealKey]: !newState }));
+    }
   };
 
   return (

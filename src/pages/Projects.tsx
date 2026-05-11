@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { 
   FolderKanban, Plus, MoreHorizontal, AlignLeft, 
   CheckCircle2, Circle, Trash2, Edit2, Calendar, 
@@ -52,6 +53,7 @@ const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Estados para Criação/Edição
   const [showForm, setShowForm] = useState(false);
@@ -99,11 +101,9 @@ const Projects = () => {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      setProjects(data);
-      setUsingMockData(false);
-    } else {
-      console.warn("⚠️ Usando dados fictícios ou banco vazio.");
+    if (error) {
+      console.error("Erro ao buscar projetos:", error);
+      // Fallback para mock apenas se houver erro real (ex: rede, tabela inexistente)
       const savedMockProjects = localStorage.getItem("sanctuary_mock_projects");
       if (savedMockProjects) {
         setProjects(JSON.parse(savedMockProjects));
@@ -111,6 +111,9 @@ const Projects = () => {
         setProjects([]);
       }
       setUsingMockData(true);
+    } else {
+      setProjects(data || []);
+      setUsingMockData(false);
     }
     setLoading(false);
   };
@@ -123,6 +126,28 @@ const Projects = () => {
 
     if (data) setTasks(data);
   };
+
+  // Efeito para Deep Linking (Abrir projeto via URL ?id=ID) - Reforçado
+  useEffect(() => {
+    if (loading || projects.length === 0) return;
+
+    const projId = searchParams.get('id');
+    if (projId) {
+      const proj = projects.find(p => p.id === projId);
+      if (proj) {
+        // Pequeno atraso para garantir que o modal abra após a renderização inicial do grid
+        const timer = setTimeout(() => {
+          handleOpenEdit(proj);
+          // Limpa o parâmetro da URL silenciosamente sem disparar reload
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete('id');
+          const newUrl = `${window.location.pathname}${newParams.toString() ? '?' + newParams.toString() : ''}`;
+          window.history.replaceState({ path: newUrl }, '', newUrl);
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams, projects, loading]);
 
   const resetForm = () => {
     setTitle("");
@@ -207,8 +232,8 @@ const Projects = () => {
       }
     };
 
-    if (usingMockData) {
-      // Mock Fallback interativo para que a UI continue respondendo e impressionando na demo.
+    if (usingMockData && !user) {
+      // Mock Fallback apenas se não houver usuário logado
       const mockProj: Project = {
         id: editingProject ? editingProject.id : `mock-proj-${Date.now()}`,
         name: title.trim(),
@@ -260,17 +285,9 @@ const Projects = () => {
         setProjects(projects.map(p => p.id === data.id ? data : p));
         resetForm();
       } else {
-        console.error("Falha no DB ao editar, caindo em fallback temporário. Erro:", error?.message);
-        const mockProj: Project = { 
-          id: editingProject.id, 
-          name: title.trim(), color, icon: iconName, deadline: fullDeadline || undefined, 
-          description: description.trim(), status, priority, effort, created_at: editingProject.created_at 
-        };
-        syncDraftTasksLocally(mockProj.id);
-        const updated = projects.map(p => p.id === mockProj.id ? mockProj : p);
-        setProjects(updated);
-        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
-        resetForm();
+        const errorMsg = error?.message || "Erro desconhecido";
+        console.error("Erro ao editar projeto:", errorMsg);
+        alert("FALHA AO SALVAR NO BANCO: " + errorMsg + "\n\nO projeto não pôde ser sincronizado.");
       }
     } else {
       // Lógica de Criação REAL
@@ -296,38 +313,45 @@ const Projects = () => {
         setProjects([data, ...projects]);
         resetForm();
       } else {
-        console.error("Falha no DB, caindo em fallback. Rode o setup! Erro:", error?.message);
-        const mockProj: Project = { id: `mock-fail-${Date.now()}`, name: title.trim(), color, icon: iconName, deadline: fullDeadline || undefined, description: description.trim(), status, priority, effort, created_at: new Date().toISOString() };
-        syncDraftTasksLocally(mockProj.id);
-        const updated = [mockProj, ...projects];
-        setProjects(updated);
-        localStorage.setItem("sanctuary_mock_projects", JSON.stringify(updated));
-        resetForm();
+        const errorMsg = error?.message || "Erro desconhecido";
+        console.error("Erro ao criar projeto:", errorMsg);
+        alert("FALHA AO CRIAR PROJETO NO BANCO: " + errorMsg + "\n\nVerifique se as tabelas foram configuradas corretamente no Supabase.");
       }
     }
   };
 
   const createDraftTasks = async (projectId: string, tasks: DraftTask[]) => {
+    if (!user) return;
+    
+    // Preparar inserção em massa ou sequencial
     for (const dt of tasks) {
-      // Cria a tarefa principal
-      const { data: taskData, error: taskError } = await supabase
+      if (!dt.title.trim()) continue;
+      
+      const { error: taskError } = await supabase
         .from("tasks")
         .insert([{
-          title: dt.title,
+          title: dt.title.trim(),
           project_id: projectId,
-          user_id: user?.id,
+          user_id: user.id,
           energy_level: 'medium',
-          is_critical: false,
+          is_critical: priority === 'Crítica' || priority === 'Alta',
           status: 'todo',
           is_completed: false,
-          subtasks: dt.subtasks.map(s => ({ id: crypto.randomUUID(), title: s.title, is_completed: false }))
-        }])
-        .select()
-        .single();
+          subtasks: dt.subtasks.filter(s => s.title.trim()).map(s => ({ 
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11), 
+            title: s.title.trim(), 
+            is_completed: false 
+          }))
+        }]);
       
-      // Se tiver subtarefas complexas que precisem ser tarefas reais, faríamos recursão aqui.
-      // Mas para manter simples na criação rápida de projetos, salvamos no JSONB de subtasks.
+      if (taskError) {
+        console.error("Erro ao criar tarefa do projeto:", taskError);
+        alert("ERRO AO CRIAR TAREFA: " + taskError.message);
+      }
     }
+    
+    // Atualiza a lista global de tarefas para refletir as novas
+    fetchTasks();
   };
 
   const addDraftTask = () => {
