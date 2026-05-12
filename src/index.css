@@ -34,19 +34,28 @@
 }
 
 .light {
-  --surface: #f8fafc;
-  --surface-low: #ffffff;
-  --surface-high: #f1f5f9;
-  --surface-highest: #e2e8f0;
-  --on-surface: #0f172a;
-  --on-surface-variant: #475569;
-  --primary: #2563eb;
-  --primary-container: #dbeafe;
-  --secondary: #059669;
-  --secondary-container: #d1fae5;
-  --surface-variant: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(15, 23, 42, 0.12);
-  --bg-gradient: radial-gradient(circle at 50% -20%, #eff6ff 0%, #f8fafc 100%);
+  /* Superfícies em camadas — profundidade real */
+  --surface: #f0f2f7;          /* base: cinza-azulado suave */
+  --surface-low: #ffffff;      /* cards elevados */
+  --surface-high: #e4e8f0;     /* fundo ligeiramente recuado */
+  --surface-highest: #d1d8e8;  /* bordas e divisores */
+  
+  /* Tipografia — contraste WCAG AA garantido */
+  --on-surface: #0d1117;            /* textos primários quase pretos */
+  --on-surface-variant: #4a5568;    /* textos secundários — cinza-azul */
+  
+  /* Paleta de cores vibrante para o modo claro */
+  --primary: #2563eb;               /* azul royal vivo */
+  --primary-container: #dbeafe;     /* azul suave para fundos */
+  --secondary: #059669;             /* verde esmeralda */
+  --secondary-container: #d1fae5;   /* verde suave */
+  
+  /* Glassmorphism para o modo claro — branco translúcido */
+  --surface-variant: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(99, 120, 180, 0.15); /* bordas com leve tom azulado */
+  
+  /* Gradiente de fundo premium */
+  --bg-gradient: linear-gradient(135deg, #eef2ff 0%, #f0f4ff 30%, #f8faff 60%, #edf0f7 100%);
 }
 
 @layer base {
@@ -58,14 +67,23 @@
 }
 
 @layer components {
+  /* ===== GLASS STACK ===== */
   .glass-stack {
     @apply bg-surface-variant backdrop-blur-[32px] backdrop-saturate-200 border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.06)];
   }
 
   .light .glass-stack {
-    @apply shadow-[0_12px_40px_rgba(15,23,42,0.12)] bg-surface-low border-white/80;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(99, 120, 180, 0.18);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 4px 16px rgba(37, 99, 235, 0.06),
+      0 12px 40px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255,255,255,0.9);
+    backdrop-filter: blur(20px) saturate(180%);
   }
 
+  /* ===== TYPOGRAPHY ===== */
   .display-lg {
     @apply text-3xl md:text-[5rem] font-bold tracking-[-0.04em] leading-[0.95];
   }
@@ -86,6 +104,7 @@
     @apply text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-primary;
   }
 
+  /* ===== SIDEBAR ITEMS ===== */
   .sidebar-item {
     @apply flex items-center gap-4 px-4 md:px-6 py-4 rounded-xl transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-on-surface/[0.05] cursor-pointer;
   }
@@ -94,16 +113,29 @@
     @apply text-on-surface bg-on-surface/[0.05] border-l-2 border-primary shadow-sm;
   }
 
-  .light .sidebar-item.active {
-    @apply bg-primary/10 text-primary border-primary;
+  .light .sidebar-item {
+    @apply text-slate-500 hover:text-slate-800 hover:bg-slate-100;
   }
 
+  .light .sidebar-item.active {
+    @apply bg-blue-50 text-blue-700 border-blue-500 shadow-sm;
+  }
+
+  /* ===== NAV PILLS ===== */
   .nav-pill {
     @apply px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border border-[var(--glass-border)] transition-all;
   }
 
   .nav-pill.active {
     @apply bg-on-surface/[0.08] border-on-surface/10;
+  }
+
+  .light .nav-pill {
+    @apply border-slate-200 text-slate-500;
+  }
+
+  .light .nav-pill.active {
+    @apply bg-blue-600 text-white border-blue-600;
   }
 
   /* Tiptap / Rich Text Editor Styles */
@@ -194,6 +226,60 @@
 
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* Sidebar nav: scrollbar completely hidden */
+.sidebar-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== LIGHT MODE OVERRIDES ===== */
+
+/* Scrollbar in light mode — slate tones */
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.12);
+}
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.25);
+}
+
+/* Sidebar light mode — white card with shadow */
+.light aside {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-right: 1px solid rgba(99, 120, 180, 0.15) !important;
+  box-shadow: 4px 0 24px rgba(37, 99, 235, 0.05), 1px 0 0 rgba(99, 120, 180, 0.12) !important;
+}
+
+/* Light mode icon colors in mini sidebar */
+.light aside .text-white\/40 {
+  color: rgba(71, 85, 105, 0.6) !important;
+}
+.light aside .text-white {
+  color: #0d1117 !important;
+}
+.light aside .hover\:text-white:hover {
+  color: #0d1117 !important;
+}
+.light aside .border-white\/10 {
+  border-color: rgba(99, 120, 180, 0.15) !important;
+}
+
+/* Light mode main content cards */
+.light .bg-white\/\[0\.03\] {
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+.light .bg-on-surface\/5,
+.light .hover\:bg-on-surface\/5:hover {
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Body in light mode — rich gradient */
+.light body {
+  background: linear-gradient(135deg, #eef2ff 0%, #f0f4ff 30%, #f8faff 60%, #edf0f7 100%) !important;
 }
 
 /* Sidebar nav: scrollbar completely hidden */
