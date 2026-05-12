@@ -96,6 +96,8 @@ const Layout = () => {
     window.dispatchEvent(new CustomEvent('sanctum:open-tour'));
   };
 
+  const isFocusPage = location.pathname === "/focus";
+
   return (
     <LayoutContext.Provider value={{ 
       isSidebarOpen, toggleSidebar, theme, toggleTheme, 
@@ -174,9 +176,13 @@ const Layout = () => {
           )}
         </AnimatePresence>
 
-        <main className={`flex-1 overflow-y-auto p-6 md:p-12 relative h-full transition-all duration-300 ${!isSidebarOpen && !isMobile ? 'md:pl-28 md:pt-24 lg:pt-12' : ''}`}>
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
+        <main className={`flex-1 overflow-y-auto relative h-full transition-all duration-300 ${isFocusPage ? 'p-0' : 'p-6 md:p-12'} ${!isSidebarOpen && !isMobile && !isFocusPage ? 'md:pl-28 md:pt-24 lg:pt-12' : ''}`}>
+          {!isFocusPage && (
+            <>
+              <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10" />
+              <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/5 blur-[120px] rounded-full pointer-events-none -z-10" />
+            </>
+          )}
 
           <AnimatePresence mode="wait">
             <motion.div

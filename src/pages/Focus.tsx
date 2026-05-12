@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX, SkipBack, SkipForward, ChevronDown, ChevronUp, CheckCircle2, Wallet, Heart } from "lucide-react";
+import { Zap, Play, Pause, RotateCcw, Volume2, Maximize2, X, Music, Moon, Target, ShieldCheck, Clock, Settings, Bell, BellOff, VolumeX, SkipBack, SkipForward, ChevronDown, ChevronUp, CheckCircle2, Wallet, Heart, Search, Check, Plus, AlertCircle } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
+import AtmosphereBackground from "../components/ui/AtmosphereBackground";
+import { useLayout } from "../components/layout/Layout";
 
 declare global {
   interface Window {
@@ -10,15 +14,17 @@ declare global {
   }
 }
 
+type FocusModeId = "deep-work" | "creative" | "routine";
+
 type FocusMode = {
-  id: string;
+  id: FocusModeId;
   name: string;
   description: string;
   color: string;
   bgGradient: string;
   icon: any;
   defaultMusicId: string;
-  notificationCategories: string[]; // ['tasks', 'finance', 'health', 'system']
+  notificationCategories: string[];
 };
 
 const AMBIENT_PLAYLIST = [
@@ -31,159 +37,64 @@ const AMBIENT_PLAYLIST = [
 ];
 
 const FOCUS_MODES: FocusMode[] = [
-  {
-    id: "deep-work",
-    name: "Deep Work",
-    description: "Foco absoluto em tarefas de alto impacto.",
-    color: "#a855f7",
-    bgGradient: "from-purple-900/40 via-black to-black",
-    icon: Zap,
-    defaultMusicId: "lofi",
-    notificationCategories: ["tasks"]
-  },
-  {
-    id: "personal",
-    name: "Pessoal",
-    description: "Tempo para você. Conexão equilibrada com o essencial.",
-    color: "#5e9eff",
-    bgGradient: "from-blue-900/40 via-black to-black",
-    icon: Moon,
-    defaultMusicId: "electro",
-    notificationCategories: ["tasks", "finance", "health", "system"]
-  },
-  {
-    id: "health",
-    name: "Saúde & Escrita",
-    description: "Foco no bem-estar físico e mental. Alertas de pausa ativos.",
-    color: "#00f5a0",
-    bgGradient: "from-emerald-900/40 via-black to-black",
-    icon: ShieldCheck,
-    defaultMusicId: "zen",
-    notificationCategories: ["health", "tasks"]
-  }
+  { id: "deep-work", name: "O Vácuo", description: "Foco absoluto em tarefas críticas de alto impacto.", color: "#a855f7", bgGradient: "from-purple-900/40 via-black to-black", icon: Zap, defaultMusicId: "lofi", notificationCategories: ["tasks"] },
+  { id: "creative", name: "O Éter", description: "Fluxo criativo e execução de projetos de longa duração.", color: "#3b82f6", bgGradient: "from-blue-900/40 via-black to-black", icon: Music, defaultMusicId: "electro", notificationCategories: ["tasks", "finance"] },
+  { id: "routine", name: "O Solo", description: "Equilíbrio, hábitos e bem-estar essencial.", color: "#10b981", bgGradient: "from-emerald-900/40 via-black to-black", icon: ShieldCheck, defaultMusicId: "zen", notificationCategories: ["health", "tasks"] }
 ];
 
-const FocusBackgroundEffects = ({ color }: { color: string }) => {
+const TaskSelector = ({ isOpen, onClose, tasks, onSelect, selectedId, searchQuery, onSearchChange, activeModeId }: any) => {
+  if (!isOpen) return null;
+
+  const filteredTasks = tasks.filter((t: any) => {
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (activeModeId === "deep-work") return t.priority === "high" || t.priority === "critical";
+    if (activeModeId === "routine") return t.category === "Saúde" || t.category === "Hábitos" || !t.project_id;
+    return true;
+  });
+
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30 group-hover:opacity-40 transition-opacity duration-1000">
-      {[...Array(4)].map((_, i) => (
-        <motion.div
-            key={i}
-            className="absolute rounded-full blur-[200px]"
-            style={{
-              backgroundColor: color,
-              width: Math.random() * 600 + 400,
-              height: Math.random() * 600 + 400,
-              left: `${Math.random() * 100 - 20}%`,
-              top: `${Math.random() * 100 - 20}%`,
-            }}
-            animate={{
-              x: [0, Math.random() * 200 - 100, 0],
-              y: [0, Math.random() * 200 - 100, 0],
-              scale: [1, 1.15, 1],
-              opacity: [0.05, 0.15, 0.05],
-            }}
-            transition={{
-              duration: Math.random() * 20 + 30,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-        />
-      ))}
-    </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[210] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md" onClick={onClose}>
+      <GlassCard className="w-full max-w-lg p-8 space-y-6" orb onClick={(e: any) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold uppercase tracking-widest">Definir Alvo: {activeModeId === "deep-work" ? "Prioridades" : "Geral"}</h3>
+          <button onClick={onClose} className="p-2 opacity-40 hover:opacity-100 transition-opacity"><X size={20} /></button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+          <input type="text" placeholder="Buscar tarefa..." value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} className="w-full bg-on-surface/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-medium outline-none focus:border-primary/30 transition-all" autoFocus />
+        </div>
+        <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+          {filteredTasks.length > 0 ? filteredTasks.map((task: any) => (
+            <button key={task.id} onClick={() => { onSelect(task.id); onClose(); }} className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left ${selectedId === task.id ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-on-surface/5 border-transparent hover:bg-on-surface/10'}`}>
+              <div className={`w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-500' : 'bg-primary'}`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{task.title}</p>
+                <p className="text-[10px] opacity-40 uppercase tracking-widest font-bold">{task.project_id ? "Projeto Vinculado" : "Tarefa Individual"}</p>
+              </div>
+              {selectedId === task.id && <Check size={18} />}
+            </button>
+          )) : <div className="py-12 text-center opacity-30 uppercase text-xs">Nenhuma tarefa compatível</div>}
+        </div>
+      </GlassCard>
+    </motion.div>
   );
 };
 
-const SPOTIFY_CLIENT_ID = "e017a24e45534327b58bb895137bda8f";
-const REDIRECT_URI = typeof window !== 'undefined' && window.location.origin.includes('localhost') 
-  ? "http://localhost:5173/callback" 
-  : "https://sanctuary-nu.vercel.app/callback";
-
-const FocusModeEditor = ({ mode, onSave, onCancel }: { mode: FocusMode, onSave: (m: FocusMode) => void, onCancel: () => void }) => {
-  const [tempMode, setTempMode] = useState(mode);
-  const categories = [
-    { id: 'tasks', name: 'Tarefas', icon: CheckCircle2 },
-    { id: 'finance', name: 'Finanças', icon: Wallet },
-    { id: 'health', name: 'Saúde', icon: Heart },
-    { id: 'system', name: 'Sistema', icon: Settings },
-  ];
-
+const SessionCompleteModal = ({ results, onClose, onCompleteTask }: any) => {
+  if (!results) return null;
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl"
-    >
-      <GlassCard className="w-full max-w-lg p-8 space-y-8" orb>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl" style={{ backgroundColor: `${mode.color}20`, color: mode.color }}>
-              <mode.icon size={24} />
-            </div>
-            <h3 className="text-2xl font-bold">Configurar {mode.name}</h3>
-          </div>
-          <button onClick={onCancel} className="p-2 opacity-40 hover:opacity-100 transition-opacity"><X size={20} /></button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[220] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
+      <GlassCard className="w-full max-w-md p-8 text-center space-y-8" orb>
+        <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary mx-auto"><Zap size={40} /></div>
+        <div><h3 className="text-2xl font-bold mb-2">Sessão Concluída!</h3><p className="text-sm opacity-50">Você focou em: <br/><span className="text-on-surface font-bold">{results.taskTitle}</span></p></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 bg-on-surface/5 rounded-2xl border border-white/5"><p className="text-[10px] font-bold opacity-40 uppercase mb-1">Eficiência</p><p className="text-2xl font-bold text-primary">{results.efficiency}%</p></div>
+          <div className="p-4 bg-on-surface/5 rounded-2xl border border-white/5"><p className="text-[10px] font-bold opacity-40 uppercase mb-1">Interrupções</p><p className="text-2xl font-bold">{results.interruptions}</p></div>
         </div>
-
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <label className="editorial-label opacity-40 text-[10px]">NOTIFICAÇÕES PERMITIDAS</label>
-            <div className="grid grid-cols-2 gap-3">
-              {categories.map(cat => {
-                const Icon = cat.icon || Settings;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      const has = tempMode.notificationCategories.includes(cat.id);
-                      setTempMode({
-                        ...tempMode,
-                        notificationCategories: has 
-                          ? tempMode.notificationCategories.filter(id => id !== cat.id)
-                          : [...tempMode.notificationCategories, cat.id]
-                      });
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                      tempMode.notificationCategories.includes(cat.id)
-                        ? 'bg-primary/10 border-primary/20 text-primary'
-                        : 'bg-on-surface/5 border-transparent opacity-40 hover:opacity-100'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    <span className="text-xs font-bold uppercase tracking-widest">{cat.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="editorial-label opacity-40 text-[10px]">MÚSICA PADRÃO DO MODO</label>
-            <div className="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-              {AMBIENT_PLAYLIST.map(track => (
-                <button
-                  key={track.id}
-                  onClick={() => setTempMode({ ...tempMode, defaultMusicId: track.id })}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                    tempMode.defaultMusicId === track.id
-                      ? 'bg-secondary/10 border-secondary/20 text-secondary'
-                      : 'bg-on-surface/5 border-transparent opacity-40 hover:opacity-100'
-                  }`}
-                >
-                  <Music size={14} />
-                  <div className="flex-1">
-                    <p className="text-xs font-bold">{track.name}</p>
-                    <p className="text-[9px] opacity-40 uppercase">{track.genre}</p>
-                  </div>
-                  {tempMode.defaultMusicId === track.id && <ShieldCheck size={14} />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-4 pt-4">
-          <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-on-surface/5 font-bold text-xs uppercase tracking-widest hover:bg-on-surface/10 transition-all">Cancelar</button>
-          <button onClick={() => onSave(tempMode)} className="flex-1 py-3 rounded-xl bg-primary text-surface font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-primary/20">Salvar Alterações</button>
+        <div className="space-y-3">
+          <button onClick={handleCompleteTask} className="w-full py-4 rounded-2xl bg-primary text-surface font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all">Concluir Tarefa e Sair</button>
+          <button onClick={onClose} className="w-full py-4 rounded-2xl bg-on-surface/5 font-bold text-[10px] uppercase opacity-40">Apenas Fechar</button>
         </div>
       </GlassCard>
     </motion.div>
@@ -191,101 +102,23 @@ const FocusModeEditor = ({ mode, onSave, onCancel }: { mode: FocusMode, onSave: 
 };
 
 const Focus = () => {
-  const [modes, setModes] = useState<FocusMode[]>(() => {
-    try {
-      const saved = localStorage.getItem('sanctum_focus_modes');
-      if (!saved) return FOCUS_MODES;
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return FOCUS_MODES;
-      
-      return parsed.map((m: any) => {
-        // MUITO IMPORTANTE: Re-anexar o ícone original, pois o JSON não salva funções/componentes
-        const defaultMode = FOCUS_MODES.find(fm => fm.id === m.id) || FOCUS_MODES[0];
-        return {
-          ...defaultMode, // Pega o ícone e cores originais
-          ...m,           // Sobrepõe com as preferências salvas pelo usuário
-          icon: defaultMode.icon, // Garante que o ícone nunca seja perdido
-          notificationCategories: Array.isArray(m.notificationCategories) ? m.notificationCategories : (defaultMode.notificationCategories || [])
-        };
-      });
-    } catch (e) {
-      return FOCUS_MODES;
-    }
-  });
-
-  const [activeMode, setActiveMode] = useState<FocusMode>(() => modes[0] || FOCUS_MODES[0]);
-  const [editingModeId, setEditingModeId] = useState<string | null>(null);
-  
-  const [notificationConfigs, setNotificationConfigs] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('sanctum_focus_notifications');
-      return saved ? JSON.parse(saved) : { "deep-work": false, "personal": true, "health": true };
-    } catch {
-      return { "deep-work": false, "personal": true, "health": true };
-    }
-  });
-
-  const editingMode = modes.find(m => m.id === editingModeId);
-  const [activeTrack, setActiveTrack] = useState(() => {
-    const saved = localStorage.getItem('sanctum_active_track');
-    return saved ? AMBIENT_PLAYLIST.find(t => t.id === saved) || AMBIENT_PLAYLIST[0] : AMBIENT_PLAYLIST[0];
-  });
+  const { user } = useAuth();
+  const { isSidebarOpen, isMobile } = useLayout();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => localStorage.getItem('sanctum_focus_task_id'));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(false);
+  const [interruptions, setInterruptions] = useState(0);
+  const [sessionResults, setSessionResults] = useState<any>(null);
+  const [modes, setModes] = useState<FocusMode[]>(FOCUS_MODES);
+  const [activeMode, setActiveMode] = useState<FocusMode>(FOCUS_MODES[0]);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isBreakMode, setIsBreakMode] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(0.5);
-  const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>(() => {
-    if (typeof window === 'undefined') return 'ambient';
-    return (localStorage.getItem('sanctum_music_source') as 'ambient' | 'spotify') || 'ambient';
-  });
-  const [spotifyUrl, setSpotifyUrl] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem('sanctum_spotify_url') || 'https://open.spotify.com/playlist/37i9dQZF1DX8Ueb990JyS';
-  });
-
-  // Spotify SDK State
-  const [spotifyToken, setSpotifyToken] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem("spotify_access_token");
-  });
-  const [player, setPlayer] = useState<any>(null);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [currentTrack, setCurrentTrack] = useState<any>(null);
-  
-  // Pomodoro State
-  const [pomodoroConfig, setPomodoroConfig] = useState(() => {
-    const saved = localStorage.getItem('sanctum_pomodoro_config');
-    return saved ? JSON.parse(saved) : { work: 25, break: 5 };
-  });
-  const getSavedFocusState = () => {
-    try {
-      const saved = localStorage.getItem('sanctum_active_focus');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  };
-
-  const [isTimerRunning, setIsTimerRunning] = useState(() => {
-    const state = getSavedFocusState();
-    return state ? state.isRunning : false;
-  });
-  
-  const [isBreakMode, setIsBreakMode] = useState(() => {
-    const state = getSavedFocusState();
-    return state ? state.isBreak : false;
-  });
-
-  const [timeLeft, setTimeLeft] = useState(() => {
-    const state = getSavedFocusState();
-    if (state && state.timeLeft !== undefined) {
-       if (state.isRunning && state.targetEndTime) {
-           const remaining = Math.max(0, Math.floor((state.targetEndTime - Date.now()) / 1000));
-           return remaining;
-       }
-       return state.timeLeft;
-    }
-    return pomodoroConfig.work * 60;
-  });
-
+  const [pomodoroConfig, setPomodoroConfig] = useState({ work: 25, break: 5 });
+  const [activeTrack, setActiveTrack] = useState(AMBIENT_PLAYLIST[0]);
+  const [musicSource, setMusicSource] = useState<'ambient' | 'spotify'>('ambient');
   const [showSettings, setShowSettings] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -293,728 +126,192 @@ const Focus = () => {
   const alarmRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    (window as any).__focusMounted = true;
-    return () => { (window as any).__focusMounted = false; };
-  }, []);
-
-  // Load Spotify SDK
-  useEffect(() => {
-    if (musicSource === 'spotify' && spotifyToken) {
-      if (!window.Spotify) {
-        const script = document.createElement("script");
-        script.src = "https://sdk.scdn.co/spotify-player.js";
-        script.async = true;
-        document.body.appendChild(script);
-      }
-
-      window.onSpotifyWebPlaybackSDKReady = () => {
-        const newPlayer = new window.Spotify.Player({
-          name: 'Sanctum V1 Player',
-          getOAuthToken: cb => { cb(spotifyToken); },
-          volume: volume
-        });
-
-        newPlayer.addListener('ready', ({ device_id }) => {
-          setDeviceId(device_id);
-        });
-
-        newPlayer.addListener('player_state_changed', state => {
-          if (!state) return;
-          setCurrentTrack(state.track_window.current_track);
-          setIsPlaying(!state.paused);
-        });
-
-        newPlayer.connect();
-        setPlayer(newPlayer);
-      };
-    }
-    
-    return () => {
-      if (player) {
-        player.disconnect();
-      }
+    const fetchTasks = async () => {
+      if (!user) return;
+      const { data } = await supabase.from('tasks').select('*').eq('is_completed', false).order('priority', { ascending: false });
+      if (data) setTasks(data);
     };
-  }, [spotifyToken, musicSource]);
+    fetchTasks();
+  }, [user]);
 
-  // Sync Volume
   useEffect(() => {
-    if (player) player.setVolume(volume);
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume, player]);
+    if (selectedTaskId) localStorage.setItem('sanctum_focus_task_id', selectedTaskId);
+    else localStorage.removeItem('sanctum_focus_task_id');
+  }, [selectedTaskId]);
 
-  // Sync Mute
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = isMuted;
-  }, [isMuted]);
-
-  // Ambient Audio Control
-  useEffect(() => {
-    if (audioRef.current && musicSource === 'ambient') {
-      if (isPlaying) {
-        audioRef.current.play().catch(e => console.error("Audio play failed:", e));
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying, activeMode, musicSource]);
-
-  // Persist State
-  useEffect(() => {
-    localStorage.setItem('sanctum_music_source', musicSource);
-    localStorage.setItem('sanctum_spotify_url', spotifyUrl);
-    localStorage.setItem('sanctum_pomodoro_config', JSON.stringify(pomodoroConfig));
-    localStorage.setItem('sanctum_active_track', activeTrack.id);
-    localStorage.setItem('sanctum_focus_notifications', JSON.stringify(notificationConfigs));
-    localStorage.setItem('sanctum_focus_modes', JSON.stringify(modes));
-  }, [musicSource, spotifyUrl, pomodoroConfig, activeTrack, notificationConfigs, modes]);
-
-  const updateMode = (updatedMode: FocusMode) => {
-    const newModes = modes.map(m => m.id === updatedMode.id ? updatedMode : m);
-    setModes(newModes);
-    if (activeMode.id === updatedMode.id) setActiveMode(updatedMode);
-    setEditingModeId(null);
-  };
-
-
-
-  // Persist active focus mode para o Dashboard
-  useEffect(() => {
-    const targetEndTime = isTimerRunning ? Date.now() + timeLeft * 1000 : null;
-    localStorage.setItem('sanctum_active_focus', JSON.stringify({
-      id: activeMode.id,
-      name: activeMode.name,
-      color: activeMode.color,
-      isRunning: isTimerRunning,
-      isBreak: isBreakMode,
-      timeLeft,
-      targetEndTime,
-    }));
-  }, [activeMode, isTimerRunning, isBreakMode, timeLeft]);
-
-  // Escuta comandos remotos do Dashboard via Custom Events
-  useEffect(() => {
-    const handleFocusToggle = () => setIsTimerRunning(prev => !prev);
-    const handleFocusReset = () => {
-      setIsTimerRunning(false);
-      setIsBreakMode(false);
-      setTimeLeft(pomodoroConfig.work * 60);
-    };
-    window.addEventListener('sanctum:focus-toggle', handleFocusToggle);
-    window.addEventListener('sanctum:focus-reset', handleFocusReset);
-    return () => {
-      window.removeEventListener('sanctum:focus-toggle', handleFocusToggle);
-      window.removeEventListener('sanctum:focus-reset', handleFocusReset);
-    };
-  }, [pomodoroConfig.work]);
-
-  // Timer Logic
   useEffect(() => {
     if (isTimerRunning && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
+      timerRef.current = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      
-      // Play Alarm
-      if (alarmRef.current) {
-        alarmRef.current.currentTime = 0;
-        alarmRef.current.play().catch(e => console.error("Alarm failed:", e));
+      if (!isBreakMode) {
+        setSessionResults({ efficiency: Math.max(20, 100 - interruptions * 10), interruptions, duration: pomodoroConfig.work, taskTitle: tasks.find(t => t.id === selectedTaskId)?.title || "Foco Geral" });
       }
-
-      // Switch Mode
+      if (alarmRef.current) alarmRef.current.play();
       const nextMode = !isBreakMode;
       setIsBreakMode(nextMode);
       setTimeLeft(nextMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
-      
-      // Optional: Auto-start next cycle could be added here
+      setInterruptions(0);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isTimerRunning, timeLeft, isBreakMode, pomodoroConfig]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isTimerRunning, timeLeft, isBreakMode, interruptions, pomodoroConfig, selectedTaskId, tasks]);
 
-  const handleSpotifyLogin = () => {
-    const scopes = "streaming user-read-email user-read-private user-modify-playback-state";
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+  const handleCompleteTask = async () => {
+    if (!selectedTaskId) return;
+    const { error } = await supabase.from('tasks').update({ is_completed: true, completed_at: new Date().toISOString() }).eq('id', selectedTaskId);
+    if (!error) {
+      setTasks(prev => prev.filter(t => t.id !== selectedTaskId));
+      setSelectedTaskId(null);
+      setSessionResults(null);
+    }
   };
 
-  const playSpotifyPlaylist = async () => {
-    if (!deviceId || !spotifyToken || !spotifyUrl) return;
-    
-    const match = spotifyUrl.match(/\/(playlist|track|album|artist)\/([a-zA-Z0-9]+)/);
-    if (!match) return;
-    
-    const type = match[1];
-    const id = match[2];
-    const context_uri = `spotify:${type}:${id}`;
-    
-    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-      method: 'PUT',
-      body: JSON.stringify(type === 'track' ? { uris: [context_uri] } : { context_uri: context_uri }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${spotifyToken}`
-      },
-    });
-  };
-
-  const toggleSpotifyPlayback = () => {
-    if (player) player.togglePlay();
-  };
-
-  const skipNext = () => player && player.nextTrack();
-  const skipPrev = () => player && player.previousTrack();
-
+  const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
-  const resetTimer = () => {
-    setIsTimerRunning(false);
-    setIsBreakMode(false);
-    setTimeLeft(pomodoroConfig.work * 60);
-  };
-
-  const formatSpotifyUrl = (url: string) => {
-    try {
-      if (!url) return "";
-      if (url.includes('embed')) return url;
-      const match = url.match(/\/(playlist|track|album|artist)\/([a-zA-Z0-9]+)/);
-      if (match) {
-        const type = match[1];
-        const id = match[2];
-        return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
-      }
-      return url;
-    } catch (e) {
-      return url;
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-      setIsFullscreen(false);
-    }
-  };
-
-  // Sync state with browser fullscreen changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+  const resetTimer = () => { setIsTimerRunning(false); setIsBreakMode(false); setTimeLeft(pomodoroConfig.work * 60); setInterruptions(0); };
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   return (
-    <div className="min-h-screen p-6 md:p-10 space-y-10 bg-[#0a0a0b]">
-      {/* DEBUG LABEL - REMOVER DEPOIS */}
-      <div className="hidden">Debug: Active Mode - {activeMode?.name}</div>
+    <div className="min-h-screen bg-transparent relative overflow-hidden">
+      <AtmosphereBackground mode={activeMode.id} />
       
-      {/* Alarm Audio */}
-      <audio 
-        ref={alarmRef}
-        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
-        preload="auto"
-      />
+      <audio ref={alarmRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" />
+      {musicSource === 'ambient' && activeTrack && <audio ref={audioRef} src={activeTrack.url} loop />}
 
-      {/* Hidden Audio Element for Ambient */}
-      {musicSource === 'ambient' && activeTrack?.url && (
-        <audio 
-          ref={audioRef}
-          src={activeTrack.url}
-          loop
-        />
-      )}
+      <AnimatePresence>
+        {sessionResults && <SessionCompleteModal results={sessionResults} onClose={() => setSessionResults(null)} onCompleteTask={handleCompleteTask} />}
+        {isTaskSelectorOpen && (
+          <TaskSelector 
+            isOpen={isTaskSelectorOpen} 
+            onClose={() => setIsTaskSelectorOpen(false)} 
+            tasks={tasks} 
+            onSelect={setSelectedTaskId} 
+            selectedId={selectedTaskId} 
+            searchQuery={searchQuery} 
+            onSearchChange={setSearchQuery} 
+            activeModeId={activeMode.id}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Mode Editor Modal */}
-      {editingMode && (
-        <FocusModeEditor 
-          mode={editingMode}
-          onSave={updateMode}
-          onCancel={() => setEditingModeId(null)}
-        />
-      )}
-
-      {/* Background Effects */}
       <AnimatePresence>
         {isFullscreen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`absolute inset-0 bg-gradient-to-tr ${activeMode.bgGradient} transition-all duration-1000`}
-          >
-            <FocusBackgroundEffects color={activeMode.color} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex flex-col items-center justify-center text-center space-y-8 bg-black/40 backdrop-blur-sm">
+            <button onClick={toggleFullscreen} className="absolute top-10 right-10 p-4 opacity-30 hover:opacity-100 text-white"><X size={32} /></button>
+            <div className="space-y-4">
+              <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 text-primary">{isBreakMode ? 'Descanso' : activeMode.name}</p>
+              <h1 className="text-9xl md:text-[15rem] font-bold font-mono tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{formatTime(timeLeft)}</h1>
+              {selectedTaskId && !isBreakMode && <p className="text-sm font-bold uppercase tracking-widest text-primary opacity-60">Focando em: {tasks.find(t => t.id === selectedTaskId)?.title}</p>}
+            </div>
+            <div className="flex items-center gap-8">
+              <button onClick={toggleTimer} className="w-24 h-24 rounded-full border-2 border-white/10 flex items-center justify-center hover:bg-white/5 transition-all text-white">
+                {isTimerRunning ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-2" />}
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {!isFullscreen ? (
-        <>
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {!isFullscreen && (
+        <div className={`relative z-10 p-6 md:p-10 lg:p-16 space-y-12 transition-all duration-300 ${!isSidebarOpen && !isMobile ? 'md:pl-32' : ''}`}>
+          <header className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-2 opacity-60 mb-1">
-                <Zap size={12} style={{ color: activeMode.color }} />
-                <p className="editorial-label !tracking-[0.2em]">ESTADO DE IMERSÃO</p>
-              </div>
-              <h2 className="display-lg">Modo Foco</h2>
-              <p className="text-sm opacity-50 mt-1">Configure o seu santuário particular para trabalho profundo.</p>
+              <div className="flex items-center gap-2 opacity-60 mb-1"><Zap size={12} style={{ color: activeMode.color }} /><p className="editorial-label text-[10px] uppercase tracking-widest">Santuário Ativo</p></div>
+              <h2 className="text-4xl font-bold text-white">Modo Foco</h2>
             </div>
-
-            <button 
-              onClick={toggleFullscreen}
-              className="flex items-center gap-2 px-6 py-3 rounded-full bg-on-surface/[0.03] border border-[var(--glass-border)] text-[10px] font-bold uppercase tracking-widest hover:bg-on-surface/5 transition-all"
-            >
-              <Maximize2 size={16} /> Entrar em Tela Cheia
-            </button>
+            <button onClick={toggleFullscreen} className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase text-white hover:bg-white/10 transition-all"><Maximize2 size={16} /> Entrar em Imersão</button>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-10">
-            {/* Main Selector */}
-            <div className="space-y-6">
-              <h3 className="editorial-label opacity-40">ESCOLHER MODO DE FOCO</h3>
-              <div className="grid grid-cols-1 gap-4">
-                {modes.map((mode) => (
-                  <GlassCard 
-                    key={mode.id}
-                    onClick={() => {
-                      setActiveMode(mode);
-                      const defaultTrack = AMBIENT_PLAYLIST.find(t => t.id === mode.defaultMusicId);
-                      if (defaultTrack) setActiveTrack(defaultTrack);
-                    }}
-                    className={`p-6 cursor-pointer border-2 transition-all relative group ${
-                      activeMode.id === mode.id ? 'border-primary' : 'border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${mode.color}15`, color: mode.color }}>
-                        <mode.icon size={32} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1 gap-4">
-                          <h4 className="text-lg font-bold truncate">{mode.name}</h4>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNotificationConfigs(prev => ({ ...prev, [mode.id]: !prev[mode.id] }));
-                              }}
-                              className={`flex items-center gap-2 text-[10px] font-bold uppercase transition-all px-2 py-1.5 rounded-lg border border-transparent ${
-                                notificationConfigs[mode.id] ? 'text-primary bg-primary/10 border-primary/20' : 'opacity-40 hover:opacity-100 bg-on-surface/5'
-                              }`}
-                            >
-                              {notificationConfigs[mode.id] ? <Bell size={12} /> : <BellOff size={12} />}
-                              {notificationConfigs[mode.id] ? "On" : "Off"}
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setEditingModeId(mode.id); }}
-                              className="p-1.5 opacity-40 hover:opacity-100 bg-on-surface/5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all border border-transparent hover:border-primary/20"
-                              title="Configurar Modo"
-                            >
-                              <Settings size={14} />
-                            </button>
-                          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-12">
+            <div className="space-y-8">
+              <div className="space-y-1">
+                <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">Escolha sua Atmosfera</h3>
+                <p className="text-[10px] opacity-20 uppercase font-bold tracking-widest">Defina a vibração do seu espaço de trabalho</p>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
+                {modes.map(mode => (
+                  <motion.div key={mode.id} whileHover={{ x: 10 }} className="relative group">
+                    <GlassCard onClick={() => setActiveMode(mode)} className={`p-8 cursor-pointer border-2 transition-all relative overflow-hidden h-full ${activeMode.id === mode.id ? 'border-primary shadow-[0_0_40px_rgba(var(--color-primary-rgb),0.1)]' : 'border-white/5 hover:border-white/20'}`}>
+                      <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-500 ${activeMode.id === mode.id ? 'bg-primary' : 'bg-transparent'}`} />
+                      <div className="flex items-start gap-6 relative z-10">
+                        <div className="w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-700 group-hover:rotate-[10deg] shrink-0" style={{ backgroundColor: `${mode.color}15`, color: mode.color, boxShadow: activeMode.id === mode.id ? `0 0 30px ${mode.color}30` : 'none' }}>
+                          <mode.icon size={32} />
                         </div>
-                        <p className="text-sm opacity-50 mb-4">{mode.description}</p>
-                        <div className="flex flex-wrap gap-2">
-                           {AMBIENT_PLAYLIST.slice(0, 3).map(t => (
-                              <div key={t.id} className="text-[8px] px-2 py-0.5 rounded-md bg-on-surface/5 opacity-40 uppercase tracking-tighter">
-                                 {t.name}
-                              </div>
-                           ))}
-                           <div className="text-[8px] px-2 py-0.5 rounded-md bg-on-surface/5 opacity-40 uppercase tracking-tighter">
-                              + {AMBIENT_PLAYLIST.length - 3} mais
-                           </div>
+                        <div className="space-y-2">
+                          <h4 className={`text-xl font-bold transition-colors ${activeMode.id === mode.id ? 'text-white' : 'text-white/60'}`}>{mode.name}</h4>
+                          <p className="text-xs leading-relaxed opacity-40 text-white group-hover:opacity-60 transition-opacity">{mode.description}</p>
+                          {activeMode.id === mode.id && (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 pt-2">
+                              <div className="w-1 h-1 rounded-full bg-primary animate-ping" />
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Santuário Ativo</span>
+                            </motion.div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </GlassCard>
+                    </GlassCard>
+                  </motion.div>
                 ))}
               </div>
             </div>
 
-            {/* Config & Controls */}
             <div className="space-y-8">
-              <GlassCard className="p-8 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="editorial-label opacity-40">TIMER POMODORO</h3>
-                  <button 
-                    onClick={() => setShowSettings(!showSettings)}
-                    className={`p-2 rounded-lg transition-all ${showSettings ? 'bg-primary text-surface' : 'hover:bg-on-surface/5 opacity-40 hover:opacity-100'}`}
-                  >
-                    <Settings size={16} />
-                  </button>
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {showSettings ? (
-                    <motion.div 
-                      key="settings"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="space-y-6 pt-2"
-                    >
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Foco (min)</label>
-                             <div className="flex items-center gap-2 bg-on-surface/5 rounded-xl border border-[var(--glass-border)] px-4 py-2">
-                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, work: Math.max(1, prev.work - 5) }))} className="opacity-40 hover:opacity-100">-</button>
-                                <input 
-                                  type="number" 
-                                  value={pomodoroConfig.work}
-                                  onChange={(e) => setPomodoroConfig(prev => ({ ...prev, work: parseInt(e.target.value) || 1 }))}
-                                  className="w-full bg-transparent text-center text-xs font-bold outline-none"
-                                />
-                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, work: prev.work + 5 }))} className="opacity-40 hover:opacity-100">+</button>
-                             </div>
-                          </div>
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Pausa (min)</label>
-                             <div className="flex items-center gap-2 bg-on-surface/5 rounded-xl border border-[var(--glass-border)] px-4 py-2">
-                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, break: Math.max(1, prev.break - 1) }))} className="opacity-40 hover:opacity-100">-</button>
-                                <input 
-                                  type="number" 
-                                  value={pomodoroConfig.break}
-                                  onChange={(e) => setPomodoroConfig(prev => ({ ...prev, break: parseInt(e.target.value) || 1 }))}
-                                  className="w-full bg-transparent text-center text-xs font-bold outline-none"
-                                />
-                                <button onClick={() => setPomodoroConfig(prev => ({ ...prev, break: prev.break + 1 }))} className="opacity-40 hover:opacity-100">+</button>
-                             </div>
-                          </div>
-                       </div>
-                       <button 
-                        onClick={() => {
-                          setShowSettings(false);
-                          if (!isTimerRunning) setTimeLeft(isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
-                        }}
-                        className="w-full py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20"
-                       >
-                         Salvar Configuração
-                       </button>
-                    </motion.div>
+              <div className="space-y-4">
+                <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">O Alvo da Intenção</h3>
+                <button onClick={() => setIsTaskSelectorOpen(true)} className="w-full p-8 rounded-[40px] bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-white/[0.06] transition-all text-left group relative overflow-hidden">
+                  {selectedTaskId ? (
+                    <div className="flex items-center justify-between text-white relative z-10">
+                      <div className="flex items-center gap-6">
+                        <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center shadow-lg shadow-primary/20"><Target size={24} /></div>
+                        <div>
+                          <p className="text-lg font-bold truncate max-w-[300px] group-hover:text-primary transition-colors">{tasks.find(t => t.id === selectedTaskId)?.title}</p>
+                          <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Compromisso de Imersão</p>
+                        </div>
+                      </div>
+                      <X size={16} className="opacity-20 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setSelectedTaskId(null); }} />
+                    </div>
                   ) : (
-                    <motion.div 
-                      key="timer"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="text-center"
-                    >
-                      <div className="flex items-center justify-center gap-4 mb-4">
-                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold tracking-[0.2em] uppercase ${isBreakMode ? 'bg-[#00f5a0]/10 text-[#00f5a0]' : 'bg-primary/10 text-primary'}`}>
-                           <div className={`w-1.5 h-1.5 rounded-full ${isBreakMode ? 'bg-[#00f5a0]' : 'bg-primary'} animate-pulse`} />
-                           {isBreakMode ? 'Tempo de Pausa' : 'Sessão de Foco'}
-                        </div>
-                        <button 
-                          onClick={() => setNotificationConfigs(prev => ({ ...prev, [activeMode.id]: !prev[activeMode.id] }))}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-bold uppercase transition-all border ${
-                            notificationConfigs[activeMode.id] ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-on-surface/5 border-transparent opacity-40'
-                          }`}
-                        >
-                          {notificationConfigs[activeMode.id] ? <Bell size={10} /> : <BellOff size={10} />}
-                          {notificationConfigs[activeMode.id] ? "Alertas ON" : "Alertas OFF"}
-                        </button>
+                    <div className="flex items-center gap-6 opacity-40 text-white relative z-10 group-hover:opacity-100 transition-all">
+                      <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-all"><Plus size={24} /></div>
+                      <div>
+                        <p className="text-lg font-bold uppercase tracking-widest">Definir Propósito</p>
+                        <p className="text-[10px] opacity-60">Escolha o desafio para este ciclo de foco</p>
                       </div>
-
-                      <div className="text-7xl font-mono font-bold tracking-tight mb-10">{formatTime(timeLeft)}</div>
-
-                      <div className="flex items-center justify-center gap-4">
-                        <button onClick={resetTimer} className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
-                          <RotateCcw size={20} />
-                        </button>
-                        <button 
-                          onClick={toggleTimer} 
-                          className={`w-20 h-20 rounded-full flex items-center justify-center text-surface shadow-2xl transition-all scale-110 ${isBreakMode ? 'bg-[#00f5a0] shadow-[#00f5a0]/30' : 'bg-primary shadow-primary/30'} hover:scale-115 active:scale-95`}
-                        >
-                          {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
-                        </button>
-                        <button onClick={() => {
-                          setIsBreakMode(!isBreakMode);
-                          setTimeLeft(!isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
-                          setIsTimerRunning(false);
-                        }} className="p-4 rounded-full bg-on-surface/5 hover:bg-on-surface/10 transition-all">
-                          <Target size={20} />
-                        </button>
-                      </div>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
-              </GlassCard>
-
-              <GlassCard className="p-6">
-                 <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                      <Music size={16} className="text-secondary" />
-                      <h4 className="text-sm font-bold uppercase tracking-widest">Fonte de Áudio</h4>
-                    </div>
-                    <div className="flex bg-on-surface/5 p-1 rounded-full border border-[var(--glass-border)]">
-                      <button 
-                        onClick={() => setMusicSource('ambient')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-full transition-all ${musicSource === 'ambient' ? 'bg-primary text-surface' : 'opacity-40 hover:opacity-100'}`}
-                      >
-                        AMBIENTE
-                      </button>
-                      <button 
-                        onClick={() => setMusicSource('spotify')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-full transition-all ${musicSource === 'spotify' ? 'bg-[#1DB954] text-white' : 'opacity-40 hover:opacity-100'}`}
-                      >
-                        SPOTIFY
-                      </button>
-                    </div>
-                 </div>
-
-                 {musicSource === 'ambient' ? (
-                   <div className="space-y-6">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                           <div className="flex items-center gap-2 group/vol">
-                             <Volume2 size={14} className="opacity-40 group-hover/vol:opacity-100 transition-opacity" />
-                             <input 
-                               type="range" 
-                               min="0" 
-                               max="1" 
-                               step="0.01" 
-                               value={volume} 
-                               onChange={(e) => setVolume(parseFloat(e.target.value))}
-                               className="w-20 h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
-                             />
-                           </div>
-                           <button onClick={() => setIsMuted(!isMuted)} className="opacity-50 hover:opacity-100 transition-opacity">
-                             {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                           </button>
-                        </div>
-                        <button 
-                          onClick={() => setIsPlaying(!isPlaying)}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-primary text-surface shadow-lg shadow-primary/20' : 'bg-on-surface/5 hover:bg-on-surface/10'}`}
-                        >
-                          {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
-                        </button>
-                     </div>
-
-                     <div className="space-y-2">
-                        <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Biblioteca Nativa</label>
-                        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                           {AMBIENT_PLAYLIST.map((track) => (
-                              <button 
-                                key={track.id}
-                                onClick={() => {
-                                   setActiveTrack(track);
-                                   setIsPlaying(true);
-                                }}
-                                className={`p-3 rounded-xl flex items-center gap-3 transition-all text-left border ${
-                                   activeTrack.id === track.id ? 'bg-primary/10 border-primary/20' : 'bg-on-surface/5 border-transparent hover:bg-on-surface/10'
-                                }`}
-                              >
-                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeTrack.id === track.id ? 'bg-primary text-surface' : 'bg-on-surface/10 opacity-40'}`}>
-                                    <Music size={14} />
-                                 </div>
-                                 <div className="flex-1 overflow-hidden">
-                                    <p className={`text-xs font-bold truncate ${activeTrack.id === track.id ? 'text-primary' : ''}`}>{track.name}</p>
-                                    <p className="text-[9px] opacity-40 uppercase tracking-tighter">{track.genre}</p>
-                                 </div>
-                                 {activeTrack.id === track.id && isPlaying && (
-                                    <div className="flex gap-0.5 items-end h-3">
-                                       <div className="w-0.5 bg-primary animate-[bounce_1s_infinite]" />
-                                       <div className="w-0.5 bg-primary animate-[bounce_1.2s_infinite]" />
-                                       <div className="w-0.5 bg-primary animate-[bounce_0.8s_infinite]" />
-                                    </div>
-                                 )}
-                              </button>
-                           ))}
-                        </div>
-                     </div>
-                   </div>
-                 ) : (
-                   <div className="space-y-4">
-                     {!spotifyToken ? (
-                       <button 
-                         onClick={handleSpotifyLogin}
-                         className="w-full py-8 rounded-2xl bg-[#1DB954]/10 border-2 border-dashed border-[#1DB954]/30 flex flex-col items-center justify-center gap-3 hover:bg-[#1DB954]/20 transition-all group"
-                       >
-                          <div className="w-12 h-12 rounded-full bg-[#1DB954] flex items-center justify-center text-white shadow-xl shadow-[#1DB954]/30 group-hover:scale-110 transition-transform">
-                             <Music size={24} />
-                          </div>
-                          <div className="text-center">
-                             <p className="text-xs font-bold uppercase tracking-widest text-[#1DB954]">Conectar Spotify Premium</p>
-                             <p className="text-[9px] opacity-40 mt-1">Necessário para áudio completo sem limites</p>
-                          </div>
-                       </button>
-                     ) : (
-                       <div className="space-y-4">
-                         <div className="flex flex-col gap-2">
-                            <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest pl-1">Playlist ou Álbum</label>
-                            <div className="flex gap-2">
-                              <input 
-                                type="text" 
-                                value={spotifyUrl}
-                                onChange={(e) => setSpotifyUrl(e.target.value)}
-                                placeholder="Cole o link do Spotify aqui..."
-                                className="flex-1 bg-on-surface/5 border border-[var(--glass-border)] rounded-xl py-2 px-3 text-[10px] outline-none focus:border-[#1DB954]/50 transition-all font-mono"
-                              />
-                              <button 
-                                onClick={playSpotifyPlaylist}
-                                className="px-4 py-2 bg-[#1DB954] text-white rounded-xl text-[9px] font-bold hover:scale-105 transition-all"
-                              >
-                                CARREGAR
-                              </button>
-                            </div>
-                         </div>
-                         
-                         <div className="p-4 rounded-2xl bg-on-surface/5 border border-[var(--glass-border)] flex items-center gap-4">
-                            {currentTrack ? (
-                              <>
-                                <img src={currentTrack.album.images[0].url} className="w-12 h-12 rounded-lg shadow-lg" alt="" />
-                                <div className="flex-1 min-w-0">
-                                   <p className="text-xs font-bold truncate">{currentTrack.name}</p>
-                                   <p className="text-[10px] opacity-40 truncate">{currentTrack.artists[0].name}</p>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="flex-1 text-center py-2 opacity-30 text-[10px] font-bold">AGUARDANDO REPRODUÇÃO...</div>
-                            )}
-                         </div>
-
-                         <div className="flex items-center justify-center gap-6 pt-2">
-                            <button onClick={skipNext === player && player.nextTrack} className="opacity-40 hover:opacity-100 transition-opacity"><SkipBack size={18} fill="currentColor" /></button>
-                            <button 
-                              onClick={toggleSpotifyPlayback} 
-                              className="w-12 h-12 rounded-full bg-on-surface/5 flex items-center justify-center hover:bg-on-surface/10 transition-all"
-                            >
-                               {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
-                            </button>
-                            <button onClick={skipNext} className="opacity-40 hover:opacity-100 transition-opacity"><SkipForward size={18} fill="currentColor" /></button>
-                         </div>
-                         <button onClick={() => { sessionStorage.removeItem("spotify_access_token"); setSpotifyToken(null); }} className="w-full text-[8px] opacity-20 hover:opacity-100 py-2 border-t border-[var(--glass-border)] transition-opacity uppercase tracking-widest">Desconectar Conta</button>
-                       </div>
-                     )}
-                   </div>
-                 )}
-              </GlassCard>
-            </div>
-          </div>
-        </>
-      ) : (
-        /* FULLSCREEN MODE / SCREENSAVER */
-        <div className="relative z-[110] w-full max-w-4xl mx-auto flex flex-col items-center text-center">
-          <button 
-            onClick={toggleFullscreen} 
-            className="absolute -top-10 right-0 p-4 opacity-30 hover:opacity-100 transition-opacity"
-          >
-            <X size={32} />
-          </button>
-
-          <motion.div 
-            key={isBreakMode ? 'break' : 'work'}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="space-y-4 mb-12"
-          >
-            <div className={`flex items-center justify-center gap-6 uppercase tracking-[0.5em] font-bold text-xs ${isBreakMode ? 'text-[#00f5a0]' : 'text-on-surface/40'}`}>
-              <div className="flex items-center gap-3">
-                {isBreakMode ? <ShieldCheck size={16} /> : <activeMode.icon size={16} />}
-                {isBreakMode ? 'Momento de Descanso' : `${activeMode.name} Ativo`}
+                </button>
               </div>
-              <button 
-                onClick={() => setNotificationConfigs(prev => ({ ...prev, [activeMode.id]: !prev[activeMode.id] }))}
-                className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all ${
-                  notificationConfigs[activeMode.id] ? 'border-primary/40 text-primary bg-primary/5' : 'border-on-surface/10 opacity-30'
-                }`}
-              >
-                {notificationConfigs[activeMode.id] ? <Bell size={12} /> : <BellOff size={12} />}
-                <span className="text-[10px] tracking-widest">{notificationConfigs[activeMode.id] ? "ON" : "OFF"}</span>
-              </button>
-            </div>
-            <h1 className="text-9xl md:text-[12rem] font-bold tracking-tighter font-mono">{formatTime(timeLeft)}</h1>
-          </motion.div>
 
-          {/* Integration View (Ambient vs Spotify) */}
-          <div className="w-full max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-             <div className="text-left space-y-6">
-                <div className="space-y-2">
-                  <p className="text-[10px] opacity-20 uppercase tracking-[0.3em]">MODO DE IMERSÃO</p>
-                  <h3 className="text-2xl font-bold opacity-60">Santuário V1.0</h3>
+              <GlassCard className="p-12 text-center relative overflow-hidden border-white/10 shadow-2xl">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+                <div className="flex items-center justify-between mb-12">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${isTimerRunning ? 'bg-primary animate-pulse' : 'bg-white/20'}`} />
+                    <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.4em] text-white">Cronômetro de Cristal</h3>
+                  </div>
+                  <button onClick={() => setShowSettings(!showSettings)} className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white transition-all"><Settings size={18} /></button>
                 </div>
-                
-                {musicSource === 'ambient' ? (
-                  <div className="space-y-8">
-                    <div className="flex items-center gap-12">
-                      <button onClick={() => setIsPlaying(!isPlaying)} className={`w-20 h-20 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all outline-none ${isPlaying ? 'text-primary border-primary/20' : ''}`}>
-                         {isPlaying ? <Pause size={32} /> : <Play size={32} />}
-                      </button>
-                      <div className="space-y-2 flex-1">
-                         <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold opacity-40 uppercase tracking-[0.2em]">{activeTrack.name}</h4>
-                            <Volume2 size={12} className="opacity-20" />
-                         </div>
-                         <input 
-                           type="range" 
-                           min="0" 
-                           max="1" 
-                           step="0.01" 
-                           value={volume} 
-                           onChange={(e) => setVolume(parseFloat(e.target.value))}
-                           className="w-full h-1 bg-on-surface/10 rounded-full appearance-none cursor-pointer accent-primary"
-                         />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 w-full">
-                    {currentTrack ? (
-                       <div className="flex flex-col items-center gap-6">
-                          <img src={currentTrack.album.images[0].url} className="w-48 h-48 rounded-3xl shadow-2xl" alt="" />
-                          <div className="text-center">
-                             <h4 className="text-2xl font-bold">{currentTrack.name}</h4>
-                             <p className="text-sm opacity-40">{currentTrack.artists[0].name}</p>
-                          </div>
-                          <div className="flex items-center gap-8">
-                             <button onClick={skipPrev} className="opacity-30 hover:opacity-100 transition-opacity"><SkipBack size={24} fill="currentColor"/></button>
-                             <button onClick={toggleSpotifyPlayback} className="w-16 h-16 rounded-full border border-on-surface/10 flex items-center justify-center hover:bg-on-surface/5 transition-all">
-                                {isPlaying ? <Pause size={28} fill="currentColor"/> : <Play size={28} fill="currentColor" className="ml-1"/>}
-                             </button>
-                             <button onClick={skipNext} className="opacity-30 hover:opacity-100 transition-opacity"><SkipForward size={24} fill="currentColor"/></button>
-                          </div>
-                       </div>
-                    ) : (
-                       <div className="w-full py-12 text-center opacity-20 editorial-label">ABRA O SPOTIFY E DÊ O PLAY</div>
+                <div className="relative py-4">
+                  <AnimatePresence>
+                    {isTimerRunning && (
+                      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: [0.95, 1.05, 0.95], opacity: [0.05, 0.1, 0.05] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-0 rounded-full bg-primary blur-[60px]" />
                     )}
+                  </AnimatePresence>
+                  <div className="relative z-10 space-y-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary drop-shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]">{isBreakMode ? 'MOMENTO DE RESPIRAR' : activeMode.name.toUpperCase()}</p>
+                    <h1 className="text-8xl font-bold font-mono tracking-tighter text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)]">{formatTime(timeLeft)}</h1>
                   </div>
-                )}
-             </div>
-
-             <div className="flex flex-col items-center gap-6">
-               <button 
-                 onClick={toggleTimer}
-                 className={`w-32 h-32 rounded-full border-2 flex items-center justify-center hover:bg-primary/5 transition-all group shadow-2xl ${isBreakMode ? 'border-[#00f5a0] text-[#00f5a0] shadow-[#00f5a0]/20' : 'border-primary text-primary shadow-primary/20'}`}
-               >
-                 {isTimerRunning ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" className="ml-2" />}
-               </button>
-               <div className="flex flex-col gap-2">
-                 <button onClick={resetTimer} className="text-[10px] opacity-30 hover:opacity-100 transition-opacity uppercase tracking-[0.3em] font-bold">Reiniciar Timer</button>
-                 <button onClick={() => {
-                   setIsBreakMode(!isBreakMode);
-                   setTimeLeft(!isBreakMode ? pomodoroConfig.break * 60 : pomodoroConfig.work * 60);
-                 }} className="text-[8px] opacity-20 hover:opacity-100 transition-opacity uppercase tracking-[0.2em]">Pular para {!isBreakMode ? 'Pausa' : 'Trabalho'}</button>
-               </div>
-             </div>
+                </div>
+                <div className="flex items-center justify-center gap-8 mt-12">
+                  <button onClick={resetTimer} className="p-5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"><RotateCcw size={24} /></button>
+                  <button onClick={toggleTimer} className={`w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 ${isBreakMode ? 'bg-[#00f5a0] text-black shadow-[#00f5a0]/30' : 'bg-primary text-white shadow-primary/40'}`}>
+                    {isTimerRunning ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" className="ml-2" />}
+                  </button>
+                  <button onClick={() => { setInterruptions(prev => prev + 1); }} className="p-5 rounded-full bg-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/20 transition-all" title="Log de Interrupção"><AlertCircle size={24} /></button>
+                </div>
+                {interruptions > 0 && <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 text-[10px] font-bold text-red-400 uppercase tracking-[0.2em]">{interruptions} FOCO INTERROMPIDO</motion.p>}
+              </GlassCard>
+            </div>
           </div>
-
-          <p className="mt-16 text-[9px] opacity-20 uppercase tracking-[0.4em] font-mono italic">"A excelência não é um ato, mas um hábito."</p>
         </div>
       )}
     </div>
