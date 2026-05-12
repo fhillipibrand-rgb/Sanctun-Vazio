@@ -22,6 +22,13 @@ export interface SystemStats {
   calendar: { nextEvent: any | null; totalUpcoming: number; };
   health: { lowStockMeds: number; };
   nutrition: { waterProgress: number; };
+  habits: { 
+    total: number; 
+    completedToday: number; 
+    percentage: number; 
+    maxStreak: number; 
+    weeklyHistory: { name: string; v: number; date: string }[];
+  };
   projects: { active: any[]; total: number; };
   weeklyHistory: DailyData[];
   isDemo: boolean;
@@ -38,6 +45,7 @@ export const useSystemStats = () => {
     calendar: { nextEvent: null, totalUpcoming: 0 },
     health: { lowStockMeds: 0 },
     nutrition: { waterProgress: 0 },
+    habits: { total: 0, completedToday: 0, percentage: 0, maxStreak: 0, weeklyHistory: [] },
     projects: { active: [], total: 0 },
     weeklyHistory: [],
     isDemo: false,
@@ -50,7 +58,7 @@ export const useSystemStats = () => {
     try {
       setStats(prev => ({ ...prev, loading: true }));
 
-      // 1. TAREFAS - Consulta segura
+      // 1. TAREFAS
       const { data: rawTasks } = await supabase.from('tasks').select('*');
       const tasksData = rawTasks || [];
       const totalTasks = tasksData.length;
@@ -60,7 +68,6 @@ export const useSystemStats = () => {
       const now = new Date();
       const pendingTasks = tasksData.filter((t: any) => !t.is_completed);
 
-      // Tarefas urgentes: críticas + atrasadas
       const urgentTasks: SystemStats['tasks']['urgentTasks'] = [];
       pendingTasks.forEach((t: any) => {
         const isOverdue = t.due_date && new Date(t.due_date) < now;
@@ -92,13 +99,50 @@ export const useSystemStats = () => {
       const medsData = rawMeds || [];
       const lowStockCount = medsData.filter(m => Number(m.stock || 0) <= Number(m.min_stock || 0)).length;
 
-      // 5. NUTRIÇÃO - Evitando .single() que pode causar erro 406/crash
+      // 5. NUTRIÇÃO
       const todayStr = new Date().toISOString().split('T')[0];
       const { data: rawWater } = await supabase.from('nutrition_water').select('*').eq('date', todayStr);
       const waterData = rawWater?.[0] || null;
       const waterProgress = waterData ? (Number(waterData.amount || 0) / Number(waterData.target || 2000)) * 100 : 0;
 
-      // 6. HISTÓRICO SEMANAL DINÂMICO - Proteção total contra nulos
+      // 6. HÁBITOS
+      const { data: habitsData } = await supabase.from('habits').select('*');
+      const { data: habitsLogs } = await supabase.from('habit_logs').select('*').eq('completed', true);
+      const hData = habitsData || [];
+      const hLogs = habitsLogs || [];
+      
+      const totalHabitsToday = hData.filter(h => !h.active_days || h.active_days.includes(new Date().getDay())).length;
+      const completedTodayHabits = hLogs.filter(log => log.date === todayStr).length;
+      const habitsPercentage = totalHabitsToday > 0 ? (completedTodayHabits / totalHabitsToday) * 100 : 0;
+      
+      // Histórico Semanal de Hábitos
+      const habitsHistory: { name: string; v: number; date: string }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        const dDay = d.getDay();
+        
+        const scheduled = hData.filter(h => !h.active_days || h.active_days.includes(dDay));
+        if (scheduled.length === 0) {
+          habitsHistory.push({ name: DAYS_SHORT[dDay], v: 0, date: dStr });
+          continue;
+        }
+
+        let doneCount = 0;
+        scheduled.forEach(h => {
+          const logsOnDay = hLogs.filter(l => l.habit_id === h.id && l.date === dStr).length;
+          if (logsOnDay >= (h.target_frequency || 1)) doneCount++;
+        });
+
+        habitsHistory.push({
+          name: DAYS_SHORT[dDay],
+          v: Math.round((doneCount / scheduled.length) * 100),
+          date: dStr
+        });
+      }
+
+      // 7. HISTÓRICO SEMANAL DINÂMICO (TAREFAS/FINANÇAS)
       const history: DailyData[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -121,23 +165,16 @@ export const useSystemStats = () => {
         });
       }
 
-      // 7. PROJETOS - Com cálculo de progresso integrado (Resiliente a colunas ausentes)
+      // 8. PROJETOS
       let projectsData: any[] = [];
-      try {
-        const { data: rawProjects, error: projError } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-        if (!projError && rawProjects) {
-          projectsData = rawProjects.map(p => {
-            // Se project_id não existir na tabela tasks, o filter apenas retornará vazio, sem quebrar
-            const pTasks = tasksData.filter((t: any) => t.project_id === p.id);
-            const pCompleted = pTasks.filter((t: any) => t.is_completed).length;
-            const pProgress = pTasks.length > 0 ? Math.round((pCompleted / pTasks.length) * 100) : 0;
-            return { ...p, progress: pProgress, taskCount: pTasks.length };
-          });
-        }
-      } catch (e) {
-        console.warn("Erro ao buscar projetos (possível esquema desatualizado):", e);
+      const { data: rawProjects, error: projError } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+      if (!projError && rawProjects) {
+        projectsData = rawProjects.map(p => {
+          const pTasks = tasksData.filter((t: any) => t.project_id === p.id);
+          const pCompleted = pTasks.filter((t: any) => t.is_completed).length;
+          return { ...p, progress: pTasks.length > 0 ? Math.round((pCompleted / pTasks.length) * 100) : 0, taskCount: pTasks.length };
+        });
       }
-      const totalProjects = projectsData.length;
 
       setStats({
         tasks: { total: totalTasks, completed: completedTasks, percentage: tasksPercentage, criticalPending: urgentTasks.length, criticalTaskTitle: criticalTask?.title || "", urgentTasks },
@@ -145,7 +182,14 @@ export const useSystemStats = () => {
         calendar: { nextEvent, totalUpcoming },
         health: { lowStockMeds: lowStockCount },
         nutrition: { waterProgress },
-        projects: { active: projectsData, total: totalProjects },
+        habits: { 
+          total: hData.length, 
+          completedToday: completedTodayHabits, 
+          percentage: habitsPercentage, 
+          maxStreak: stats.habits.maxStreak, // Manter o calculado localmente se disponível
+          weeklyHistory: habitsHistory
+        },
+        projects: { active: projectsData, total: projectsData.length },
         weeklyHistory: history,
         isDemo: false,
         loading: false
@@ -153,23 +197,13 @@ export const useSystemStats = () => {
     } catch (error: any) {
       console.error("Erro crítico no hook de stats:", error);
       
-      // Fallback para Modo Demo se o banco falhar
-      const { generateMockTasks } = await import('../lib/mockData');
-      const mocks = generateMockTasks();
-      
       setStats(prev => ({ 
         ...prev, 
         tasks: { 
-          total: mocks.length, 
-          completed: mocks.filter(t => t.is_completed).length, 
-          percentage: (mocks.filter(t => t.is_completed).length / mocks.length) * 100,
-          criticalPending: mocks.filter(t => !t.is_completed && t.is_critical).length,
-          urgentTasks: [
-            // Garantir que a tarefa de teste solicitada pelo usuário apareça
-            { id: 'task-test-user', title: 'Tarefa de Teste Crítica (03/03/2026)', reason: 'critical' as const, due_date: '2026-03-03T12:00:00Z' },
-            ...mocks.filter(t => !t.is_completed && t.is_critical).map(t => ({ id: `task-mock-${t.id}`, title: t.title, reason: 'critical' as const, due_date: t.due_date }))
-          ]
+          total: 10, completed: 5, percentage: 50, criticalPending: 1, 
+          urgentTasks: [{ id: 'task-test', title: 'Tarefa de Teste', reason: 'critical' }]
         },
+        habits: { total: 5, completedToday: 2, percentage: 40, maxStreak: 12 },
         isDemo: true,
         loading: false 
       }));
@@ -185,7 +219,9 @@ export const useSystemStats = () => {
       supabase.channel('stats-calendar').on('postgres_changes' as any, { event: '*', table: 'events' }, fetchStats).subscribe(),
       supabase.channel('stats-health').on('postgres_changes' as any, { event: '*', table: 'health_meds' }, fetchStats).subscribe(),
       supabase.channel('stats-nutrition').on('postgres_changes' as any, { event: '*', table: 'nutrition_water' }, fetchStats).subscribe(),
-      supabase.channel('stats-projects').on('postgres_changes' as any, { event: '*', table: 'projects' }, fetchStats).subscribe()
+      supabase.channel('stats-projects').on('postgres_changes' as any, { event: '*', table: 'projects' }, fetchStats).subscribe(),
+      supabase.channel('stats-habits').on('postgres_changes' as any, { event: '*', table: 'habits' }, fetchStats).subscribe(),
+      supabase.channel('stats-habit-logs').on('postgres_changes' as any, { event: '*', table: 'habit_logs' }, fetchStats).subscribe()
     ];
 
     return () => {

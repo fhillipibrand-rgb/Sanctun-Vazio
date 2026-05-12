@@ -36,7 +36,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|assets/|favicon.png|LOGO|.*\\.js|.*\\.css).*)",
       "destination": "/index.html"
     }
   ]

@@ -97,7 +97,7 @@ const FocusBackgroundEffects = ({ color }: { color: string }) => {
 const SPOTIFY_CLIENT_ID = "e017a24e45534327b58bb895137bda8f";
 const REDIRECT_URI = typeof window !== 'undefined' && window.location.origin.includes('localhost') 
   ? "http://localhost:5173/callback" 
-  : "https://sanctun-vazio.vercel.app/callback";
+  : "https://sanctuary-nu.vercel.app/callback";
 
 const FocusModeEditor = ({ mode, onSave, onCancel }: { mode: FocusMode, onSave: (m: FocusMode) => void, onCancel: () => void }) => {
   const [tempMode, setTempMode] = useState(mode);

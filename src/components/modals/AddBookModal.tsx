@@ -20,7 +20,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
     total_pages: 0,
     status: "reading",
     genre: "",
-    notes: ""
+    notes: "",
+    cover_url: ""
   });
 
   if (!isOpen) return null;
@@ -72,21 +73,20 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
 
           <form onSubmit={handleSave} className="p-8 space-y-6">
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
-                  <Book size={10} /> TÍTULO DO LIVRO
-                </label>
-                <input 
-                  type="text" 
-                  value={formData.title}
-                  onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50"
-                  placeholder="Ex: O Alquimista"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
+                    <Book size={10} /> TÍTULO DO LIVRO
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.title}
+                    onChange={e => setFormData({...formData, title: e.target.value})}
+                    className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50"
+                    placeholder="Ex: O Alquimista"
+                    required
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
                     <User size={10} /> AUTOR
@@ -99,6 +99,22 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
                     placeholder="Nome do autor"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
+                  <ImageIcon size={10} /> CAPA DO LIVRO (URL)
+                </label>
+                <input 
+                  type="url" 
+                  value={formData.cover_url}
+                  onChange={e => setFormData({...formData, cover_url: e.target.value})}
+                  className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50"
+                  placeholder="https://exemplo.com/capa.jpg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
                     <Hash size={10} /> TOTAL DE PÁGINAS
@@ -110,25 +126,24 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
                     className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">STATUS ATUAL</label>
-                <div className="flex gap-2">
-                  {['reading', 'completed', 'wishlist'].map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setFormData({...formData, status})}
-                      className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                        formData.status === status 
-                          ? 'bg-secondary text-surface shadow-lg shadow-secondary/20' 
-                          : 'bg-on-surface/5 text-on-surface/40 hover:bg-on-surface/10'
-                      }`}
-                    >
-                      {status === 'reading' ? 'Lendo' : status === 'completed' ? 'Lido' : 'Quero Ler'}
-                    </button>
-                  ))}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">STATUS ATUAL</label>
+                  <div className="flex gap-2">
+                    {['reading', 'completed', 'wishlist'].map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setFormData({...formData, status: status as any})}
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                          formData.status === status 
+                            ? 'bg-secondary text-surface shadow-lg shadow-secondary/20' 
+                            : 'bg-on-surface/5 text-on-surface/40 hover:bg-on-surface/10'
+                        }`}
+                      >
+                        {status === 'reading' ? 'Lendo' : status === 'completed' ? 'Lido' : 'Quero Ler'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

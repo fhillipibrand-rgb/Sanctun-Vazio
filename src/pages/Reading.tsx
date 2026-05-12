@@ -37,6 +37,7 @@ const Reading = () => {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'reading' | 'completed' | 'wishlist'>('all');
 
   useEffect(() => {
     if (user) {
@@ -123,21 +124,41 @@ const Reading = () => {
         </div>
       </header>
 
-      {/* Tabs Navigation */}
-      <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
-        {(['library', 'collection', 'stats'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-              activeTab === tab 
-                ? 'bg-surface text-secondary shadow-sm' 
-                : 'text-on-surface/40 hover:text-on-surface/60'
-            }`}
-          >
-            {tab === 'library' ? 'Biblioteca' : tab === 'collection' ? 'Acervo PDF' : 'Estatísticas'}
-          </button>
-        ))}
+      {/* Tabs & Filters */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
+          {(['library', 'collection', 'stats'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                activeTab === tab 
+                  ? 'bg-surface text-secondary shadow-sm' 
+                  : 'text-on-surface/40 hover:text-on-surface/60'
+              }`}
+            >
+              {tab === 'library' ? 'Biblioteca' : tab === 'collection' ? 'Acervo PDF' : 'Estatísticas'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'library' && (
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+            {['all', 'reading', 'completed', 'wishlist'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f as any)}
+                className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all border ${
+                  filter === f 
+                    ? 'bg-secondary/10 border-secondary/30 text-secondary' 
+                    : 'bg-on-surface/5 border-transparent text-on-surface/40 hover:bg-on-surface/10'
+                }`}
+              >
+                {f === 'all' ? 'Todos' : f === 'reading' ? 'Lendo' : f === 'completed' ? 'Lido' : 'Quero Ler'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -152,50 +173,91 @@ const Reading = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
             >
-              {books.map((book) => {
+              {books
+                .filter(b => filter === 'all' || b.status === filter)
+                .map((book) => {
                 const progress = (book.current_page / book.total_pages) * 100;
                 return (
-                  <GlassCard key={book.id} className="p-0 border-secondary/10 overflow-hidden flex flex-col h-full group">
-                    <div className="aspect-[3/4] bg-on-surface/5 relative overflow-hidden">
+                  <GlassCard key={book.id} className="p-0 border-secondary/5 overflow-hidden flex flex-col h-full group hover:border-secondary/30 transition-all duration-500">
+                    <div className="aspect-[3/4.5] bg-on-surface/5 relative overflow-hidden">
                       {book.cover_url ? (
-                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-20">
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-20 bg-gradient-to-br from-on-surface/5 to-on-surface/10">
                           <Book size={48} />
                           <p className="text-[9px] font-bold uppercase tracking-widest">Sem Capa</p>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-60" />
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <span className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase tracking-wider ${
-                          book.status === 'reading' ? 'bg-secondary text-surface' : 'bg-on-surface/20 text-on-surface'
+                      
+                      {/* Overlay Gradiente */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-80" />
+                      
+                      {/* Badge de Status */}
+                      <div className="absolute top-4 right-4">
+                        <div className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider backdrop-blur-md border ${
+                          book.status === 'reading' 
+                            ? 'bg-secondary/20 border-secondary/30 text-secondary' 
+                            : 'bg-on-surface/20 border-white/10 text-on-surface'
                         }`}>
-                          {book.status === 'reading' ? 'Lendo Agora' : 'Pausado'}
-                        </span>
+                          {book.status === 'reading' ? 'Lendo' : book.status === 'completed' ? 'Concluído' : 'Lista de Espera'}
+                        </div>
+                      </div>
+
+                      {/* Controles Rápidos no Hover */}
+                      <div className="absolute inset-x-0 bottom-0 p-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-t from-surface to-transparent">
+                         <div className="flex items-center justify-between gap-2 bg-surface/40 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
+                            <button 
+                              onClick={() => updateProgress(book.id, Math.max(0, book.current_page - 5))}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-on-surface/10 transition-colors"
+                            >
+                              -5
+                            </button>
+                            <div className="flex-1 text-center">
+                               <p className="text-[8px] font-bold opacity-40 uppercase">Página</p>
+                               <p className="text-xs font-mono font-bold">{book.current_page}</p>
+                            </div>
+                            <button 
+                              onClick={() => updateProgress(book.id, Math.min(book.total_pages, book.current_page + 5))}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center bg-secondary/10 text-secondary hover:bg-secondary/20 transition-colors"
+                            >
+                              +5
+                            </button>
+                         </div>
                       </div>
                     </div>
 
-                    <div className="p-6 flex-1 flex flex-col">
-                      <h3 className="font-bold text-base leading-tight mb-1 group-hover:text-secondary transition-colors">{book.title}</h3>
-                      <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest mb-6">{book.author}</p>
+                    <div className="p-6 flex-1 flex flex-col bg-gradient-to-b from-transparent to-on-surface/[0.02]">
+                      <div className="mb-4">
+                        <h3 className="font-bold text-lg leading-tight mb-1 group-hover:text-secondary transition-colors line-clamp-2">{book.title}</h3>
+                        <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">{book.author || 'Autor Desconhecido'}</p>
+                      </div>
                       
                       <div className="mt-auto space-y-4">
                         <div className="space-y-1.5">
                           <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
-                            <span className="opacity-40">Progresso</span>
+                            <span className="opacity-40">Progresso de Leitura</span>
                             <span className="text-secondary">{Math.round(progress)}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-secondary transition-all duration-1000" style={{ width: `${progress}%` }} />
+                            <motion.div 
+                              className="h-full bg-secondary" 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${progress}%` }}
+                              transition={{ duration: 1.5, ease: "circOut" }}
+                            />
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between text-[10px] font-mono">
-                          <span className="opacity-30">{book.current_page}</span>
-                          <span className="opacity-30">/</span>
-                          <span className="opacity-30">{book.total_pages} pg</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-[10px] font-mono opacity-40">
+                             <Clock size={12} />
+                             <span>{book.current_page} / {book.total_pages} pg</span>
+                          </div>
+                          <button className="text-[9px] font-bold text-secondary hover:underline tracking-widest uppercase">
+                            DETALHES
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -203,9 +265,12 @@ const Reading = () => {
                 );
               })}
               {books.length === 0 && (
-                <div className="col-span-full py-20 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl">
-                  <Library size={48} className="mx-auto mb-4" />
-                  <p className="editorial-label text-xs">Sua estante virtual está vazia.</p>
+                <div className="col-span-full py-24 text-center border-2 border-dashed border-on-surface/10 rounded-[3rem] opacity-30 flex flex-col items-center gap-4">
+                  <Library size={64} strokeWidth={1} />
+                  <div>
+                    <p className="editorial-label text-sm tracking-[0.3em] font-bold mb-1 uppercase">Sua estante virtual está pronta</p>
+                    <p className="text-xs opacity-60">Adicione seu primeiro livro para começar sua jornada intelectual.</p>
+                  </div>
                 </div>
               )}
             </motion.div>

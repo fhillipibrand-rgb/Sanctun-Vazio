@@ -125,9 +125,23 @@ const Dashboard = () => {
   const fetchRecentActivity = async () => {
     const { data: tasks } = await supabase.from('tasks').select('*').order('created_at', { ascending: false }).limit(3);
     const { data: txs } = await supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(3);
+    const { data: habitLogs } = await supabase.from('habit_logs').select('*').eq('completed', true).order('date', { ascending: false }).limit(3);
+    
     const combined: Activity[] = [];
+    
     tasks?.forEach(t => combined.push({ id: t.id, title: t.is_completed ? `Concluiu: ${t.title}` : `Novo: ${t.title}`, time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), category: 'Tarefas', icon: CheckCircle2, color: 'text-primary' }));
     txs?.forEach(tx => combined.push({ id: tx.id, title: `${tx.type === 'income' ? 'Recebeu' : 'Gastou'}: ${tx.name}`, time: new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), category: 'Finanças', icon: Wallet, color: tx.type === 'income' ? 'text-secondary' : 'text-red-400' }));
+    
+    // Mapear logs de hábitos
+    habitLogs?.forEach(log => combined.push({ 
+      id: log.id, 
+      title: `Hábito: ${log.habit_id}`, // Aqui poderíamos buscar o título real se quiséssemos, mas por agora usamos o ID ou um texto genérico
+      time: 'Hoje', 
+      category: 'Saúde', 
+      icon: Zap, 
+      color: 'text-violet-400' 
+    }));
+
     setActivities(combined.sort((a,b) => b.time.localeCompare(a.time)).slice(0, 5));
   };
 
@@ -205,170 +219,209 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">
-
-
-      {/* Header Premium */}
-      <header className="flex items-end justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            {!isMobile && (
-              <button
-                onClick={toggleSidebar}
-                className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
-              >
-                <PanelLeft size={16} className={`transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
-              </button>
-            )}
-            <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
-              <p className="editorial-label !tracking-[0.2em] opacity-70 dark:opacity-60">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).toUpperCase()}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {!isMobile && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleTheme}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-on-surface/5 hover:bg-primary/10 hover:text-primary border border-[var(--glass-border)] transition-all shrink-0"
-                  title="Mudar Tema"
-                >
-                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                </button>
-                <button
-                  onClick={toggleMetrics}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0 border border-[var(--glass-border)] ${
-                    !showMetrics ? 'bg-primary text-surface' : 'bg-on-surface/5 hover:bg-primary/10 hover:text-primary'
-                  }`}
-                  title={showMetrics ? "Modo Privacidade" : "Mostrar Métricas"}
-                >
-                  {showMetrics ? <Eye size={14} /> : <EyeOff size={14} />}
-                </button>
-              </div>
-            )}
-            {/* Backdoor para Greeting do Elon Musk */}
-            {new URLSearchParams(window.location.search).get('demo') === 'musk' ? (
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-                Olá, <span className="text-on-surface/50 dark:text-on-surface/30 transition-colors">Elon Musk.</span>
-              </h2>
-            ) : (
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-                Olá, <span className="text-on-surface/50 dark:text-on-surface/30 transition-colors">{firstName}.</span>
-              </h2>
-            )}
-          </div>
+      {/* SECTION 1: THE INTENTIONAL HEADER (Onde estou agora?) */}
+      <header className="flex flex-col gap-2 mb-8">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
+          <p className="editorial-label !tracking-[0.3em] opacity-50 text-[10px] uppercase font-bold">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          </p>
         </div>
-
-        <div className="flex flex-col items-end gap-3">
-            <button 
-              id="tour-notifications"
-              onClick={() => setIsNotificationsOpen(true)}
-              className={`relative w-12 h-12 rounded-2xl border flex items-center justify-center transition-all group ${
-                notifications.length > 0 
-                ? 'bg-primary/10 border-primary/30 text-primary shadow-lg shadow-primary/20' 
-                : 'bg-on-surface/5 border-[var(--glass-border)]'
-              }`}
-            >
-              <Bell size={20} className={`${notifications.length > 0 ? 'animate-none' : 'group-hover:rotate-12 transition-transform'}`} />
-              {notifications.length > 0 && (
-                <>
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-background z-10">
-                    {notifications.length}
-                  </span>
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full animate-ping opacity-75" />
-                </>
-              )}
-            </button>
-
-            <Link id="tour-avatar" to="/settings" className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl hover:scale-105 transition-all rotate-2 hover:rotate-0">
-               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            </Link>
-        </div>
+        <h2 className="text-5xl md:text-7xl font-bold tracking-tight">
+          Olá, <span className="text-on-surface/40 dark:text-on-surface/20">{firstName}.</span>
+        </h2>
       </header>
 
-      {/* Grid de KPIs - 4 Colunas High-Impact */}
-      <div id="tour-dashboard-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {/* PRÓXIMO COMPROMISSO */}
-        <Link to="/calendar" className="block transform hover:scale-[1.02] transition-all">
-          <GlassCard className="p-6 relative overflow-hidden group h-full border-primary/20">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Clock size={40} /></div>
-            <p className="editorial-label text-[10px] mb-4 text-purple-600 dark:text-purple-400 font-bold">PRÓXIMO COMPROMISSO</p>
-            <h4 className={`text-sm font-bold truncate mb-1 transition-all duration-500 ${!showMetrics ? 'blur-sm select-none' : ''}`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-stretch">
+        {/* Próximo Compromisso Card */}
+        <Link to="/calendar" className="group h-full">
+          <GlassCard className="p-6 h-full border-primary/10 hover:border-primary/30 transition-all bg-gradient-to-br from-primary/[0.03] to-transparent">
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                <Calendar size={20} />
+              </div>
+              <ArrowUpRight size={18} className="opacity-20 group-hover:opacity-100 transition-all" />
+            </div>
+            <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-2">Próximo na Agenda</p>
+            <h4 className="text-lg font-bold truncate mb-1">
               {stats.calendar.nextEvent?.title || "Horizonte Livre"}
             </h4>
-            <p className={`text-[10px] opacity-50 font-medium font-mono transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
-               {stats.calendar.nextEvent 
-                 ? new Date(stats.calendar.nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                 : "Sem eventos em pauta"}
+            <p className="text-xs opacity-50 font-mono">
+              {stats.calendar.nextEvent 
+                ? new Date(stats.calendar.nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : "Sem compromissos hoje"}
             </p>
           </GlassCard>
         </Link>
 
-        {/* PRODUTIVIDADE */}
-        <Link to="/tasks" className="block transform hover:scale-[1.02] transition-all">
-          <GlassCard className="p-6 relative overflow-hidden group h-full">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Target size={40} /></div>
-            <p className="editorial-label text-[10px] mb-4 text-primary dark:text-primary font-bold">PRODUTIVIDADE</p>
-            <div className="flex items-end gap-3">
-              <h3 className={`text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-md select-none opacity-50' : ''}`}>
-                {Math.round(stats.tasks.percentage)}%
-              </h3>
-              <span className={`text-[10px] font-bold text-secondary mb-1 transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
-                +{stats.tasks.completed} CONCLUÍDAS
-              </span>
+        {/* Estado de Foco Card */}
+        <Link to="/focus" className="group h-full">
+          <GlassCard 
+            className="p-6 h-full transition-all"
+            style={{ 
+              background: focusState ? `linear-gradient(135deg, ${focusState.color}15, transparent)` : 'rgba(var(--color-on-surface), 0.03)',
+              borderColor: focusState ? `${focusState.color}30` : 'rgba(255,255,255,0.05)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: focusState ? `${focusState.color}20` : 'rgba(var(--color-primary), 0.1)', color: focusState?.color || 'var(--color-primary)' }}>
+                <Zap size={20} fill="currentColor" />
+              </div>
+              <div className="flex items-center gap-2">
+                {focusState?.isRunning && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">
+                  {focusState?.isRunning ? 'Ativo' : 'Em Espera'}
+                </span>
+              </div>
             </div>
-            <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
-              <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${stats.tasks.percentage}%` }} />
-            </div>
+            <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-2">Estado de Imersão</p>
+            <h4 className="text-lg font-bold truncate mb-1">
+              {focusState ? focusState.name.toUpperCase() : 'MODO PROFUNDO'}
+            </h4>
+            <p className="text-xs opacity-50 font-mono">
+              {localTimeLeft ? formatTime(localTimeLeft) : "Pronto para iniciar"}
+            </p>
           </GlassCard>
         </Link>
 
-        {/* HIDRATAÇÃO */}
-        <Link to="/nutrition" className="block transform hover:scale-[1.02] transition-all">
-          <GlassCard className="p-6 relative overflow-hidden group h-full">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Droplets size={40} /></div>
-            <p className="editorial-label text-[10px] mb-4 text-cyan-600 dark:text-cyan-400 font-bold">HIDRATAÇÃO</p>
-            <div className="flex items-end gap-3">
-              <h3 className={`text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-md select-none opacity-50' : ''}`}>
-                {Math.round(stats.nutrition.waterProgress)}%
-              </h3>
-              <span className={`text-[10px] font-bold text-cyan-500 mb-1 transition-all duration-500 ${!showMetrics ? 'blur-[2px] select-none' : ''}`}>
-                META DIÁRIA
-              </span>
+        {/* SECTION 2: VITALITY INDEX (Alinhado agora) */}
+        <GlassCard className="p-6 h-full flex flex-col justify-between border-secondary/20 bg-gradient-to-b from-secondary/[0.05] to-transparent">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="editorial-label text-[9px] tracking-[0.3em] font-bold opacity-60 uppercase">Índice Vital</h3>
+              <Sparkles size={14} className="text-secondary animate-pulse" />
             </div>
-            <div className="mt-4 h-1.5 w-full bg-on-surface/5 rounded-full overflow-hidden">
-              <div className="h-full bg-cyan-400 transition-all duration-1000" style={{ width: `${stats.nutrition.waterProgress}%` }} />
+            
+            <div className="grid grid-cols-1 gap-4">
+              {/* Mini Indicators for alignment */}
+              {[
+                { label: 'Hábitos', val: stats.habits.percentage, color: 'bg-violet-500' },
+                { label: 'Produtiv.', val: stats.tasks.percentage, color: 'bg-primary' },
+                { label: 'Hidratação', val: stats.nutrition.waterProgress, color: 'bg-cyan-400' },
+              ].map((item, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between text-[8px] font-bold uppercase opacity-40">
+                    <span>{item.label}</span>
+                    <span>{Math.round(item.val)}%</span>
+                  </div>
+                  <div className="h-1 w-full bg-on-surface/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${item.val}%` }}
+                      className={`h-full ${item.color}`} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-on-surface/5 flex items-center justify-between">
+            <div className="flex items-baseline gap-1">
+              <p className="text-xl font-bold font-mono leading-none">
+                {Math.round((stats.habits.percentage + stats.tasks.percentage + stats.nutrition.waterProgress) / 3)}%
+              </p>
+              <p className="text-[7px] font-bold opacity-30 uppercase tracking-tighter">CONSOLIDAÇÃO</p>
+            </div>
+            <div className="flex -space-x-1.5 opacity-50">
+              <div className="w-5 h-5 rounded-full bg-primary/20 border border-background flex items-center justify-center"><CheckCircle2 size={10} className="text-primary" /></div>
+              <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-background flex items-center justify-center"><Zap size={10} className="text-violet-400" /></div>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* SECTION 3: THE EXECUTION PULSE (O que estou construindo?) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Habit Consistency (Analytics Preview) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-violet-500 rounded-full" />
+              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Fluxo de Hábito</h3>
+            </div>
+            <Link to="/habits" className="text-[10px] font-bold text-violet-400 hover:underline flex items-center gap-1 uppercase tracking-widest">
+              PERFORMANCE <ChevronRight size={12} />
+            </Link>
+          </div>
+          
+          <GlassCard className="p-8 border-violet-500/10">
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.habits.weeklyHistory}>
+                  <defs>
+                    <linearGradient id="habitsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 10, fontWeight: 700 }} 
+                    dy={15}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="v" 
+                    stroke="#a855f7" 
+                    strokeWidth={3} 
+                    fillOpacity={1} 
+                    fill="url(#habitsGradient)" 
+                    dot={{ r: 4, fill: '#a855f7', strokeWidth: 0 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </GlassCard>
-        </Link>
+        </div>
 
-        {/* ECONOMIA */}
-        <Link to="/finance" className="block transform hover:scale-[1.02] transition-all">
-          <GlassCard className="p-6 relative overflow-hidden group h-full">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={40} /></div>
-            <p className="editorial-label text-[10px] mb-4 text-secondary dark:text-secondary font-bold">ECONOMIA</p>
-            <div className="flex items-end gap-3">
-              <h3 className={`text-2xl md:text-3xl font-bold font-mono transition-all duration-500 ${!showMetrics ? 'blur-lg select-none opacity-30' : ''}`}>
+        {/* Financial Pulse */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-secondary rounded-full" />
+              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Patrimônio</h3>
+            </div>
+            <Link to="/finance" className="text-[10px] font-bold text-secondary hover:underline flex items-center gap-1 uppercase tracking-widest">
+              GESTÃO <ChevronRight size={12} />
+            </Link>
+          </div>
+
+          <GlassCard className="p-8 h-[calc(100%-2rem)] flex flex-col justify-between border-secondary/10">
+            <div>
+              <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-4">Saldo Consolidado</p>
+              <h3 className="text-4xl font-bold font-mono tracking-tighter">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(stats.finance.balance)}
               </h3>
             </div>
-            <p className="text-[9px] font-medium opacity-40 mt-3 uppercase tracking-wider">SALDO CONSOLIDADO</p>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
+                <span className="text-[10px] font-bold opacity-40 uppercase">Entradas</span>
+                <span className="text-xs font-bold text-secondary">+{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.income)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
+                <span className="text-[10px] font-bold opacity-40 uppercase">Saídas</span>
+                <span className="text-xs font-bold text-red-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.expenses)}</span>
+              </div>
+            </div>
           </GlassCard>
-        </Link>
+        </div>
       </div>
 
-      {/* Seção de Projetos em Foco */}
-      <div className="space-y-4">
+      {/* SECTION 4: PROJECTS GRID */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
-           <div className="flex items-center gap-3">
-              <div className="w-1.5 h-6 bg-primary rounded-full" />
-              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase transition-opacity">Projetos em Foco</h3>
-           </div>
-           <Link to="/tasks/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
-             GERENCIAR <ChevronRight size={12} />
-           </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-6 bg-primary rounded-full" />
+            <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Arquitetura de Projetos</h3>
+          </div>
+          <Link to="/tasks/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
+            EXPLORAR <ChevronRight size={12} />
+          </Link>
         </div>
-
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.projects.active.slice(0, 4).map((proj: any, idx: number) => {
             const IconComp = iconOptions.find(i => i.name === proj.icon)?.icon || FolderKanban;
