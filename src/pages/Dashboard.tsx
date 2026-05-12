@@ -241,7 +241,7 @@ const Dashboard = () => {
           </h2>
         </div>
 
-        <Link to="/settings" className="shrink-0 group hidden sm:block">
+        <Link to="/settings" className="shrink-0 group">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] overflow-hidden ring-2 ring-transparent group-hover:ring-primary/40 shadow-xl shadow-primary/5 bg-surface transition-all duration-300">
             <img 
               src={avatarUrl} 
