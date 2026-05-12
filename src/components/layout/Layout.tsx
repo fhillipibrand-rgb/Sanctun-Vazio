@@ -159,9 +159,8 @@ const Layout = () => {
               )}
 
               <motion.div
-                initial={isMobile ? { x: -320 } : { width: 0, opacity: 0 }}
-                animate={isMobile ? { x: 0 } : { width: 320, opacity: 1 }}
-                exit={isMobile ? { x: -320 } : { width: 0, opacity: 0 }}
+                initial={isMobile ? { x: -320 } : { width: 84 }}
+                animate={isMobile ? { x: 0 } : { width: isSidebarOpen ? 320 : 84 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
                 className={`${isMobile ? 'fixed top-0 left-0 h-full' : 'relative h-full'} z-50 overflow-hidden bg-surface shadow-2xl shrink-0`}
               >
