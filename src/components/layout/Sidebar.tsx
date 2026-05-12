@@ -73,14 +73,15 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
   };
 
   return (
-    <aside className={`h-full flex flex-col border-r border-[var(--glass-border)] bg-surface/90 backdrop-blur-2xl shrink-0 shadow-2xl relative transition-all duration-300 ${isSidebarOpen ? 'p-8 w-[320px]' : 'p-4 w-[84px] items-center'}`}>
-      <div className={`flex items-center justify-between mb-12 w-full ${!isSidebarOpen ? 'flex-col gap-8' : ''}`}>
-        <div id="tour-sidebar-header" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 shrink-0">
-            <img src="/logo.png" alt="Sanctum Logo" className="w-full h-full object-cover" />
+    <aside className={`h-full w-full flex flex-col border-r border-[var(--glass-border)] bg-surface/95 backdrop-blur-3xl shrink-0 shadow-2xl relative overflow-hidden ${isSidebarOpen ? 'p-8' : 'p-4 items-center'}`}>
+      {/* Header Area */}
+      <div className={`flex items-center justify-between mb-12 w-full ${!isSidebarOpen ? 'flex-col gap-6' : ''}`}>
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 shrink-0 border border-white/10">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           {isSidebarOpen && (
-            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <h1 className="editorial-display text-lg leading-tight text-white">Sanctum</h1>
               <p className="editorial-label text-[9px] text-primary uppercase tracking-widest font-bold">Modo Profundo</p>
             </motion.div>
@@ -88,140 +89,103 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
         </div>
         <button 
           onClick={isSidebarOpen ? onClose : () => window.dispatchEvent(new CustomEvent('sanctum:toggle-sidebar', { detail: { open: true } }))}
-          className="p-2 hover:bg-on-surface/5 rounded-lg transition-colors text-on-surface-variant group flex items-center"
+          className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white"
         >
-          {isSidebarOpen ? (
-            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          ) : (
-            <ChevronLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" />
-          )}
+          <ChevronLeft size={20} className={`transition-transform duration-500 ${!isSidebarOpen ? 'rotate-180' : ''}`} />
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-thin w-full overflow-x-hidden">
-        {menuSections.map((section, idx) => {
-          const isCollapsed = collapsedSections.includes(section.title) && isSidebarOpen;
-          const hasActionableItems = section.title !== "PRINCIPAL";
-          
-          return (
-            <div 
-              key={idx} 
-              className="space-y-2 w-full"
-              id={`tour-section-${section.title.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              {isSidebarOpen && (
-                <button 
-                  onClick={() => hasActionableItems && toggleSection(section.title)}
-                  className={`w-full flex items-center justify-between px-6 mb-2 group/header ${hasActionableItems ? 'cursor-pointer' : 'cursor-default'}`}
-                >
-                  <p className="editorial-label opacity-50 tracking-widest text-[9px] group-hover/header:opacity-100 transition-opacity uppercase font-bold text-white">
-                    {section.title}
-                  </p>
-                  {hasActionableItems && (
-                    <motion.div
-                      animate={{ rotate: isCollapsed ? -90 : 0 }}
-                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                    >
-                      <ChevronDown size={10} className="opacity-30 group-hover/header:opacity-100 transition-opacity" />
-                    </motion.div>
-                  )}
-                </button>
-              )}
+      {/* Navigation Area */}
+      <nav className="flex-1 overflow-y-auto w-full space-y-8 custom-scrollbar overflow-x-hidden">
+        {menuSections.map((section, idx) => (
+          <div key={idx} className="space-y-3 w-full">
+            {isSidebarOpen && (
+              <p className="px-6 editorial-label opacity-30 tracking-[0.3em] text-[9px] uppercase font-bold text-white mb-4">
+                {section.title}
+              </p>
+            )}
 
-              <div className="space-y-2">
-                {section.items.map((item) => {
-                  const active = isActive(item.id);
-                  return (
-                    <Link 
-                      key={item.id}
-                      to={item.id}
-                      id={`sidebar-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      className={`relative flex items-center transition-all duration-300 group
-                        ${isSidebarOpen 
-                          ? `px-6 py-3 rounded-2xl gap-4 ${active ? 'bg-primary/10 text-primary border-white/5 shadow-sm shadow-primary/5' : 'text-on-surface-variant hover:bg-on-surface/5 border-transparent'}` 
-                          : `h-14 justify-center ${active ? 'text-primary' : 'text-on-surface-variant hover:text-white'}`
-                        }`}
-                    >
-                      {active && (
-                        <motion.div 
-                          layoutId="active-pill"
-                          className={`absolute ${isSidebarOpen ? 'left-0 w-1 h-1/2' : 'inset-1 w-full h-full'} bg-primary rounded-full z-0`}
-                          style={{ 
-                            opacity: isSidebarOpen ? 1 : 0.15,
-                            boxShadow: !isSidebarOpen ? '0 0 40px #3b82f6' : 'none'
-                          }}
-                        />
-                      )}
-                      
-                      <div className={`relative z-10 flex items-center justify-center ${active && !isSidebarOpen ? 'drop-shadow-[0_0_10px_#3b82f6] scale-110' : ''}`}>
-                        <item.icon size={isSidebarOpen ? 20 : 24} strokeWidth={active ? 2.5 : 2} />
+            <div className="space-y-2 w-full">
+              {section.items.map((item) => {
+                const active = isActive(item.id);
+                return (
+                  <Link 
+                    key={item.id}
+                    to={item.id}
+                    className={`relative flex items-center transition-all duration-300 group
+                      ${isSidebarOpen 
+                        ? `px-6 py-3 rounded-2xl gap-4 ${active ? 'bg-primary/10 text-primary' : 'text-white/40 hover:bg-white/5 hover:text-white'}` 
+                        : `h-12 w-12 mx-auto justify-center rounded-xl ${active ? 'text-primary' : 'text-white/40 hover:text-white'}`
+                      }`}
+                  >
+                    {active && !isSidebarOpen && (
+                      <motion.div 
+                        layoutId="active-pill-mini"
+                        className="absolute inset-0 bg-primary/20 rounded-xl z-0"
+                        style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}
+                      />
+                    )}
+
+                    <div className={`relative z-10 flex items-center justify-center ${active && !isSidebarOpen ? 'drop-shadow-[0_0_8px_#3b82f6] scale-110' : ''}`}>
+                      <item.icon size={isSidebarOpen ? 20 : 22} strokeWidth={active ? 2.5 : 2} />
+                    </div>
+
+                    {isSidebarOpen && (
+                      <span className="editorial-label tracking-widest text-[11px] font-bold relative z-10">
+                        {item.label}
+                      </span>
+                    )}
+
+                    {!isSidebarOpen && active && (
+                      <div className="absolute -left-4 w-1.5 h-6 bg-primary rounded-r-full shadow-[0_0_10px_#3b82f6]" />
+                    )}
+
+                    {/* Tooltip */}
+                    {!isSidebarOpen && (
+                      <div className="absolute left-16 px-4 py-2 bg-surface border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none translate-x-[-10px] group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
+                        <p className="editorial-label text-[10px] tracking-widest text-white font-bold uppercase">{item.label}</p>
                       </div>
-
-                      {isSidebarOpen && (
-                        <span className="editorial-label tracking-widest text-[11px] font-bold relative z-10">
-                          {item.label}
-                        </span>
-                      )}
-
-                      {!isSidebarOpen && active && (
-                        <div className="absolute left-0 w-1.5 h-8 bg-primary rounded-r-full shadow-[0_0_15px_#3b82f6]" />
-                      )}
-                      
-                      {!isSidebarOpen && (
-                        <div className="absolute left-20 px-4 py-2 bg-surface border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none translate-x-[-10px] group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
-                          <p className="editorial-label text-[10px] tracking-widest text-white font-bold uppercase">{item.label}</p>
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </nav>
 
-      <div className={`mt-auto space-y-6 w-full ${!isSidebarOpen ? 'flex flex-col items-center' : ''}`}>
+      {/* Footer Area */}
+      <div className={`mt-auto pt-6 border-t border-white/5 space-y-6 w-full ${!isSidebarOpen ? 'items-center' : ''}`}>
         <button 
           onClick={onQuickCapture}
-          className={`w-full rounded-2xl bg-gradient-to-br from-primary to-primary-container text-surface flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.05] active:scale-95 transition-all ${isSidebarOpen ? 'py-4' : 'h-14 w-14'}`}
+          className={`w-full rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.05] active:scale-95 transition-all ${isSidebarOpen ? 'py-4' : 'h-12 w-12 mx-auto'}`}
         >
-          <Plus size={isSidebarOpen ? 18 : 28} />
-          {isSidebarOpen && <span className="editorial-label tracking-widest font-bold">CAPTURA RÁPIDA</span>}
+          <Plus size={isSidebarOpen ? 18 : 24} />
+          {isSidebarOpen && <span className="editorial-label tracking-widest font-bold">CAPTURA</span>}
         </button>
-        
-        <div className={`pt-6 border-t border-[var(--glass-border)] space-y-3 w-full`}>
+
+        <div className="space-y-2 w-full">
           <button 
             onClick={openOnboarding}
-            className={`w-full rounded-xl bg-on-surface/5 hover:bg-on-surface/10 transition-all flex items-center group ${isSidebarOpen ? 'py-3 px-6 gap-3' : 'h-14 justify-center'}`}
+            className={`w-full rounded-xl transition-all flex items-center group ${isSidebarOpen ? 'py-2 px-6 gap-3 text-white/40 hover:text-white hover:bg-white/5' : 'h-10 justify-center text-white/40 hover:text-white'}`}
           >
-            <HelpCircle size={isSidebarOpen ? 18 : 24} className="text-primary group-hover:scale-110 transition-transform" />
-            {isSidebarOpen && <span className="editorial-label text-[11px] tracking-widest font-bold">GUIA DE USO</span>}
+            <HelpCircle size={isSidebarOpen ? 16 : 20} />
+            {isSidebarOpen && <span className="editorial-label text-[10px] tracking-widest font-bold">AJUDA</span>}
           </button>
 
-          <div className="space-y-1">
-            <Link to="/settings" className={`flex items-center transition-all opacity-60 hover:opacity-100 ${isSidebarOpen ? 'px-6 py-2 gap-3' : 'h-10 justify-center'}`}>
-              <Settings size={isSidebarOpen ? 14 : 20} />
-              {isSidebarOpen && <span className="editorial-label text-[9px] font-bold tracking-widest uppercase">Configurações</span>}
-            </Link>
-            <button 
-              onClick={onSignOut}
-              className={`flex items-center transition-all opacity-60 hover:opacity-100 text-red-400 hover:text-red-500 ${isSidebarOpen ? 'px-6 py-2 gap-3' : 'h-10 justify-center'}`}
-            >
-              <LogOut size={isSidebarOpen ? 14 : 20} />
-              {isSidebarOpen && <span className="editorial-label text-[9px] font-bold tracking-widest uppercase text-red-400">Sair</span>}
-            </button>
-          </div>
+          <Link to="/settings" className={`flex items-center transition-all group ${isSidebarOpen ? 'px-6 py-2 gap-3 text-white/40 hover:text-white hover:bg-white/5' : 'h-10 justify-center text-white/40 hover:text-white'}`}>
+            <Settings size={isSidebarOpen ? 16 : 20} />
+            {isSidebarOpen && <span className="editorial-label text-[10px] font-bold tracking-widest uppercase">Ajustes</span>}
+          </Link>
+          
+          <button 
+            onClick={onSignOut}
+            className={`w-full flex items-center transition-all group ${isSidebarOpen ? 'px-6 py-2 gap-3 text-red-400/60 hover:text-red-400 hover:bg-red-500/5' : 'h-10 justify-center text-red-400/60 hover:text-red-400'}`}
+          >
+            <LogOut size={isSidebarOpen ? 16 : 20} />
+            {isSidebarOpen && <span className="editorial-label text-[10px] font-bold tracking-widest uppercase">Sair</span>}
+          </button>
         </div>
-
-        {isSidebarOpen && (
-          <div className="pt-4 mt-2 flex items-center gap-2 opacity-30">
-            <div className="w-4 h-4 rounded flex items-center justify-center overflow-hidden">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
-            </div>
-            <span className="text-[9px] font-mono tracking-widest">SANCTUM V1.0</span>
-          </div>
-        )}
       </div>
     </aside>
   );
