@@ -280,7 +280,6 @@ const Focus = () => {
                     </div>
                   )}
                 </button>
-              </div>
 
               <GlassCard className="p-12 text-center relative overflow-hidden border-white/10 shadow-2xl">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
