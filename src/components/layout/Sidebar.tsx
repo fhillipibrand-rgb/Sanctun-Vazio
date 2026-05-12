@@ -3,11 +3,12 @@ import {
   Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, 
   Settings, ChevronLeft, LayoutList, Target, Activity, PieChart, 
   Clock, Utensils, TrendingUp, ChevronDown, Dumbbell,
-  BookOpen, Sparkles, Moon
+  BookOpen, Sparkles, Moon, Sun
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useLayout } from "./Layout";
+import { useAuth } from "../../hooks/useAuth";
 
 interface SidebarProps {
   onClose: () => void;
@@ -18,7 +19,8 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
-  const { isSidebarOpen, openOnboarding } = useLayout();
+  const { isSidebarOpen, openOnboarding, theme, toggleTheme } = useLayout();
+  const { profile } = useAuth();
   const [collapsedSections, setCollapsedSections] = useState<string[]>(['DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
   
   const menuSections = [
@@ -87,13 +89,59 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
             </motion.div>
           )}
         </div>
-        <button 
-          onClick={isSidebarOpen ? onClose : () => window.dispatchEvent(new CustomEvent('sanctum:toggle-sidebar', { detail: { open: true } }))}
-          className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white"
-        >
-          <ChevronLeft size={20} className={`transition-transform duration-500 ${!isSidebarOpen ? 'rotate-180' : ''}`} />
-        </button>
+
+        <div className={`flex items-center ${isSidebarOpen ? 'gap-2' : 'flex-col gap-3'}`}>
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white"
+            title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+          >
+            <motion.div
+              key={theme}
+              initial={{ rotate: -30, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </motion.div>
+          </button>
+
+          {/* Collapse Button */}
+          <button 
+            onClick={isSidebarOpen ? onClose : () => window.dispatchEvent(new CustomEvent('sanctum:toggle-sidebar', { detail: { open: true } }))}
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white"
+          >
+            <ChevronLeft size={20} className={`transition-transform duration-500 ${!isSidebarOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
+
+      {/* Profile Avatar (expanded only) */}
+      {isSidebarOpen && profile && (
+        <div className="flex items-center gap-3 mb-8 px-2 py-3 rounded-2xl bg-white/[0.03] border border-white/5">
+          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+            {profile.avatar_url 
+              ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              : <span className="text-primary font-bold text-sm">{profile.full_name?.charAt(0) || '?'}</span>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white truncate">{profile.full_name || 'Usuário'}</p>
+            <p className="text-[10px] opacity-40 uppercase tracking-widest font-bold">Perfil Ativo</p>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Avatar (mini mode) */}
+      {!isSidebarOpen && profile && (
+        <div className="w-10 h-10 rounded-xl overflow-hidden mb-6 bg-primary/20 flex items-center justify-center border border-white/10">
+          {profile.avatar_url 
+            ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            : <span className="text-primary font-bold text-sm">{profile.full_name?.charAt(0) || '?'}</span>
+          }
+        </div>
+      )}
 
       {/* Navigation Area */}
       <nav className="flex-1 overflow-y-auto w-full space-y-8 sidebar-nav-scroll overflow-x-hidden">
