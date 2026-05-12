@@ -222,9 +222,17 @@ const Settings = () => {
           <div className="relative group">
             <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl relative">
               <img 
-                src={profile.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`} 
+                src={
+                  profile.avatar_url && profile.avatar_url.trim() !== '' 
+                    ? profile.avatar_url 
+                    : `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`
+                }
                 alt="Avatar" 
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 
+                    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(profile.full_name || 'user')}&backgroundColor=3b5bdb&textColor=ffffff`;
+                }}
               />
               {loading && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
