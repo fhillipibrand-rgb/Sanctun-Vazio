@@ -20,8 +20,20 @@ interface SidebarProps {
 const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarProps) => {
   const location = useLocation();
   const { isSidebarOpen, openOnboarding, theme, toggleTheme } = useLayout();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [collapsedSections, setCollapsedSections] = useState<string[]>(['DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
+
+  // Gera avatar com fallback elegante via DiceBear
+  const getAvatar = () => {
+    if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
+      return profile.avatar_url;
+    }
+    const seed = user?.id || profile?.full_name || 'sanctum';
+    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
+  };
+
+  const avatarUrl = getAvatar();
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
   
   const menuSections = [
     {
@@ -117,29 +129,39 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
         </div>
       </div>
 
-      {/* Profile Avatar (expanded only) */}
-      {isSidebarOpen && profile && (
-        <div className="flex items-center gap-3 mb-8 px-2 py-3 rounded-2xl bg-white/[0.03] border border-white/5">
-          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
-            {profile.avatar_url 
-              ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              : <span className="text-primary font-bold text-sm">{profile.full_name?.charAt(0) || '?'}</span>
-            }
+      {/* Profile Avatar — Expanded */}
+      {isSidebarOpen && (
+        <div className="flex items-center gap-3 mb-8 px-3 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] transition-all cursor-default">
+          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-2 ring-primary/20">
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b5bdb&textColor=ffffff`;
+              }}
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate">{profile.full_name || 'Usuário'}</p>
-            <p className="text-[10px] opacity-40 uppercase tracking-widest font-bold">Perfil Ativo</p>
+            <p className="text-sm font-bold text-white truncate leading-tight">{displayName}</p>
+            <p className="text-[10px] opacity-40 uppercase tracking-widest font-bold mt-0.5">Perfil Ativo</p>
           </div>
         </div>
       )}
 
-      {/* Profile Avatar (mini mode) */}
-      {!isSidebarOpen && profile && (
-        <div className="w-10 h-10 rounded-xl overflow-hidden mb-6 bg-primary/20 flex items-center justify-center border border-white/10">
-          {profile.avatar_url 
-            ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-            : <span className="text-primary font-bold text-sm">{profile.full_name?.charAt(0) || '?'}</span>
-          }
+      {/* Profile Avatar — Mini mode */}
+      {!isSidebarOpen && (
+        <div className="w-10 h-10 rounded-xl overflow-hidden mb-4 ring-2 ring-primary/20 shrink-0">
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b5bdb&textColor=ffffff`;
+            }}
+          />
         </div>
       )}
 
