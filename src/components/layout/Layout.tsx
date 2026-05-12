@@ -127,47 +127,58 @@ const Layout = () => {
           <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-500/10 blur-[100px] rounded-full" />
         </div>
 
-        {/* Sidebar Re-open Button (Mobile & Desktop) */}
-        {!isSidebarOpen && (
+        {/* Mobile hamburger button only */}
+        {!isSidebarOpen && isMobile && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsSidebarOpen(true)}
-            className={`fixed z-40 flex items-center justify-center shadow-xl transition-all ${
-              isMobile 
-                ? 'bottom-6 right-6 w-14 h-14 bg-primary rounded-2xl text-surface shadow-primary/30' 
-                : 'top-8 left-8 w-12 h-12 bg-surface border border-[var(--glass-border)] rounded-xl text-on-surface hover:bg-on-surface/5'
-            }`}
+            className="fixed z-40 bottom-6 right-6 w-14 h-14 bg-primary rounded-2xl text-surface shadow-xl shadow-primary/30 flex items-center justify-center"
           >
-            <Menu size={isMobile ? 24 : 20} />
+            <Menu size={24} />
           </motion.button>
         )}
 
-        <AnimatePresence>
-          {isSidebarOpen && (
-            <>
-              {isMobile && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-                />
-              )}
+        {/* Desktop Sidebar — always mounted, width animates */}
+        {!isMobile && (
+          <motion.div
+            animate={{ width: isSidebarOpen ? 320 : 84 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="relative h-full z-50 overflow-hidden shrink-0"
+          >
+            <Sidebar
+              onClose={() => setIsSidebarOpen(false)}
+              onSignOut={signOut}
+              isCollapsible={true}
+              onQuickCapture={openQuickCapture}
+            />
+          </motion.div>
+        )}
 
+        {/* Mobile Sidebar — AnimatePresence slides in/out */}
+        <AnimatePresence>
+          {isSidebarOpen && isMobile && (
+            <>
               <motion.div
-                initial={isMobile ? { x: -320 } : { width: 84 }}
-                animate={isMobile ? { x: 0 } : { width: isSidebarOpen ? 320 : 84 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              />
+              <motion.div
+                initial={{ x: -320 }}
+                animate={{ x: 0 }}
+                exit={{ x: -320 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className={`${isMobile ? 'fixed top-0 left-0 h-full' : 'relative h-full'} z-50 overflow-hidden bg-surface shadow-2xl shrink-0`}
+                className="fixed top-0 left-0 h-full z-50 overflow-hidden"
               >
                 <Sidebar
                   onClose={() => setIsSidebarOpen(false)}
                   onSignOut={signOut}
-                  isCollapsible={!isMobile}
+                  isCollapsible={false}
                   onQuickCapture={openQuickCapture}
                 />
               </motion.div>
