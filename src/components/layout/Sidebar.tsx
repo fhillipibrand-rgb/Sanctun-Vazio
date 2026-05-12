@@ -129,41 +129,6 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
         </div>
       </div>
 
-      {/* Profile Avatar — Expanded */}
-      {isSidebarOpen && (
-        <div className="flex items-center gap-3 mb-8 px-3 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] transition-all cursor-default">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-2 ring-primary/20">
-            <img
-              src={avatarUrl}
-              alt="Avatar"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b5bdb&textColor=ffffff`;
-              }}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate leading-tight">{displayName}</p>
-            <p className="text-[10px] opacity-40 uppercase tracking-widest font-bold mt-0.5">Perfil Ativo</p>
-          </div>
-        </div>
-      )}
-
-      {/* Profile Avatar — Mini mode */}
-      {!isSidebarOpen && (
-        <div className="w-10 h-10 rounded-xl overflow-hidden mb-4 ring-2 ring-primary/20 shrink-0">
-          <img
-            src={avatarUrl}
-            alt="Avatar"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=3b5bdb&textColor=ffffff`;
-            }}
-          />
-        </div>
-      )}
 
       {/* Navigation Area */}
       <nav className="flex-1 overflow-y-auto w-full space-y-8 sidebar-nav-scroll overflow-x-hidden">

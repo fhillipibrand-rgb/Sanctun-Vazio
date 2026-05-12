@@ -51,7 +51,15 @@ const Dashboard = () => {
   });
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
-  const avatarUrl = profile?.avatar_url || `https://picsum.photos/seed/${user?.id}/200/200`;
+  
+  const getAvatar = () => {
+    if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
+      return profile.avatar_url;
+    }
+    const seed = user?.id || profile?.full_name || 'sanctum';
+    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
+  };
+  const avatarUrl = getAvatar();
 
   const toggleMetrics = () => {
     setShowMetrics(prev => {
@@ -220,16 +228,32 @@ const Dashboard = () => {
   return (
     <div className="space-y-8 md:space-y-12 pb-20 pt-4 relative">
       {/* SECTION 1: THE INTENTIONAL HEADER (Onde estou agora?) */}
-      <header className="flex flex-col gap-2 mb-8">
-        <div className="flex items-center gap-3">
-          <div className={`w-2 h-2 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
-          <p className="editorial-label !tracking-[0.3em] opacity-50 text-[10px] uppercase font-bold">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-          </p>
+      <header className="flex items-start sm:items-end justify-between gap-6 mb-8 flex-col sm:flex-row">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${stats.isDemo ? 'bg-primary animate-ping' : 'bg-secondary animate-pulse'}`} />
+            <p className="editorial-label !tracking-[0.3em] opacity-50 text-[10px] uppercase font-bold">
+              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+            </p>
+          </div>
+          <h2 className="text-5xl md:text-7xl font-bold tracking-tight">
+            Olá, <span className="text-on-surface/40 dark:text-on-surface/20">{firstName}.</span>
+          </h2>
         </div>
-        <h2 className="text-5xl md:text-7xl font-bold tracking-tight">
-          Olá, <span className="text-on-surface/40 dark:text-on-surface/20">{firstName}.</span>
-        </h2>
+
+        <Link to="/settings" className="shrink-0 group hidden sm:block">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] overflow-hidden ring-2 ring-transparent group-hover:ring-primary/40 shadow-xl shadow-primary/5 bg-surface transition-all duration-300">
+            <img 
+              src={avatarUrl} 
+              alt="Avatar" 
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 
+                  `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(firstName)}&backgroundColor=3b5bdb&textColor=ffffff`;
+              }}
+            />
+          </div>
+        </Link>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-stretch">
