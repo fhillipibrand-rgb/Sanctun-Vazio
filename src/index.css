@@ -173,10 +173,10 @@
   }
 }
 
-/* Custom Premium Scrollbar */
+/* Custom Premium Scrollbar — ultra discreet */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 2px;
+  height: 2px;
 }
 
 ::-webkit-scrollbar-track {
@@ -184,18 +184,27 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+/* Sidebar nav: scrollbar completely hidden */
+.sidebar-nav-scroll {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 
 /* Tour Highlight Animation */
 @keyframes tour-pulse {

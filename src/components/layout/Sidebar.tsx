@@ -96,7 +96,7 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
       </div>
 
       {/* Navigation Area */}
-      <nav className="flex-1 overflow-y-auto w-full space-y-8 custom-scrollbar overflow-x-hidden">
+      <nav className="flex-1 overflow-y-auto w-full space-y-8 sidebar-nav-scroll overflow-x-hidden">
         {menuSections.map((section, idx) => (
           <div key={idx} className="space-y-3 w-full">
             {isSidebarOpen && (
