@@ -222,59 +222,57 @@ const Focus = () => {
             <button onClick={toggleFullscreen} className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase text-white hover:bg-white/10 transition-all"><Maximize2 size={16} /> Entrar em Imersão</button>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-12">
-            <div className="space-y-8">
-              <div className="space-y-1">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-12 items-start">
+            <div className="flex flex-col gap-4">
+              <div className="space-y-1 mb-2">
                 <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">Escolha sua Atmosfera</h3>
                 <p className="text-[10px] opacity-20 uppercase font-bold tracking-widest">Defina a vibração do seu espaço de trabalho</p>
               </div>
-              <div className="grid grid-cols-1 gap-6">
-                {modes.map(mode => (
-                  <motion.div key={mode.id} whileHover={{ x: 10 }} className="relative group">
-                    <GlassCard onClick={() => setActiveMode(mode)} className={`p-8 cursor-pointer border-2 transition-all relative overflow-hidden h-full ${activeMode.id === mode.id ? 'border-primary shadow-[0_0_40px_rgba(var(--color-primary-rgb),0.1)]' : 'border-white/5 hover:border-white/20'}`}>
-                      <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-500 ${activeMode.id === mode.id ? 'bg-primary' : 'bg-transparent'}`} />
-                      <div className="flex items-start gap-6 relative z-10">
-                        <div className="w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-700 group-hover:rotate-[10deg] shrink-0" style={{ backgroundColor: `${mode.color}15`, color: mode.color, boxShadow: activeMode.id === mode.id ? `0 0 30px ${mode.color}30` : 'none' }}>
-                          <mode.icon size={32} />
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className={`text-xl font-bold transition-colors ${activeMode.id === mode.id ? 'text-white' : 'text-white/60'}`}>{mode.name}</h4>
-                          <p className="text-xs leading-relaxed opacity-40 text-white group-hover:opacity-60 transition-opacity">{mode.description}</p>
-                          {activeMode.id === mode.id && (
-                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 pt-2">
-                              <div className="w-1 h-1 rounded-full bg-primary animate-ping" />
-                              <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Santuário Ativo</span>
-                            </motion.div>
-                          )}
-                        </div>
+              {modes.map(mode => (
+                <motion.div key={mode.id} whileHover={{ x: 6 }} className="relative group">
+                  <GlassCard onClick={() => setActiveMode(mode)} className={`p-6 cursor-pointer border-2 transition-all relative overflow-hidden ${activeMode.id === mode.id ? 'border-primary shadow-[0_0_40px_rgba(var(--color-primary-rgb),0.08)]' : 'border-white/5 hover:border-white/15'}`}>
+                    <div className={`absolute top-0 left-0 w-1 h-full transition-all duration-500 ${activeMode.id === mode.id ? 'bg-primary' : 'bg-transparent'}`} />
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500" style={{ backgroundColor: `${mode.color}15`, color: mode.color, boxShadow: activeMode.id === mode.id ? `0 0 24px ${mode.color}30` : 'none' }}>
+                        <mode.icon size={26} />
                       </div>
-                    </GlassCard>
-                  </motion.div>
-                ))}
-              </div>
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <h4 className={`text-base font-bold transition-colors ${activeMode.id === mode.id ? 'text-white' : 'text-white/60'}`}>{mode.name}</h4>
+                        <p className="text-[11px] leading-relaxed opacity-40 text-white">{mode.description}</p>
+                        {activeMode.id === mode.id && (
+                          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 pt-1">
+                            <div className="w-1 h-1 rounded-full bg-primary animate-ping" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Santuário Ativo</span>
+                          </motion.div>
+                        )}
+                      </div>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
             </div>
 
-            <div className="space-y-8">
-              <div className="space-y-4">
+            <div className="flex flex-col gap-6">
+              <div className="space-y-3">
                 <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">O Alvo da Intenção</h3>
-                <button onClick={() => setIsTaskSelectorOpen(true)} className="w-full p-8 rounded-[40px] bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-white/[0.06] transition-all text-left group relative overflow-hidden">
+                <button onClick={() => setIsTaskSelectorOpen(true)} className="w-full min-h-[88px] px-8 py-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-white/[0.06] transition-all text-left group relative overflow-hidden flex items-center">
                   {selectedTaskId ? (
-                    <div className="flex items-center justify-between text-white relative z-10">
-                      <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center shadow-lg shadow-primary/20"><Target size={24} /></div>
+                    <div className="flex items-center justify-between text-white relative z-10 w-full">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0"><Target size={22} /></div>
                         <div>
-                          <p className="text-lg font-bold truncate max-w-[300px] group-hover:text-primary transition-colors">{tasks.find(t => t.id === selectedTaskId)?.title}</p>
+                          <p className="text-base font-bold truncate max-w-[300px] group-hover:text-primary transition-colors">{tasks.find(t => t.id === selectedTaskId)?.title}</p>
                           <p className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Compromisso de Imersão</p>
                         </div>
                       </div>
-                      <X size={16} className="opacity-20 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setSelectedTaskId(null); }} />
+                      <X size={16} className="opacity-20 hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setSelectedTaskId(null); }} />
                     </div>
                   ) : (
-                    <div className="flex items-center gap-6 opacity-40 text-white relative z-10 group-hover:opacity-100 transition-all">
-                      <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-all"><Plus size={24} /></div>
+                    <div className="flex items-center gap-5 opacity-40 text-white relative z-10 group-hover:opacity-100 transition-all w-full">
+                      <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-all shrink-0"><Plus size={22} /></div>
                       <div>
-                        <p className="text-lg font-bold uppercase tracking-widest">Definir Propósito</p>
-                        <p className="text-[10px] opacity-60">Escolha o desafio para este ciclo de foco</p>
+                        <p className="text-base font-bold uppercase tracking-widest">Definir Propósito</p>
+                        <p className="text-[11px] opacity-60">Escolha o desafio para este ciclo de foco</p>
                       </div>
                     </div>
                   )}
