@@ -223,10 +223,11 @@ const Focus = () => {
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.8fr] gap-12 items-start">
+            {/* Left Column */}
             <div className="flex flex-col gap-4">
-              <div className="space-y-1 mb-2">
+              <div className="h-10 flex flex-col justify-center">
                 <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">Escolha sua Atmosfera</h3>
-                <p className="text-[10px] opacity-20 uppercase font-bold tracking-widest">Defina a vibração do seu espaço de trabalho</p>
+                <p className="text-[10px] opacity-20 uppercase font-bold tracking-widest mt-0.5">Defina a vibração do seu espaço de trabalho</p>
               </div>
               {modes.map(mode => (
                 <motion.div key={mode.id} whileHover={{ x: 6 }} className="relative group">
@@ -252,9 +253,11 @@ const Focus = () => {
               ))}
             </div>
 
-            <div className="flex flex-col gap-6">
-              <div className="space-y-3">
+            {/* Right Column */}
+            <div className="flex flex-col gap-4">
+              <div className="h-10 flex flex-col justify-center">
                 <h3 className="editorial-label text-[10px] opacity-40 uppercase tracking-[0.3em] text-white">O Alvo da Intenção</h3>
+              </div>
                 <button onClick={() => setIsTaskSelectorOpen(true)} className="w-full min-h-[88px] px-8 py-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-primary/30 hover:bg-white/[0.06] transition-all text-left group relative overflow-hidden flex items-center">
                   {selectedTaskId ? (
                     <div className="flex items-center justify-between text-white relative z-10 w-full">
