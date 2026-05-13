@@ -208,6 +208,13 @@ const Settings = () => {
     setLoading(false);
   };
 
+  const avatarUrl = React.useMemo(() => {
+    if (profile.avatar_url && profile.avatar_url.trim() !== '') {
+      return profile.avatar_url;
+    }
+    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`;
+  }, [profile.avatar_url, user?.id, profile.full_name]);
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto pb-12">
       <header className="flex items-center gap-4">
@@ -222,17 +229,15 @@ const Settings = () => {
           <div className="relative group">
             <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl relative">
               <img 
-                key={profile.avatar_url || 'default'}
-                src={
-                  profile.avatar_url && profile.avatar_url.trim() !== '' 
-                    ? `${profile.avatar_url}?t=${new Date().getTime()}` 
-                    : `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`
-                }
+                key={avatarUrl}
+                src={avatarUrl} 
                 alt="Avatar" 
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 
-                    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(profile.full_name || 'user')}&backgroundColor=3b5bdb&textColor=ffffff`;
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes('dicebear')) {
+                    target.src = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(profile.full_name || 'user')}&backgroundColor=3b5bdb&textColor=ffffff`;
+                  }
                 }}
               />
               {loading && (

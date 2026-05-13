@@ -52,15 +52,13 @@ const Dashboard = () => {
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   
-  const getAvatar = () => {
+  const avatarUrl = React.useMemo(() => {
     if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
-      // Adiciona um timestamp para evitar cache de imagens do Supabase
-      return `${profile.avatar_url}?t=${new Date().getTime()}`;
+      return profile.avatar_url;
     }
     const seed = user?.id || profile?.full_name || 'sanctum';
     return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
-  };
-  const avatarUrl = getAvatar();
+  }, [profile?.avatar_url, user?.id, profile?.full_name]);
 
   const toggleMetrics = () => {
     setShowMetrics(prev => {
@@ -245,14 +243,16 @@ const Dashboard = () => {
         <Link to="/settings" className="shrink-0 group">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] overflow-hidden ring-2 ring-transparent group-hover:ring-primary/40 shadow-xl shadow-primary/5 bg-surface transition-all duration-300">
             <img 
-              key={profile?.avatar_url || 'default'}
-              src={
-                profile?.avatar_url && profile.avatar_url.trim() !== '' 
-                  ? `${profile.avatar_url}?t=${new Date().getTime()}` 
-                  : `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile?.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`
-              }
+              key={avatarUrl}
+              src={avatarUrl} 
               alt="Avatar" 
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes('dicebear')) {
+                  target.src = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(firstName)}&backgroundColor=3b5bdb&textColor=ffffff`;
+                }
+              }}
             />
           </div>
         </Link>
