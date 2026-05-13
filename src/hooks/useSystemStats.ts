@@ -115,11 +115,16 @@ export const useSystemStats = () => {
       const completedTodayHabits = hLogs.filter(log => log.date === todayStr).length;
       const habitsPercentage = totalHabitsToday > 0 ? (completedTodayHabits / totalHabitsToday) * 100 : 0;
       
-      // Histórico Semanal de Hábitos
+      // Histórico Semanal de Hábitos — sempre começa no Domingo da semana atual
       const habitsHistory: { name: string; v: number; date: string }[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
+      const todayForHabits = new Date();
+      const dayOfWeekHabits = todayForHabits.getDay(); // 0=Dom, 6=Sáb
+      const sundayHabits = new Date(todayForHabits);
+      sundayHabits.setDate(todayForHabits.getDate() - dayOfWeekHabits);
+
+      for (let i = 0; i <= 6; i++) {
+        const d = new Date(sundayHabits);
+        d.setDate(sundayHabits.getDate() + i);
         const dStr = d.toISOString().split('T')[0];
         const dDay = d.getDay();
         
@@ -142,25 +147,35 @@ export const useSystemStats = () => {
         });
       }
 
-      // 7. HISTÓRICO SEMANAL DINÂMICO (TAREFAS/FINANÇAS)
+      // 7. HISTÓRICO SEMANAL DINÂMICO (TAREFAS/FINANÇAS) — semana atual Dom→Sáb
       const history: DailyData[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
+      const todayForHistory = new Date();
+      const dayOfWeekHistory = todayForHistory.getDay();
+      const sundayHistory = new Date(todayForHistory);
+      sundayHistory.setDate(todayForHistory.getDate() - dayOfWeekHistory);
+
+      for (let i = 0; i <= 6; i++) {
+        const d = new Date(sundayHistory);
+        d.setDate(sundayHistory.getDate() + i);
         const dStr = d.toISOString().split('T')[0];
         
-        const tasksOnDay = tasksData.filter(t => 
+        const tasksOnDay = tasksData.filter((t: any) => 
           t.is_completed && t.completed_at && typeof t.completed_at === 'string' && t.completed_at.startsWith(dStr)
         ).length;
         
-        const financeOnDay = financeData.filter(tx => 
+        // Saldo líquido do dia: entradas - saídas
+        const incomeOnDay = financeData.filter((tx: any) => 
+          tx.type === 'income' && tx.created_at && typeof tx.created_at === 'string' && tx.created_at.startsWith(dStr)
+        ).reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0);
+        
+        const expenseOnDay = financeData.filter((tx: any) => 
           tx.type === 'expense' && tx.created_at && typeof tx.created_at === 'string' && tx.created_at.startsWith(dStr)
-        ).reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        ).reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0);
 
         history.push({
           name: DAYS_SHORT[d.getDay()],
           v: tasksOnDay,
-          f: Math.min(financeOnDay / 10, 100), 
+          f: Math.max(0, Math.min((incomeOnDay - expenseOnDay + expenseOnDay) / 50, 100)),
           date: dStr
         });
       }

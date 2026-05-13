@@ -14,8 +14,6 @@ import Login from "./pages/Login";
 import Settings from "./pages/Settings";
 import Vitality from "./pages/Vitality";
 import Reading from "./pages/Reading";
-import Spirituality from "./pages/Spirituality";
-import Sleep from "./pages/Sleep";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Projects from "./pages/Projects";
 import Habits from "./pages/Habits";
@@ -76,8 +74,6 @@ export default function App() {
             <Route path="/focus" element={<Focus />} />
             <Route path="/vitality" element={<Vitality />} />
             <Route path="/reading" element={<Reading />} />
-            <Route path="/spirituality" element={<Spirituality />} />
-            <Route path="/sleep" element={<Sleep />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/health" element={<Health />} />
             <Route path="/callback" element={<SpotifyCallback />} />

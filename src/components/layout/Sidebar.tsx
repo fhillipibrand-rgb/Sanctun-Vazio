@@ -2,8 +2,8 @@ import { useState } from "react";
 import { 
   Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, 
   Settings, ChevronLeft, LayoutList, Target, Activity, PieChart, 
-  Clock, Utensils, TrendingUp, ChevronDown, Dumbbell,
-  BookOpen, Sparkles, Moon, Sun
+  Clock, Utensils, TrendingUp, Dumbbell,
+  BookOpen, Sun, Moon
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -56,8 +56,6 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
       items: [
         { id: "/habits", icon: Target, label: "HÁBITOS" },
         { id: "/reading", icon: BookOpen, label: "BIBLIOTECA" },
-        { id: "/sleep", icon: Moon, label: "SONO & RECUPERAÇÃO" },
-        { id: "/spirituality", icon: Sparkles, label: "ESPIRITUALIDADE" },
         { id: "/vitality", icon: Dumbbell, label: "VITALIDADE" },
         { id: "/nutrition", icon: Utensils, label: "DIETA & NUTRIÇÃO" },
         { id: "/health", icon: Activity, label: "GESTÃO DE SAÚDE" },

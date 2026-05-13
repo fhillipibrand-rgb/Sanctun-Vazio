@@ -241,22 +241,22 @@
 
 /* Scrollbar in light mode — slate tones */
 .light ::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.12);
+  background: rgba(71, 85, 105, 0.18);
 }
 .light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 0.25);
+  background: rgba(71, 85, 105, 0.35);
 }
 
 /* Sidebar light mode — white card with shadow */
 .light aside {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-right: 1px solid rgba(99, 120, 180, 0.15) !important;
-  box-shadow: 4px 0 24px rgba(37, 99, 235, 0.05), 1px 0 0 rgba(99, 120, 180, 0.12) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-right: 1px solid rgba(99, 120, 180, 0.2) !important;
+  box-shadow: 4px 0 32px rgba(37, 99, 235, 0.08), 1px 0 0 rgba(99, 120, 180, 0.15) !important;
 }
 
-/* Light mode icon colors in mini sidebar */
+/* Light mode sidebar icon and text colors */
 .light aside .text-white\/40 {
-  color: rgba(71, 85, 105, 0.6) !important;
+  color: rgba(51, 65, 85, 0.55) !important;
 }
 .light aside .text-white {
   color: #0d1117 !important;
@@ -265,16 +265,72 @@
   color: #0d1117 !important;
 }
 .light aside .border-white\/10 {
-  border-color: rgba(99, 120, 180, 0.15) !important;
+  border-color: rgba(99, 120, 180, 0.2) !important;
+}
+.light aside .border-white\/5 {
+  border-color: rgba(99, 120, 180, 0.12) !important;
 }
 
-/* Light mode main content cards */
+/* Light mode GlassCard — white elevated surface */
 .light .bg-white\/\[0\.03\] {
-  background: rgba(255, 255, 255, 0.7) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
 }
 .light .bg-on-surface\/5,
 .light .hover\:bg-on-surface\/5:hover {
+  background: rgba(15, 23, 42, 0.05) !important;
+}
+.light .bg-on-surface\/\[0\.03\] {
   background: rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Light mode — fix low-opacity text for legibility */
+.light .opacity-50 { opacity: 0.65 !important; }
+.light .opacity-40 { opacity: 0.55 !important; }
+.light .opacity-30 { opacity: 0.45 !important; }
+.light .opacity-20 { opacity: 0.35 !important; }
+
+/* Light mode — editorial labels need more contrast */
+.light .editorial-label {
+  color: rgba(15, 23, 42, 0.6) !important;
+}
+
+/* Light mode borders — more visible */
+.light .border-white\/5 {
+  border-color: rgba(99, 120, 180, 0.14) !important;
+}
+.light .border-white\/10 {
+  border-color: rgba(99, 120, 180, 0.2) !important;
+}
+
+/* Light mode inputs — clear contrast */
+.light input, .light textarea, .light select {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(99, 120, 180, 0.25) !important;
+  color: #0d1117 !important;
+}
+.light input::placeholder, .light textarea::placeholder {
+  color: rgba(15, 23, 42, 0.4) !important;
+}
+
+/* Light mode Recharts tooltip */
+.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1px solid rgba(99, 120, 180, 0.2) !important;
+  color: #0d1117 !important;
+  border-radius: 16px !important;
+}
+
+/* Light mode chart tick text */
+.light .recharts-cartesian-axis-tick text {
+  fill: rgba(15, 23, 42, 0.55) !important;
+}
+
+/* Light mode gradient cards fix */
+.light .from-primary\/\[0\.03\] {
+  --tw-gradient-from: rgba(37, 99, 235, 0.06) !important;
+}
+.light .from-secondary\/\[0\.05\] {
+  --tw-gradient-from: rgba(5, 150, 105, 0.07) !important;
 }
 
 /* Body in light mode — rich gradient */
@@ -284,13 +340,12 @@
 
 /* Sidebar nav: scrollbar completely hidden */
 .sidebar-nav-scroll {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .sidebar-nav-scroll::-webkit-scrollbar {
   display: none;
 }
-
 
 /* Tour Highlight Animation */
 @keyframes tour-pulse {
@@ -308,4 +363,3 @@
 .tour-highlight-active::after {
   display: none;
 }
-

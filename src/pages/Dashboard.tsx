@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Clock, 
-  ShieldCheck, Sparkles, Sun, Moon, PanelLeft, Pill, Droplets, AlertTriangle, 
-  Play, Pause, Rocket, Briefcase, Code, Layout, Globe, Star, Heart, Cloud, 
-  Camera, Music, Book, Trophy, Shield, Coffee, Lightbulb, Bell, Search, FolderKanban,
-  ChevronRight, Eye, EyeOff
+  ShieldCheck, Sparkles, Sun, Moon, Pill, AlertTriangle, 
+  Play, Pause, Rocket, FolderKanban,
+  ChevronRight, Eye, EyeOff, Bell, Search
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
@@ -58,19 +57,15 @@ const Dashboard = () => {
   
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   
-  const avatarUrl = React.useMemo(() => {
-    // 1. Prioridade: Foto enviada manualmente para o banco
-    if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
-      return profile.avatar_url;
-    }
-    // 2. Fallback: Foto do Metadata do usuário (Google Auth, etc)
-    if (user?.user_metadata?.avatar_url) {
-      return user.user_metadata.avatar_url;
-    }
-    // 3. Fallback Final: Iniciais dinâmicas
-    const seed = user?.id || profile?.full_name || 'sanctum';
-    return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
-  }, [profile?.avatar_url, user?.id, profile?.full_name, user?.user_metadata?.avatar_url]);
+  const isLight = theme === 'light';
+  const tooltipStyle = {
+    backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(20,20,22,0.95)',
+    border: isLight ? '1px solid rgba(99,120,180,0.2)' : '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '16px',
+    fontSize: '11px',
+    backdropFilter: 'blur(10px)',
+    color: isLight ? '#0d1117' : '#fefbfe',
+  };
 
   const toggleMetrics = () => {
     setShowMetrics(prev => {
@@ -251,23 +246,6 @@ const Dashboard = () => {
             Olá, <span className="text-on-surface/40 dark:text-on-surface/20">{firstName}.</span>
           </h2>
         </div>
-
-        <Link to="/settings" className="shrink-0 group">
-          <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] overflow-hidden ring-2 ring-transparent group-hover:ring-primary/40 shadow-xl shadow-primary/5 bg-surface transition-all duration-300">
-            <img 
-              key={avatarUrl}
-              src={avatarUrl} 
-              alt="Avatar" 
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (!target.src.includes('dicebear')) {
-                  target.src = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(firstName)}&backgroundColor=3b5bdb&textColor=ffffff`;
-                }
-              }}
-            />
-          </div>
-        </Link>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-stretch">
@@ -639,8 +617,8 @@ const Dashboard = () => {
                     </defs>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 9 }} dy={10} />
                     <Tooltip
-                      cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                      contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
+                      cursor={{ stroke: isLight ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                      contentStyle={tooltipStyle}
                     />
                     <Area type="monotone" dataKey="v" stroke="#5e9eff" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTasks)" dot={{ r: 3, fill: '#5e9eff', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
@@ -670,8 +648,8 @@ const Dashboard = () => {
                     </defs>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 9 }} dy={10} />
                     <Tooltip
-                      cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                      contentStyle={{ backgroundColor: 'rgba(20,20,22,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '11px', backdropFilter: 'blur(10px)' }}
+                      cursor={{ stroke: isLight ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+                      contentStyle={tooltipStyle}
                     />
                     <Area type="monotone" dataKey="f" stroke="#a855f7" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFinance)" dot={{ r: 3, fill: '#a855f7', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
