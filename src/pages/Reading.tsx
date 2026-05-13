@@ -256,20 +256,20 @@ const Reading = () => {
                       <div className="absolute inset-x-0 bottom-0 p-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-t from-surface to-transparent">
                          <div className="flex items-center justify-between gap-2 bg-surface/40 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
                             <button 
-                              onClick={() => updateProgress(book.id, Math.max(0, book.current_page - 5))}
+                              onClick={() => updateProgress(book.id, Math.max(0, book.current_page - 1))}
                               className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-on-surface/10 transition-colors"
                             >
-                              -5
+                              -
                             </button>
                             <div className="flex-1 text-center">
                                <p className="text-[8px] font-bold opacity-40 uppercase">Página</p>
                                <p className="text-xs font-mono font-bold">{book.current_page}</p>
                             </div>
                             <button 
-                              onClick={() => updateProgress(book.id, Math.min(book.total_pages, book.current_page + 5))}
+                              onClick={() => updateProgress(book.id, Math.min(book.total_pages, book.current_page + 1))}
                               className="w-8 h-8 rounded-xl flex items-center justify-center bg-secondary/10 text-secondary hover:bg-secondary/20 transition-colors"
                             >
-                              +5
+                              +
                             </button>
                          </div>
                       </div>
