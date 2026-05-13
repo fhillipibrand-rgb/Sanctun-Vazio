@@ -36,12 +36,18 @@ interface FocusState {
 }
 
 const Dashboard = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const stats = useSystemStats();
   const { toggleSidebar, theme, toggleTheme, isSidebarOpen, isMobile } = useLayout();
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [focusState, setFocusState] = useState<FocusState | null>(null);
+  
+  // Força a atualização do perfil ao entrar no Dashboard para garantir que a foto nova apareça
+  useEffect(() => {
+    refreshProfile?.();
+  }, []);
+
   const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -53,12 +59,18 @@ const Dashboard = () => {
   const firstName = profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || "Explorador";
   
   const avatarUrl = React.useMemo(() => {
+    // 1. Prioridade: Foto enviada manualmente para o banco
     if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
       return profile.avatar_url;
     }
+    // 2. Fallback: Foto do Metadata do usuário (Google Auth, etc)
+    if (user?.user_metadata?.avatar_url) {
+      return user.user_metadata.avatar_url;
+    }
+    // 3. Fallback Final: Iniciais dinâmicas
     const seed = user?.id || profile?.full_name || 'sanctum';
     return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
-  }, [profile?.avatar_url, user?.id, profile?.full_name]);
+  }, [profile?.avatar_url, user?.id, profile?.full_name, user?.user_metadata?.avatar_url]);
 
   const toggleMetrics = () => {
     setShowMetrics(prev => {

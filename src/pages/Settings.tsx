@@ -108,7 +108,8 @@ const Settings = () => {
         full_name: profile.full_name,
         email: profile.email,
         phone: profile.phone,
-        address: profile.address
+        address: profile.address,
+        avatar_url: profile.avatar_url
       })
       .eq("id", user?.id);
 
