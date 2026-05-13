@@ -1,17 +1,28 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, Save, Book, User, Hash, ImageIcon, Loader2, Upload, CheckCircle2 } from "lucide-react";
 import GlassCard from "../ui/GlassCard";
 import { motion } from "motion/react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 
+interface BookItem {
+  id: string;
+  title: string;
+  author: string;
+  total_pages: number;
+  current_page: number;
+  status: 'reading' | 'completed' | 'wishlist' | 'paused';
+  cover_url?: string;
+}
+
 interface AddBookModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: () => void;
+  bookToEdit?: BookItem | null;
 }
 
-const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) => {
+const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bookToEdit }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -27,6 +38,36 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
     notes: "",
     cover_url: ""
   });
+
+  // Reset or fill form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (bookToEdit) {
+        setFormData({
+          title: bookToEdit.title,
+          author: bookToEdit.author,
+          total_pages: bookToEdit.total_pages,
+          status: bookToEdit.status,
+          genre: '', // assuming not available in BookItem yet or add if needed
+          notes: '',
+          cover_url: bookToEdit.cover_url || ""
+        });
+        setImagePreview(bookToEdit.cover_url || null);
+      } else {
+        // Reset form for new book
+        setFormData({
+          title: "",
+          author: "",
+          total_pages: 0,
+          status: "reading",
+          genre: "",
+          notes: "",
+          cover_url: ""
+        });
+        setImagePreview(null);
+      }
+    }
+  }, [isOpen, bookToEdit]);
 
   if (!isOpen) return null;
 
@@ -73,15 +114,27 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('books')
-        .insert({
-          ...formData,
-          user_id: user.id,
-          current_page: 0
-        });
+      if (bookToEdit) {
+        // Update existing book
+        const { error } = await supabase
+          .from('books')
+          .update(formData)
+          .eq('id', bookToEdit.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new book
+        const { error } = await supabase
+          .from('books')
+          .insert({
+            ...formData,
+            user_id: user.id,
+            current_page: 0
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
+
       if (onSave) onSave();
       onClose();
     } catch (error: any) {
@@ -105,7 +158,9 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
               <div className="p-2 bg-secondary/10 rounded-xl text-secondary">
                 <Book size={20} />
               </div>
-              <h3 className="text-xl font-bold tracking-tight">Adicionar ao Acervo</h3>
+              <h3 className="text-xl font-bold tracking-tight">
+                {bookToEdit ? 'Editar Livro' : 'Adicionar ao Acervo'}
+              </h3>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-on-surface/10 rounded-full transition-all">
               <X size={20} />
@@ -238,7 +293,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
                 className="px-8 py-2 rounded-xl bg-secondary text-surface text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-secondary/20 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-                SALVAR LIVRO
+                {bookToEdit ? 'ATUALIZAR LIVRO' : 'SALVAR LIVRO'}
               </button>
             </div>
           </form>

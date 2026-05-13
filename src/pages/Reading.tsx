@@ -7,7 +7,10 @@ import {
   Clock, 
   CheckCircle2, 
   Library,
-  Download
+  Download,
+  Edit2,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import AddBookModal from "../components/modals/AddBookModal";
@@ -31,6 +34,7 @@ const Reading = () => {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [bookToEdit, setBookToEdit] = useState<BookItem | null>(null);
   const [filter, setFilter] = useState<'all' | 'reading' | 'completed' | 'wishlist'>('all');
 
   useEffect(() => {
@@ -59,6 +63,31 @@ const Reading = () => {
     if (!error) {
       setBooks(books.map(b => b.id === id ? { ...b, current_page: page } : b));
     }
+  };
+
+  const deleteBook = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este livro?")) return;
+    
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', id);
+    
+    if (!error) {
+      setBooks(books.filter(b => b.id !== id));
+    } else {
+      alert("Erro ao excluir livro.");
+    }
+  };
+
+  const handleEdit = (book: BookItem) => {
+    setBookToEdit(book);
+    setShowAddModal(true);
+  };
+
+  const handleAddNew = () => {
+    setBookToEdit(null);
+    setShowAddModal(true);
   };
 
   const exportToCSV = () => {
@@ -109,7 +138,7 @@ const Reading = () => {
               <Download size={14} /> EXPORTAR CSV
             </button>
             <button 
-              onClick={() => setShowAddModal(true)}
+              onClick={handleAddNew}
               className="flex items-center gap-2 px-6 py-3 bg-secondary text-surface rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-secondary/20"
             >
               <Plus size={16} /> ADICIONAR LIVRO
@@ -187,13 +216,28 @@ const Reading = () => {
                       
                       <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-80" />
                       
-                      <div className="absolute top-4 right-4">
+                      {/* Badge de Status e Menu de Ações */}
+                      <div className="absolute top-4 inset-x-4 flex justify-between items-start">
                         <div className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider backdrop-blur-md border ${
                           book.status === 'reading' 
                             ? 'bg-secondary/20 border-secondary/30 text-secondary' 
                             : 'bg-on-surface/20 border-white/10 text-on-surface'
                         }`}>
                           {book.status === 'reading' ? 'Lendo' : book.status === 'completed' ? 'Concluído' : 'Lista de Espera'}
+                        </div>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => handleEdit(book)}
+                            className="p-2 bg-surface/40 backdrop-blur-md rounded-lg text-on-surface/60 hover:text-secondary transition-colors border border-white/10"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button 
+                            onClick={() => deleteBook(book.id)}
+                            className="p-2 bg-surface/40 backdrop-blur-md rounded-lg text-on-surface/60 hover:text-red-400 transition-colors border border-white/10"
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       </div>
 
@@ -246,7 +290,10 @@ const Reading = () => {
                              <Clock size={12} />
                              <span>{book.current_page} / {book.total_pages} pg</span>
                           </div>
-                          <button className="text-[9px] font-bold text-secondary hover:underline tracking-widest uppercase">
+                          <button 
+                            onClick={() => handleEdit(book)}
+                            className="text-[9px] font-bold text-secondary hover:underline tracking-widest uppercase"
+                          >
                             DETALHES
                           </button>
                         </div>
@@ -305,6 +352,7 @@ const Reading = () => {
         isOpen={showAddModal} 
         onClose={() => setShowAddModal(false)} 
         onSave={fetchBooks}
+        bookToEdit={bookToEdit}
       />
     </div>
   );
