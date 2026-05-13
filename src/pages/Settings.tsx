@@ -225,7 +225,7 @@ const Settings = () => {
                 key={profile.avatar_url || 'default'}
                 src={
                   profile.avatar_url && profile.avatar_url.trim() !== '' 
-                    ? profile.avatar_url 
+                    ? `${profile.avatar_url}?t=${new Date().getTime()}` 
                     : `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`
                 }
                 alt="Avatar" 

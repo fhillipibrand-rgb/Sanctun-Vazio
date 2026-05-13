@@ -54,7 +54,8 @@ const Dashboard = () => {
   
   const getAvatar = () => {
     if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
-      return profile.avatar_url;
+      // Adiciona um timestamp para evitar cache de imagens do Supabase
+      return `${profile.avatar_url}?t=${new Date().getTime()}`;
     }
     const seed = user?.id || profile?.full_name || 'sanctum';
     return `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff&fontSize=42&fontWeight=600`;
@@ -244,14 +245,14 @@ const Dashboard = () => {
         <Link to="/settings" className="shrink-0 group">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] overflow-hidden ring-2 ring-transparent group-hover:ring-primary/40 shadow-xl shadow-primary/5 bg-surface transition-all duration-300">
             <img 
-              key={avatarUrl}
-              src={avatarUrl} 
+              key={profile?.avatar_url || 'default'}
+              src={
+                profile?.avatar_url && profile.avatar_url.trim() !== '' 
+                  ? `${profile.avatar_url}?t=${new Date().getTime()}` 
+                  : `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user?.id || profile?.full_name || 'sanctum')}&backgroundColor=3b5bdb,4c6ef5,748ffc&textColor=ffffff`
+              }
               alt="Avatar" 
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 
-                  `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(firstName)}&backgroundColor=3b5bdb&textColor=ffffff`;
-              }}
             />
           </div>
         </Link>
