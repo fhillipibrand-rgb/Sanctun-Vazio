@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Save, Book, User, Hash, ImageIcon, Loader2 } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, Save, Book, User, Hash, ImageIcon, Loader2, Upload, CheckCircle2 } from "lucide-react";
 import GlassCard from "../ui/GlassCard";
 import { motion } from "motion/react";
 import { supabase } from "../../lib/supabase";
@@ -14,6 +14,9 @@ interface AddBookModalProps {
 const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -26,6 +29,43 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
   });
 
   if (!isOpen) return null;
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Por favor, selecione apenas arquivos de imagem (JPEG, PNG, etc).");
+      return;
+    }
+
+    setUploadingImage(true);
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('book-covers')
+        .upload(fileName, file, {
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('book-covers')
+        .getPublicUrl(data.path);
+
+      setFormData({ ...formData, cover_url: urlData.publicUrl });
+      setImagePreview(URL.createObjectURL(file));
+    } catch (err: any) {
+      console.error("Erro ao fazer upload da imagem:", err);
+      alert(`Erro ao enviar imagem: ${err?.message || 'Tente novamente.'}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,18 +143,50 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
                 </div>
               </div>
 
-              {/* Capa do Livro */}
+              {/* Capa do Livro - Upload */}
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
-                  <ImageIcon size={10} /> CAPA DO LIVRO (URL)
+                  <ImageIcon size={10} /> CAPA DO LIVRO (ARQUIVO OU URL)
                 </label>
-                <input 
-                  type="url" 
-                  value={formData.cover_url}
-                  onChange={e => setFormData({...formData, cover_url: e.target.value})}
-                  className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50 transition-colors"
-                  placeholder="https://exemplo.com/capa.jpg"
-                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <input 
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="w-full aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-on-surface/10 hover:border-secondary/40 bg-on-surface/5 rounded-2xl transition-all group overflow-hidden relative"
+                      >
+                        {imagePreview ? (
+                          <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+                        ) : uploadingImage ? (
+                          <Loader2 className="animate-spin text-secondary" />
+                        ) : (
+                          <>
+                            <Upload size={20} className="opacity-40 group-hover:text-secondary group-hover:opacity-100 transition-all" />
+                            <p className="text-[10px] font-bold opacity-40 uppercase">Upload Imagem</p>
+                          </>
+                        )}
+                      </button>
+                   </div>
+                   <div className="flex flex-col justify-center">
+                      <p className="text-[9px] font-bold opacity-40 uppercase mb-1.5 tracking-widest">Ou insira o link:</p>
+                      <input 
+                        type="url" 
+                        value={formData.cover_url}
+                        onChange={e => setFormData({...formData, cover_url: e.target.value})}
+                        className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[10px] font-bold outline-none focus:border-secondary/50 transition-colors"
+                        placeholder="https://exemplo.com/capa.jpg"
+                      />
+                   </div>
+                </div>
               </div>
 
               {/* Páginas e Status */}
@@ -162,7 +234,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
               </button>
               <button 
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploadingImage}
                 className="px-8 py-2 rounded-xl bg-secondary text-surface text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-secondary/20 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
