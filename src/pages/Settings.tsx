@@ -222,6 +222,7 @@ const Settings = () => {
           <div className="relative group">
             <div className="w-32 h-32 rounded-3xl overflow-hidden border-2 border-[var(--glass-border)] shadow-2xl relative">
               <img 
+                key={profile.avatar_url || 'default'}
                 src={
                   profile.avatar_url && profile.avatar_url.trim() !== '' 
                     ? profile.avatar_url 
