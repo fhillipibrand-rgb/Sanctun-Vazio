@@ -52,15 +52,28 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     if (isOpen) {
       if (bookToEdit) {
         setFormData({
-          title: bookToEdit.title, author: bookToEdit.author,
-          total_pages: bookToEdit.total_pages, status: bookToEdit.status,
-          genre: '', notes: '', cover_url: bookToEdit.cover_url || "",
+          title: bookToEdit.title || "",
+          author: bookToEdit.author || "",
+          total_pages: bookToEdit.total_pages || 0,
+          status: bookToEdit.status || "reading",
+          genre: '',
+          notes: '',
+          cover_url: bookToEdit.cover_url || "",
           pdf_url: bookToEdit.pdf_url || ""
         });
         setImagePreview(bookToEdit.cover_url || null);
         setPdfFileName(bookToEdit.pdf_url ? "Arquivo PDF Vinculado" : null);
       } else {
-        setFormData({ title: "", author: "", total_pages: 0, status: "reading", genre: "", notes: "", cover_url: "", pdf_url: "" });
+        setFormData({
+          title: "",
+          author: "",
+          total_pages: 0,
+          status: "reading",
+          genre: "",
+          notes: "",
+          cover_url: "",
+          pdf_url: ""
+        });
         setImagePreview(null);
         setPdfFileName(null);
       }
@@ -68,33 +81,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
   }, [isOpen, bookToEdit]);
 
   if (!isOpen) return null;
-
-  // Função para gerar capa a partir da primeira página do PDF
-  const generateCoverFromPdf = async (file: File): Promise<Blob | null> => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1);
-      
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      
-      if (!context) return null;
-      
-      await page.render({ canvasContext: context, viewport }).promise;
-      
-      return new Promise((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
-      });
-    } catch (error) {
-      console.error("Erro ao gerar capa do PDF:", error);
-      return null;
-    }
-  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,82 +92,134 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
       const { data, error } = await supabase.storage.from('book-covers').upload(fileName, file, { upsert: true });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(data.path);
-      setFormData({ ...formData, cover_url: urlData.publicUrl });
+      
+      setFormData(prev => ({ ...prev, cover_url: urlData.publicUrl }));
       setImagePreview(URL.createObjectURL(file));
     } catch (err: any) {
-      alert(`Erro: ${err.message}`);
-    } finally { setUploadingImage(false); }
+      alert(`Erro no upload da imagem: ${err.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    
     setUploadingPdf(true);
     setPdfFileName(file.name);
     
     try {
-      // 1. Contar páginas e gerar capa simultaneamente
+      // 1. Processar o PDF para contar páginas e gerar capa
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
       
-      // Atualizar total de páginas
-      setFormData(prev => ({ ...prev, total_pages: pdf.numPages }));
+      let finalCoverUrl = formData.cover_url;
 
-      // 2. Gerar e fazer upload da capa automaticamente
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 1.0 });
-      const canvas = document.createElement('canvas');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      const context = canvas.getContext('2d');
-      if (context) {
-        await page.render({ canvasContext: context, viewport }).promise;
-        canvas.toBlob(async (blob) => {
+      // 2. Tentar gerar a capa da 1ª página
+      try {
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const canvas = document.createElement('canvas');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        const context = canvas.getContext('2d');
+        
+        if (context) {
+          await page.render({ canvasContext: context, viewport }).promise;
+          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+          
           if (blob) {
             const coverName = `${user.id}/auto_cover_${Date.now()}.jpg`;
-            const { data: coverData } = await supabase.storage.from('book-covers').upload(coverName, blob);
-            if (coverData) {
-              const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(coverData.path);
-              setFormData(prev => ({ ...prev, cover_url: urlData.publicUrl }));
-              setImagePreview(urlData.publicUrl);
-            }
+            const { data: coverData, error: coverErr } = await supabase.storage.from('book-covers').upload(coverName, blob);
+            
+            if (coverErr) throw coverErr;
+            
+            const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(coverData.path);
+            finalCoverUrl = urlData.publicUrl;
+            setImagePreview(finalCoverUrl);
           }
-        }, 'image/jpeg', 0.8);
+        }
+      } catch (coverError) {
+        console.warn("Falha ao gerar capa automática:", coverError);
       }
 
-      // 3. Upload do PDF
+      // 3. Upload do arquivo PDF real
       const pdfName = `${user.id}/book_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const { data: pdfData, error: pdfError } = await supabase.storage.from('book-pdfs').upload(pdfName, file);
-      if (pdfError) throw pdfError;
-      const { data: urlData } = supabase.storage.from('book-pdfs').getPublicUrl(pdfData.path);
-      setFormData(prev => ({ ...prev, pdf_url: urlData.publicUrl }));
       
+      if (pdfError) throw pdfError;
+      
+      const { data: pdfUrlData } = supabase.storage.from('book-pdfs').getPublicUrl(pdfData.path);
+
+      // 4. Atualizar o estado final UMA ÚNICA VEZ para evitar inconsistências
+      setFormData(prev => ({
+        ...prev,
+        total_pages: pdf.numPages,
+        cover_url: finalCoverUrl,
+        pdf_url: pdfUrlData.publicUrl
+      }));
+
     } catch (err: any) {
-      alert(`Erro no PDF: ${err.message}`);
+      console.error("Erro no processamento do PDF:", err);
+      alert(`Erro ao processar PDF: ${err.message}`);
       setPdfFileName(null);
-    } finally { setUploadingPdf(false); }
+    } finally {
+      setUploadingPdf(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || loading || uploadingPdf || uploadingImage) return;
+    
     setLoading(true);
     try {
       if (bookToEdit) {
-        await supabase.from('books').update(formData).eq('id', bookToEdit.id);
+        const { error } = await supabase
+          .from('books')
+          .update({
+            title: formData.title,
+            author: formData.author,
+            total_pages: formData.total_pages,
+            status: formData.status,
+            cover_url: formData.cover_url,
+            pdf_url: formData.pdf_url,
+            genre: formData.genre,
+            notes: formData.notes
+          })
+          .eq('id', bookToEdit.id);
+        
+        if (error) throw error;
       } else {
-        await supabase.from('books').insert({ ...formData, user_id: user.id, current_page: 0 });
+        const { error } = await supabase
+          .from('books')
+          .insert({
+            ...formData,
+            user_id: user.id,
+            current_page: 0
+          });
+        
+        if (error) throw error;
       }
+
       if (onSave) onSave();
       onClose();
     } catch (error: any) {
-      alert("Erro ao salvar: " + error.message);
-    } finally { setLoading(false); }
+      console.error("Erro ao salvar no banco:", error);
+      alert("Erro ao salvar livro: " + (error?.message || "Erro desconhecido"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl overflow-hidden max-h-[90vh] overflow-y-auto rounded-3xl">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-xl overflow-hidden max-h-[90vh] overflow-y-auto rounded-3xl"
+      >
         <GlassCard className="p-0 border-secondary/30 shadow-2xl">
           <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-secondary/5 sticky top-0 z-10 backdrop-blur-md">
             <div className="flex items-center gap-3">
@@ -209,12 +247,12 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                      <button type="button" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage} className="w-full aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-on-surface/10 hover:border-secondary/40 bg-on-surface/5 rounded-2xl transition-all group overflow-hidden relative">
-                        {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : uploadingImage ? <Loader2 className="animate-spin text-secondary" /> : <><Upload size={20} className="opacity-40 group-hover:text-secondary group-hover:opacity-100 transition-all" /><p className="text-[10px] font-bold opacity-40 uppercase">Upload ou Auto-Gerar</p></>}
+                      <button type="button" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage || uploadingPdf} className="w-full aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-on-surface/10 hover:border-secondary/40 bg-on-surface/5 rounded-2xl transition-all group overflow-hidden relative">
+                        {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : uploadingImage ? <Loader2 className="animate-spin text-secondary" /> : <><Upload size={20} className="opacity-40 group-hover:text-secondary group-hover:opacity-100 transition-all" /><p className="text-[10px] font-bold opacity-40 uppercase">Upload ou Auto-Capa</p></>}
                       </button>
                    </div>
                    <div className="flex flex-col justify-center">
-                      <p className="text-[9px] font-bold opacity-40 uppercase mb-1.5 tracking-widest">Ou link:</p>
+                      <p className="text-[9px] font-bold opacity-40 uppercase mb-1.5 tracking-widest">Ou link direto:</p>
                       <input type="url" value={formData.cover_url} onChange={e => setFormData({...formData, cover_url: e.target.value})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[10px] font-bold outline-none focus:border-secondary/50 transition-colors" placeholder="https://..." />
                    </div>
                 </div>
@@ -224,13 +262,13 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><FileText size={10} /> ARQUIVO PDF</label>
                 <div className="space-y-2">
                   <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handlePdfUpload} className="hidden" />
-                  <button type="button" onClick={() => pdfInputRef.current?.click()} disabled={uploadingPdf} className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-2xl transition-all ${pdfFileName ? 'border-secondary/40 bg-secondary/5' : 'border-on-surface/10 bg-on-surface/5 hover:border-secondary/40'}`}>
+                  <button type="button" onClick={() => pdfInputRef.current?.click()} disabled={uploadingPdf || uploadingImage} className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-2xl transition-all ${pdfFileName ? 'border-secondary/40 bg-secondary/5' : 'border-on-surface/10 bg-on-surface/5 hover:border-secondary/40'}`}>
                     <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
                       {uploadingPdf ? <Loader2 className="animate-spin" /> : <FileText size={20} />}
                     </div>
                     <div className="flex-1 text-left min-w-0">
-                      <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">{uploadingPdf ? 'Processando...' : 'Selecionar PDF'}</p>
-                      <p className="text-[11px] font-bold truncate opacity-60">{pdfFileName || 'Auto-gera a capa e páginas'}</p>
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">{uploadingPdf ? 'Processando PDF...' : 'Anexar PDF'}</p>
+                      <p className="text-[11px] font-bold truncate opacity-60">{pdfFileName || 'Auto-gera capa e contagem'}</p>
                     </div>
                     {pdfFileName && !uploadingPdf && <CheckCircle2 size={16} className="text-secondary shrink-0" />}
                   </button>
