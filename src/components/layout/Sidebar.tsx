@@ -56,7 +56,7 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
       items: [
         { id: "/habits", icon: Target, label: "HÁBITOS" },
         { id: "/reading", icon: BookOpen, label: "BIBLIOTECA" },
-        { id: "/vitality", icon: Dumbbell, label: "VITALIDADE" },
+        { id: "/vitality", icon: Dumbbell, label: "TREINO E MOVIMENTO" },
         { id: "/nutrition", icon: Utensils, label: "DIETA & NUTRIÇÃO" },
         { id: "/health", icon: Activity, label: "GESTÃO DE SAÚDE" },
       ]

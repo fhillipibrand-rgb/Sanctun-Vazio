@@ -57,7 +57,7 @@ const WorkoutLogModal: React.FC<WorkoutLogModalProps> = ({ isOpen, onClose, onSa
               </div>
               <div>
                 <h3 className="text-xl font-bold tracking-tight">Registrar Treino</h3>
-                <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">Controle de Vitalidade</p>
+                <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">Treino & Movimento</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-on-surface/10 rounded-full transition-all">

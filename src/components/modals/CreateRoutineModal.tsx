@@ -25,11 +25,12 @@ interface CreateRoutineModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  programId?: string;
 }
 
 const DAYS_OF_WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({ isOpen, onClose, onSave }) => {
+const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({ isOpen, onClose, onSave, programId }) => {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -120,6 +121,7 @@ const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({ isOpen, onClose
           name,
           description,
           days_of_week: selectedDays,
+          program_id: programId || null
         })
         .select()
         .single();
@@ -196,9 +198,9 @@ const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({ isOpen, onClose
                 <Dumbbell size={20} />
               </div>
               <div>
-                <h3 className="text-xl font-bold tracking-tight">Nova Rotina de Treino</h3>
+                <h3 className="text-xl font-bold tracking-tight">Nova Divisão de Treino</h3>
                 <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">
-                  Monte sua ficha estruturada
+                  Monte sua ficha (Ex: Treino A)
                 </p>
               </div>
             </div>
@@ -401,7 +403,7 @@ const CreateRoutineModal: React.FC<CreateRoutineModalProps> = ({ isOpen, onClose
                 className="px-10 py-3 rounded-2xl bg-primary text-surface text-[10px] font-bold tracking-widest uppercase flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
               >
                 {saving ? <Clock className="animate-spin" size={16} /> : <Save size={16} />}
-                CRIAR ROTINA
+                CRIAR TREINO
               </button>
             </div>
           </div>

@@ -11,7 +11,8 @@ import {
   MoreVertical,
   Trash2,
   Edit2,
-  Download
+  Download,
+  Target
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
@@ -19,6 +20,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import WorkoutSessionModal from "../components/modals/WorkoutSessionModal";
 import CreateRoutineModal from "../components/modals/CreateRoutineModal";
+import CreateProgramModal from "../components/modals/CreateProgramModal";
 
 interface RoutineExercise {
   id: string;
@@ -30,10 +32,19 @@ interface RoutineExercise {
 
 interface Routine {
   id: string;
+  program_id: string;
   name: string;
   description: string;
-  days_of_week?: string[]; // Note: db does not have this currently, but we can fake it or omit
+  days_of_week?: string[];
   exercises?: RoutineExercise[];
+}
+
+interface Program {
+  id: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  routines?: Routine[];
 }
 
 interface ExerciseType {
@@ -45,13 +56,17 @@ interface ExerciseType {
 
 const Vitality = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'routines' | 'history' | 'exercises'>('routines');
-  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [activeTab, setActiveTab] = useState<'programs' | 'history' | 'exercises'>('programs');
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [exercises, setExercises] = useState<ExerciseType[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [showAddProgram, setShowAddProgram] = useState(false);
   const [showAddRoutine, setShowAddRoutine] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | undefined>();
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState<{id: string, name: string} | undefined>();
+  
   const [logs, setLogs] = useState<any[]>([]);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseGroup, setNewExerciseGroup] = useState("Geral");
@@ -64,19 +79,47 @@ const Vitality = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    
+    // Fetch Programs
+    const { data: programsData } = await supabase.from('workout_programs').select('*').order('created_at');
+    // Fetch Routines
     const { data: routinesData } = await supabase.from('workout_routines').select('*').order('created_at');
+    // Fetch Exercises mapped to Routines
     const { data: routineExercisesData } = await supabase.from('workout_routine_exercises').select('*').order('order');
+    
+    // Fetch Exercise Catalog
     const { data: exercisesData } = await supabase.from('workout_exercise_types').select('*').order('name');
+    
+    // Fetch History
     const { data: logsData } = await supabase.from('workout_sessions').select('*').order('date', { ascending: false });
     
-    if (routinesData) {
-      const routinesWithExercises = routinesData.map(r => ({
+    if (programsData) {
+      const routinesWithExercises = routinesData ? routinesData.map(r => ({
         ...r,
         days_of_week: r.days_of_week || [],
         exercises: routineExercisesData ? routineExercisesData.filter(re => re.routine_id === r.id) : []
+      })) : [];
+
+      const fullPrograms = programsData.map(p => ({
+        ...p,
+        routines: routinesWithExercises.filter(r => r.program_id === p.id)
       }));
-      setRoutines(routinesWithExercises);
+
+      // Se houver rotinas soltas (sem programa), criar um programa "Rotinas Avulsas" virtualmente
+      const looseRoutines = routinesWithExercises.filter(r => !r.program_id);
+      if (looseRoutines.length > 0) {
+        fullPrograms.push({
+          id: 'loose',
+          name: 'Rotinas Avulsas',
+          description: 'Treinos antigos ou não vinculados a um programa.',
+          is_active: false,
+          routines: looseRoutines
+        });
+      }
+
+      setPrograms(fullPrograms);
     }
+    
     if (exercisesData) setExercises(exercisesData);
     if (logsData) setLogs(logsData);
     setLoading(false);
@@ -106,8 +149,14 @@ const Vitality = () => {
   };
 
   const deleteRoutine = async (id: string) => {
-    const { error } = await supabase.from('workout_routines').delete().eq('id', id);
-    if (!error) setRoutines(routines.filter(r => r.id !== id));
+    await supabase.from('workout_routines').delete().eq('id', id);
+    fetchData();
+  };
+
+  const deleteProgram = async (id: string) => {
+    if (id === 'loose') return;
+    await supabase.from('workout_programs').delete().eq('id', id);
+    fetchData();
   };
 
   const addExerciseType = async () => {
@@ -138,7 +187,7 @@ const Vitality = () => {
       <header className="space-y-2">
         <div className="flex items-center gap-2 opacity-50">
           <Dumbbell size={12} className="text-primary" />
-          <p className="editorial-label !tracking-[0.2em]">VITALIDADE & PERFORMANCE</p>
+          <p className="editorial-label !tracking-[0.2em]">TREINO & MOVIMENTO</p>
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -160,15 +209,15 @@ const Vitality = () => {
                 setSelectedRoutine(undefined);
                 setShowWorkoutModal(true);
               }}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 px-6 py-3 bg-primary/20 text-primary rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
             >
-              <Plus size={16} /> REGISTRAR TREINO
+              <Play size={16} /> TREINO LIVRE
             </button>
             <button 
-              onClick={() => setShowAddRoutine(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-on-surface/5 hover:bg-on-surface/10 border border-[var(--glass-border)] rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all hidden md:flex"
+              onClick={() => setShowAddProgram(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-primary text-surface rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-primary/20"
             >
-              <Plus size={14} /> ROTINA
+              <Plus size={16} /> NOVO PROGRAMA
             </button>
           </div>
         </div>
@@ -176,7 +225,7 @@ const Vitality = () => {
 
       {/* Tabs Navigation */}
       <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
-        {(['routines', 'history', 'exercises'] as const).map((tab) => (
+        {(['programs', 'history', 'exercises'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -186,7 +235,7 @@ const Vitality = () => {
                 : 'text-on-surface/40 hover:text-on-surface/60'
             }`}
           >
-            {tab === 'routines' ? 'Minhas Rotinas' : tab === 'history' ? 'Histórico' : 'Exercícios'}
+            {tab === 'programs' ? 'Meus Programas' : tab === 'history' ? 'Histórico' : 'Exercícios'}
           </button>
         ))}
       </div>
@@ -198,73 +247,119 @@ const Vitality = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="wait">
-            {activeTab === 'routines' && (
+            {activeTab === 'programs' && (
               <motion.div 
-                key="routines"
+                key="programs"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="col-span-full space-y-12"
               >
-                {routines.map((routine) => (
-                  <GlassCard key={routine.id} className="p-8 border-primary/10 hover:border-primary/30 transition-all group">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                        <Dumbbell size={24} />
+                {programs.map((program) => (
+                  <div key={program.id} className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-on-surface/10 pb-2">
+                      <div className="flex items-center gap-3">
+                        <Target className="text-primary opacity-50" size={20} />
+                        <h3 className="text-2xl font-bold">{program.name}</h3>
+                        {program.is_active && (
+                          <span className="px-2 py-1 bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest rounded-md">Ativo</span>
+                        )}
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 hover:bg-on-surface/5 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                        <button onClick={() => deleteRoutine(routine.id)} className="p-2 hover:bg-red-400/10 hover:text-red-400 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      <div className="flex gap-2">
+                        {program.id !== 'loose' && (
+                          <button 
+                            onClick={() => {
+                              setSelectedProgramId(program.id);
+                              setShowAddRoutine(true);
+                            }}
+                            className="px-4 py-1.5 bg-primary/10 text-primary rounded-xl text-[9px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all flex items-center gap-2"
+                          >
+                            <Plus size={12} /> ADICIONAR TREINO
+                          </button>
+                        )}
+                        {program.id !== 'loose' && (
+                          <button 
+                            onClick={() => deleteProgram(program.id)}
+                            className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    
-                    <h3 className="text-xl font-bold mb-2">{routine.name}</h3>
-                    <p className="text-xs text-on-surface-variant opacity-60 mb-6 line-clamp-2">
-                      {routine.description || "Nenhuma descrição definida."}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {routine.days_of_week && routine.days_of_week.map(day => (
-                        <span key={day} className="px-3 py-1 bg-on-surface/5 rounded-full text-[9px] font-bold uppercase tracking-wider text-primary">
-                          {day}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Exercícios da Rotina */}
-                    {routine.exercises && routine.exercises.length > 0 && (
-                      <div className="mb-8 space-y-2">
-                        <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">EXERCÍCIOS ({routine.exercises.length})</p>
-                        <div className="flex flex-col gap-2">
-                          {routine.exercises.slice(0, 3).map(ex => (
-                            <div key={ex.id} className="flex justify-between items-center bg-on-surface/5 px-3 py-2 rounded-xl">
-                              <span className="text-xs font-bold line-clamp-1">{ex.exercise_name}</span>
-                              <span className="text-[10px] opacity-60 font-bold whitespace-nowrap">{ex.target_sets}x{ex.target_reps}</span>
-                            </div>
-                          ))}
-                          {routine.exercises.length > 3 && (
-                            <div className="text-center text-[10px] opacity-40 font-bold mt-1">
-                              + {routine.exercises.length - 3} exercícios
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                    {program.description && (
+                      <p className="text-sm opacity-60 mb-4">{program.description}</p>
                     )}
 
-                    <button 
-                      onClick={() => {
-                        setSelectedRoutine({ id: routine.id, name: routine.name });
-                        setShowWorkoutModal(true);
-                      }}
-                      className="w-full py-4 bg-primary/10 hover:bg-primary text-primary hover:text-surface rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                    >
-                      <Play size={12} fill="currentColor" /> INICIAR TREINO
-                    </button>
-                  </GlassCard>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                      {program.routines && program.routines.map((routine) => (
+                        <GlassCard key={routine.id} className="p-8 border-primary/10 hover:border-primary/30 transition-all group flex flex-col">
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                              <Dumbbell size={24} />
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button className="p-2 hover:bg-on-surface/5 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                              <button onClick={() => deleteRoutine(routine.id)} className="p-2 hover:bg-red-400/10 hover:text-red-400 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                          
+                          <h3 className="text-xl font-bold mb-2">{routine.name}</h3>
+                          <p className="text-xs text-on-surface-variant opacity-60 mb-6 line-clamp-2">
+                            {routine.description || "Divisão de treino estruturada."}
+                          </p>
+
+                          <div className="flex flex-wrap gap-2 mb-8">
+                            {routine.days_of_week && routine.days_of_week.map(day => (
+                              <span key={day} className="px-3 py-1 bg-on-surface/5 rounded-full text-[9px] font-bold uppercase tracking-wider text-primary">
+                                {day}
+                              </span>
+                            ))}
+                          </div>
+
+                          {routine.exercises && routine.exercises.length > 0 && (
+                            <div className="mb-8 space-y-2 flex-1">
+                              <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">EXERCÍCIOS ({routine.exercises.length})</p>
+                              <div className="flex flex-col gap-2">
+                                {routine.exercises.slice(0, 4).map(ex => (
+                                  <div key={ex.id} className="flex justify-between items-center bg-on-surface/5 px-3 py-2 rounded-xl border border-transparent group-hover:border-primary/10 transition-colors">
+                                    <span className="text-xs font-bold line-clamp-1">{ex.exercise_name}</span>
+                                    <span className="text-[10px] opacity-60 font-bold whitespace-nowrap bg-on-surface/10 px-2 py-0.5 rounded-md">{ex.target_sets}x{ex.target_reps}</span>
+                                  </div>
+                                ))}
+                                {routine.exercises.length > 4 && (
+                                  <div className="text-center text-[10px] opacity-40 font-bold mt-1">
+                                    + {routine.exercises.length - 4} exercícios
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <button 
+                            onClick={() => {
+                              setSelectedRoutine({ id: routine.id, name: routine.name });
+                              setShowWorkoutModal(true);
+                            }}
+                            className="w-full py-4 bg-primary/10 hover:bg-primary text-primary hover:text-surface rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-auto"
+                          >
+                            <Play size={12} fill="currentColor" /> INICIAR TREINO
+                          </button>
+                        </GlassCard>
+                      ))}
+                      {(!program.routines || program.routines.length === 0) && (
+                        <div className="col-span-full py-12 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl">
+                          <p className="editorial-label text-xs">Nenhum treino adicionado a este programa.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))}
-                {routines.length === 0 && (
-                  <div className="col-span-full py-20 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl">
-                    <p className="editorial-label text-xs">Nenhuma rotina cadastrada ainda.</p>
+
+                {programs.length === 0 && (
+                  <div className="col-span-full py-20 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl flex flex-col items-center">
+                    <Target size={48} className="mb-4" />
+                    <p className="editorial-label text-xs">Nenhum programa cadastrado. Comece criando um novo programa.</p>
                   </div>
                 )}
               </motion.div>
@@ -390,10 +485,16 @@ const Vitality = () => {
       <CreateRoutineModal
         isOpen={showAddRoutine}
         onClose={() => setShowAddRoutine(false)}
+        programId={selectedProgramId}
         onSave={() => {
           fetchData();
           setShowAddRoutine(false);
         }}
+      />
+      <CreateProgramModal
+        isOpen={showAddProgram}
+        onClose={() => setShowAddProgram(false)}
+        onSave={fetchData}
       />
     </div>
   );
