@@ -230,6 +230,70 @@ const Vitality = () => {
         </div>
       </header>
 
+      {/* Rastreador Semanal de Consistência */}
+      <div className="bg-on-surface/5 border border-[var(--glass-border)] rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h4 className="text-sm font-bold tracking-tight">Consistência da Semana</h4>
+            <p className="text-[10px] opacity-40 uppercase tracking-widest mt-0.5">Rastreador de Frequência</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-lg text-primary">
+            <Target size={14} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              {(() => {
+                const startOfWeek = new Date();
+                startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+                const trainedDays = Array.from({length: 7}).filter((_, i) => {
+                  const d = new Date(startOfWeek);
+                  d.setDate(d.getDate() + i);
+                  return logs.some(log => log.date.startsWith(d.toISOString().split('T')[0]));
+                }).length;
+                return `${trainedDays} Treinos`;
+              })()}
+            </span>
+          </div>
+        </div>
+        <div className="flex justify-between gap-2">
+          {(() => {
+            const startOfWeek = new Date();
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            return Array.from({length: 7}).map((_, i) => {
+              const d = new Date(startOfWeek);
+              d.setDate(d.getDate() + i);
+              const dateStr = d.toISOString().split('T')[0];
+              const hasTrained = logs.some(log => log.date.startsWith(dateStr));
+              const isToday = d.toDateString() === new Date().toDateString();
+              const dayName = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][i];
+
+              return (
+                <div 
+                  key={i} 
+                  className={`flex-1 flex flex-col items-center justify-center py-3 rounded-2xl border transition-all ${
+                    hasTrained 
+                      ? 'bg-primary/20 border-primary/30 text-primary shadow-inner shadow-primary/10' 
+                      : isToday 
+                        ? 'bg-on-surface/10 border-[var(--glass-border)] text-on-surface' 
+                        : 'bg-transparent border-transparent text-on-surface/30'
+                  }`}
+                >
+                  <span className="text-[9px] font-bold uppercase mb-1 opacity-60">{dayName}</span>
+                  <span className={`text-sm font-black ${hasTrained ? 'drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}>
+                    {d.getDate()}
+                  </span>
+                  {hasTrained && (
+                    <motion.div 
+                      initial={{ scale: 0 }} 
+                      animate={{ scale: 1 }} 
+                      className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 shadow-[0_0_5px_#3b82f6]" 
+                    />
+                  )}
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+
       {/* Dashboard do Dia */}
       {todayRoutine && activeTab === 'programs' && (
         <motion.div 
