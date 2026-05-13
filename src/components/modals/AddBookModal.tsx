@@ -89,14 +89,17 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/cover_${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage.from('book-covers').upload(fileName, file, { upsert: true });
+      const { data, error } = await supabase.storage.from('book-covers').upload(fileName, file, { 
+        upsert: true,
+        contentType: file.type 
+      });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(data.path);
       
       setFormData(prev => ({ ...prev, cover_url: urlData.publicUrl }));
-      setImagePreview(URL.createObjectURL(file));
+      setImagePreview(urlData.publicUrl);
     } catch (err: any) {
-      alert(`Erro no upload da imagem: ${err.message}`);
+      alert(`Erro: ${err.message}`);
     } finally {
       setUploadingImage(false);
     }
@@ -110,16 +113,15 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     setPdfFileName(file.name);
     
     try {
-      // 1. Processar o PDF para contar páginas e gerar capa
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
       
       let finalCoverUrl = formData.cover_url;
 
-      // 2. Tentar gerar a capa da 1ª página
+      // Gerar capa da 1ª página
       try {
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 1.0 });
+        const viewport = page.getViewport({ scale: 1.5 }); // Aumentar escala para melhor qualidade
         const canvas = document.createElement('canvas');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
@@ -127,32 +129,40 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
         
         if (context) {
           await page.render({ canvasContext: context, viewport }).promise;
-          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
           
           if (blob) {
-            const coverName = `${user.id}/auto_cover_${Date.now()}.jpg`;
-            const { data: coverData, error: coverErr } = await supabase.storage.from('book-covers').upload(coverName, blob);
+            const coverName = `${user.id}/auto_${Date.now()}.jpg`;
+            const { data: coverData, error: coverErr } = await supabase.storage
+              .from('book-covers')
+              .upload(coverName, blob, { 
+                contentType: 'image/jpeg',
+                upsert: true 
+              });
             
             if (coverErr) throw coverErr;
             
             const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(coverData.path);
             finalCoverUrl = urlData.publicUrl;
             setImagePreview(finalCoverUrl);
+            console.log("Capa automática gerada:", finalCoverUrl);
           }
         }
       } catch (coverError) {
-        console.warn("Falha ao gerar capa automática:", coverError);
+        console.warn("Erro ao gerar capa automática:", coverError);
       }
 
-      // 3. Upload do arquivo PDF real
-      const pdfName = `${user.id}/book_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const { data: pdfData, error: pdfError } = await supabase.storage.from('book-pdfs').upload(pdfName, file);
+      // Upload do PDF
+      const pdfName = `${user.id}/file_${Date.now()}.pdf`;
+      const { data: pdfData, error: pdfError } = await supabase.storage.from('book-pdfs').upload(pdfName, file, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
       
       if (pdfError) throw pdfError;
       
       const { data: pdfUrlData } = supabase.storage.from('book-pdfs').getPublicUrl(pdfData.path);
 
-      // 4. Atualizar o estado final UMA ÚNICA VEZ para evitar inconsistências
       setFormData(prev => ({
         ...prev,
         total_pages: pdf.numPages,
@@ -161,8 +171,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
       }));
 
     } catch (err: any) {
-      console.error("Erro no processamento do PDF:", err);
-      alert(`Erro ao processar PDF: ${err.message}`);
+      alert(`Erro no PDF: ${err.message}`);
       setPdfFileName(null);
     } finally {
       setUploadingPdf(false);
@@ -175,39 +184,28 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     
     setLoading(true);
     try {
+      const dataToSave = {
+        title: formData.title,
+        author: formData.author,
+        total_pages: formData.total_pages,
+        status: formData.status,
+        cover_url: formData.cover_url,
+        pdf_url: formData.pdf_url,
+        user_id: user.id
+      };
+
       if (bookToEdit) {
-        const { error } = await supabase
-          .from('books')
-          .update({
-            title: formData.title,
-            author: formData.author,
-            total_pages: formData.total_pages,
-            status: formData.status,
-            cover_url: formData.cover_url,
-            pdf_url: formData.pdf_url,
-            genre: formData.genre,
-            notes: formData.notes
-          })
-          .eq('id', bookToEdit.id);
-        
+        const { error } = await supabase.from('books').update(dataToSave).eq('id', bookToEdit.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('books')
-          .insert({
-            ...formData,
-            user_id: user.id,
-            current_page: 0
-          });
-        
+        const { error } = await supabase.from('books').insert({ ...dataToSave, current_page: 0 });
         if (error) throw error;
       }
 
       if (onSave) onSave();
       onClose();
     } catch (error: any) {
-      console.error("Erro ao salvar no banco:", error);
-      alert("Erro ao salvar livro: " + (error?.message || "Erro desconhecido"));
+      alert("Erro ao salvar: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -215,11 +213,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-xl overflow-hidden max-h-[90vh] overflow-y-auto rounded-3xl"
-      >
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-xl overflow-hidden max-h-[90vh] overflow-y-auto rounded-3xl">
         <GlassCard className="p-0 border-secondary/30 shadow-2xl">
           <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between bg-secondary/5 sticky top-0 z-10 backdrop-blur-md">
             <div className="flex items-center gap-3">
