@@ -66,12 +66,9 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave }) 
       setUploadProgress(80);
 
       if (error) {
-        // Fallback: tentar criar bucket se não existir
         console.error("Erro no upload:", error);
-        
-        // Se o bucket não existe, salvar o nome do arquivo local temporariamente
         if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
-          alert("Configure o bucket 'book-pdfs' no Supabase Storage para habilitar uploads de PDF.\nO nome do arquivo foi salvo por ora.");
+          alert(`Configuração Pendente: O bucket 'book-pdfs' não foi encontrado no seu Supabase.\nErro Real: ${error.message}`);
           setPdfUrl(`local:${file.name}`);
         } else {
           throw error;
