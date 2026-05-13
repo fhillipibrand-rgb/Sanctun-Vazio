@@ -6,8 +6,9 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
 import * as pdfjs from 'pdfjs-dist';
 
-// Configuração do Worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configuração do Worker interno do Vite para evitar falhas de CDN/CORS
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface BookItem {
   id: string;
