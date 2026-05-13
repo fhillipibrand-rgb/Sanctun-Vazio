@@ -406,8 +406,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
 
               {exercises.map((ex, idx) => (
                 <div key={idx} className="p-6 rounded-3xl bg-on-surface/[0.02] border border-[var(--glass-border)] space-y-4 group relative hover:bg-on-surface/[0.04] transition-all">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div className="md:col-span-5 space-y-1.5">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                    <div className="lg:col-span-4 space-y-1.5">
                       <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">NOME DO EXERCÍCIO</label>
                       <input 
                         type="text" 
@@ -418,7 +418,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                         required
                       />
                     </div>
-                    <div className="md:col-span-6 grid grid-cols-3 gap-4">
+                    
+                    <div className="lg:col-span-4 grid grid-cols-3 gap-2">
                       <div className="space-y-1.5 text-center">
                         <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">SÉRIES</label>
                         <input 
@@ -438,7 +439,7 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                         />
                       </div>
                       <div className="space-y-1.5 text-center">
-                        <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest text-primary flex items-center justify-center flex-col gap-1">
+                        <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest text-primary flex items-center justify-center flex-col gap-0.5">
                           <span>PESO (KG)</span>
                           <span className="text-[7px] lowercase">(último: {lastWeights[ex.exercise_name] || '--'}kg)</span>
                         </label>
@@ -451,39 +452,30 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Set Checkboxes */}
-                    <div className="md:col-span-12 mt-2 pt-4 border-t border-[var(--glass-border)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center flex-wrap gap-2">
-                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest mr-2">SÉRIES FEITAS:</span>
+                    {/* Set Checkboxes - Agora ao lado/embaixo na mesma linha principal */}
+                    <div className="lg:col-span-4 flex items-center justify-between bg-on-surface/5 rounded-xl p-2 border border-[var(--glass-border)] h-[46px] mt-1 lg:mt-0">
+                      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar px-1">
                         {Array.from({ length: ex.sets || 0 }).map((_, setIdx) => (
                           <button
                             key={setIdx}
                             onClick={() => toggleSet(idx, setIdx)}
-                            className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
+                            className={`min-w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all ${
                               ex.completed_sets?.[setIdx] 
-                                ? 'bg-primary border-primary text-surface shadow-[0_0_10px_rgba(59,130,246,0.3)]' 
-                                : 'border-[var(--glass-border)] text-transparent hover:border-primary/50'
+                                ? 'bg-primary border-primary text-surface shadow-md shadow-primary/30' 
+                                : 'bg-surface border-[var(--glass-border)] text-transparent hover:border-primary/50'
                             }`}
                           >
-                            <Check size={14} strokeWidth={4} className={ex.completed_sets?.[setIdx] ? 'text-surface' : 'text-transparent'} />
+                            <Check size={16} strokeWidth={4} className={ex.completed_sets?.[setIdx] ? 'text-surface' : 'text-transparent'} />
                           </button>
                         ))}
                       </div>
-
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => setRestSecondsRemaining(ex.target_rest_seconds || 90)}
-                          className="px-4 py-2 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
-                        >
-                          <Clock size={12} /> ({ex.target_rest_seconds || 90}s)
-                        </button>
-                        <button 
-                          onClick={() => removeExercise(idx)}
-                          className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                      
+                      <button 
+                        onClick={() => removeExercise(idx)}
+                        className="p-2 ml-2 text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all shrink-0"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                 </div>
