@@ -46,7 +46,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     genre: "",
     notes: "",
     cover_url: "",
-    pdf_url: ""
+    pdf_url: "",
+    current_page: 0
   });
 
   useEffect(() => {
@@ -60,7 +61,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
           genre: '',
           notes: '',
           cover_url: bookToEdit.cover_url || "",
-          pdf_url: bookToEdit.pdf_url || ""
+          pdf_url: bookToEdit.pdf_url || "",
+          current_page: bookToEdit.current_page || 0
         });
         setImagePreview(bookToEdit.cover_url || null);
         setPdfFileName(bookToEdit.pdf_url ? "Arquivo PDF Vinculado" : null);
@@ -73,7 +75,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
           genre: "",
           notes: "",
           cover_url: "",
-          pdf_url: ""
+          pdf_url: "",
+          current_page: 0
         });
         setImagePreview(null);
         setPdfFileName(null);
@@ -192,6 +195,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
         status: formData.status,
         cover_url: formData.cover_url,
         pdf_url: formData.pdf_url,
+        current_page: formData.current_page,
         user_id: user.id
       };
 
@@ -199,7 +203,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
         const { error } = await supabase.from('books').update(dataToSave).eq('id', bookToEdit.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('books').insert({ ...dataToSave, current_page: 0 });
+        const { error } = await supabase.from('books').insert(dataToSave);
         if (error) throw error;
       }
 
@@ -270,7 +274,11 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><Hash size={10} /> PÁGINAS LIDAS</label>
+                  <input type="number" value={formData.current_page} onChange={e => setFormData({...formData, current_page: parseInt(e.target.value) || 0})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50 transition-colors" />
+                </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2"><Hash size={10} /> TOTAL DE PÁGINAS</label>
                   <input type="number" value={formData.total_pages} onChange={e => setFormData({...formData, total_pages: parseInt(e.target.value) || 0})} className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50 transition-colors" />
