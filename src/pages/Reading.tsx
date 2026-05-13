@@ -2,17 +2,12 @@ import React, { useState, useEffect } from "react";
 import { 
   BookOpen, 
   Plus, 
-  Search, 
   Book, 
-  FileText, 
   TrendingUp, 
   Clock, 
   CheckCircle2, 
   Library,
-  ChevronRight,
-  Download,
-  Trash2,
-  ExternalLink
+  Download
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import AddBookModal from "../components/modals/AddBookModal";
@@ -28,12 +23,11 @@ interface BookItem {
   current_page: number;
   status: 'reading' | 'completed' | 'wishlist' | 'paused';
   cover_url?: string;
-  pdf_url?: string;
 }
 
 const Reading = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'library' | 'collection' | 'stats'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'stats'>('library');
   const [books, setBooks] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -77,7 +71,7 @@ const Reading = () => {
       book.status,
       book.current_page.toString(),
       book.total_pages.toString(),
-      Math.round((book.current_page / book.total_pages) * 100).toString()
+      Math.round((book.current_page / (book.total_pages || 1)) * 100).toString()
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -103,7 +97,7 @@ const Reading = () => {
           <div>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Biblioteca Pessoal</h2>
             <p className="text-on-surface-variant opacity-60 max-w-2xl text-sm leading-relaxed mt-2">
-              Explore seu acervo, gerencie seus PDFs e registre cada passo da sua evolução intelectual.
+              Explore seu acervo literário, organize suas leituras e registre cada passo da sua evolução intelectual.
             </p>
           </div>
           <div className="flex gap-2">
@@ -127,7 +121,7 @@ const Reading = () => {
       {/* Tabs & Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
-          {(['library', 'collection', 'stats'] as const).map((tab) => (
+          {(['library', 'stats'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -137,7 +131,7 @@ const Reading = () => {
                   : 'text-on-surface/40 hover:text-on-surface/60'
               }`}
             >
-              {tab === 'library' ? 'Biblioteca' : tab === 'collection' ? 'Acervo PDF' : 'Estatísticas'}
+              {tab === 'library' ? 'Biblioteca' : 'Estatísticas'}
             </button>
           ))}
         </div>
@@ -178,7 +172,7 @@ const Reading = () => {
               {books
                 .filter(b => filter === 'all' || b.status === filter)
                 .map((book) => {
-                const progress = (book.current_page / book.total_pages) * 100;
+                const progress = (book.current_page / (book.total_pages || 1)) * 100;
                 return (
                   <GlassCard key={book.id} className="p-0 border-secondary/5 overflow-hidden flex flex-col h-full group hover:border-secondary/30 transition-all duration-500">
                     <div className="aspect-[3/4.5] bg-on-surface/5 relative overflow-hidden">
@@ -191,10 +185,8 @@ const Reading = () => {
                         </div>
                       )}
                       
-                      {/* Overlay Gradiente */}
                       <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-80" />
                       
-                      {/* Badge de Status */}
                       <div className="absolute top-4 right-4">
                         <div className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-wider backdrop-blur-md border ${
                           book.status === 'reading' 
@@ -205,7 +197,6 @@ const Reading = () => {
                         </div>
                       </div>
 
-                      {/* Controles Rápidos no Hover */}
                       <div className="absolute inset-x-0 bottom-0 p-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 bg-gradient-to-t from-surface to-transparent">
                          <div className="flex items-center justify-between gap-2 bg-surface/40 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl">
                             <button 
@@ -273,34 +264,6 @@ const Reading = () => {
                   </div>
                 </div>
               )}
-            </motion.div>
-          )}
-
-          {activeTab === 'collection' && (
-            <motion.div 
-              key="collection"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              {books.filter(b => b.pdf_url).map(book => (
-                <GlassCard key={book.id} className="p-6 border-on-surface/5 flex items-center gap-4 hover:bg-on-surface/[0.03] transition-all">
-                  <div className="w-12 h-12 bg-red-400/10 text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText size={24} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm truncate">{book.title}</h4>
-                    <p className="text-[10px] opacity-40 uppercase font-bold truncate">{book.author}</p>
-                  </div>
-                  <button className="p-2 hover:bg-on-surface/10 rounded-lg transition-colors">
-                    <Download size={18} className="opacity-40" />
-                  </button>
-                </GlassCard>
-              ))}
-              <div className="col-span-full py-20 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl">
-                <p className="editorial-label text-xs">Seus arquivos PDF aparecerão aqui.</p>
-              </div>
             </motion.div>
           )}
 
