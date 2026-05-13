@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, Save, Book, User, Hash, ImageIcon, Loader2, Upload, CheckCircle2 } from "lucide-react";
+import { X, Save, Book, User, Hash, ImageIcon, Loader2, Upload, CheckCircle2, FileText } from "lucide-react";
 import GlassCard from "../ui/GlassCard";
 import { motion } from "motion/react";
 import { supabase } from "../../lib/supabase";
@@ -13,6 +13,7 @@ interface BookItem {
   current_page: number;
   status: 'reading' | 'completed' | 'wishlist' | 'paused';
   cover_url?: string;
+  pdf_url?: string;
 }
 
 interface AddBookModalProps {
@@ -26,8 +27,11 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -36,7 +40,8 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     status: "reading",
     genre: "",
     notes: "",
-    cover_url: ""
+    cover_url: "",
+    pdf_url: ""
   });
 
   // Reset or fill form when modal opens
@@ -48,13 +53,14 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
           author: bookToEdit.author,
           total_pages: bookToEdit.total_pages,
           status: bookToEdit.status,
-          genre: '', // assuming not available in BookItem yet or add if needed
+          genre: '',
           notes: '',
-          cover_url: bookToEdit.cover_url || ""
+          cover_url: bookToEdit.cover_url || "",
+          pdf_url: bookToEdit.pdf_url || ""
         });
         setImagePreview(bookToEdit.cover_url || null);
+        setPdfFileName(bookToEdit.pdf_url ? "Arquivo PDF Vinculado" : null);
       } else {
-        // Reset form for new book
         setFormData({
           title: "",
           author: "",
@@ -62,9 +68,11 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
           status: "reading",
           genre: "",
           notes: "",
-          cover_url: ""
+          cover_url: "",
+          pdf_url: ""
         });
         setImagePreview(null);
+        setPdfFileName(null);
       }
     }
   }, [isOpen, bookToEdit]);
@@ -84,13 +92,11 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/cover_${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
         .from('book-covers')
-        .upload(fileName, file, {
-          upsert: true
-        });
+        .upload(fileName, file, { upsert: true });
 
       if (error) throw error;
 
@@ -108,6 +114,41 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     }
   };
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.type !== 'application/pdf') {
+      alert("Por favor, selecione apenas arquivos PDF.");
+      return;
+    }
+
+    setUploadingPdf(true);
+    setPdfFileName(file.name);
+    
+    try {
+      const fileName = `${user.id}/book_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+      const { data, error } = await supabase.storage
+        .from('book-pdfs')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('book-pdfs')
+        .getPublicUrl(data.path);
+
+      setFormData({ ...formData, pdf_url: urlData.publicUrl });
+    } catch (err: any) {
+      console.error("Erro ao fazer upload do PDF:", err);
+      alert(`Erro ao enviar PDF: ${err?.message || 'Tente novamente.'}`);
+      setPdfFileName(null);
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -115,7 +156,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
 
     try {
       if (bookToEdit) {
-        // Update existing book
         const { error } = await supabase
           .from('books')
           .update(formData)
@@ -123,7 +163,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
         
         if (error) throw error;
       } else {
-        // Insert new book
         const { error } = await supabase
           .from('books')
           .insert({
@@ -244,6 +283,47 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 </div>
               </div>
 
+              {/* Upload PDF — RE-INSERIDO COM MESMA LÓGICA */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
+                  <FileText size={10} /> ARQUIVO PDF (OPCIONAL)
+                </label>
+                <div className="space-y-2">
+                  <input 
+                    ref={pdfInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => pdfInputRef.current?.click()}
+                    disabled={uploadingPdf}
+                    className={`w-full flex items-center gap-4 p-4 border-2 border-dashed rounded-2xl transition-all ${
+                      pdfFileName 
+                        ? 'border-secondary/40 bg-secondary/5' 
+                        : 'border-on-surface/10 bg-on-surface/5 hover:border-secondary/40'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                      {uploadingPdf ? <Loader2 className="animate-spin" /> : <FileText size={20} />}
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                        {pdfFileName ? 'PDF Vinculado' : 'Selecionar PDF'}
+                      </p>
+                      <p className="text-[11px] font-bold truncate opacity-60">
+                        {pdfFileName || 'Máximo 50MB · Somente .pdf'}
+                      </p>
+                    </div>
+                    {pdfFileName && !uploadingPdf && (
+                      <CheckCircle2 size={16} className="text-secondary shrink-0" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Páginas e Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -289,7 +369,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
               </button>
               <button 
                 type="submit"
-                disabled={loading || uploadingImage}
+                disabled={loading || uploadingImage || uploadingPdf}
                 className="px-8 py-2 rounded-xl bg-secondary text-surface text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-secondary/20 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {loading ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}

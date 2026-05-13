@@ -10,7 +10,8 @@ import {
   Download,
   Edit2,
   Trash2,
-  MoreVertical
+  FileText,
+  ExternalLink
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import AddBookModal from "../components/modals/AddBookModal";
@@ -26,11 +27,12 @@ interface BookItem {
   current_page: number;
   status: 'reading' | 'completed' | 'wishlist' | 'paused';
   cover_url?: string;
+  pdf_url?: string;
 }
 
 const Reading = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'library' | 'stats'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'collection' | 'stats'>('library');
   const [books, setBooks] = useState<BookItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -126,7 +128,7 @@ const Reading = () => {
           <div>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Biblioteca Pessoal</h2>
             <p className="text-on-surface-variant opacity-60 max-w-2xl text-sm leading-relaxed mt-2">
-              Explore seu acervo literário, organize suas leituras e registre cada passo da sua evolução intelectual.
+              Explore seu acervo literário, organize suas leituras e gerencie seus arquivos PDF com facilidade.
             </p>
           </div>
           <div className="flex gap-2">
@@ -150,7 +152,7 @@ const Reading = () => {
       {/* Tabs & Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
-          {(['library', 'stats'] as const).map((tab) => (
+          {(['library', 'collection', 'stats'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -160,7 +162,7 @@ const Reading = () => {
                   : 'text-on-surface/40 hover:text-on-surface/60'
               }`}
             >
-              {tab === 'library' ? 'Biblioteca' : 'Estatísticas'}
+              {tab === 'library' ? 'Biblioteca' : tab === 'collection' ? 'Acervo PDF' : 'Estatísticas'}
             </button>
           ))}
         </div>
@@ -226,6 +228,16 @@ const Reading = () => {
                           {book.status === 'reading' ? 'Lendo' : book.status === 'completed' ? 'Concluído' : 'Lista de Espera'}
                         </div>
                         <div className="flex gap-1">
+                          {book.pdf_url && (
+                             <a 
+                                href={book.pdf_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="p-2 bg-secondary text-surface rounded-lg hover:scale-110 transition-all border border-secondary/30 shadow-lg"
+                             >
+                                <FileText size={12} />
+                             </a>
+                          )}
                           <button 
                             onClick={() => handleEdit(book)}
                             className="p-2 bg-surface/40 backdrop-blur-md rounded-lg text-on-surface/60 hover:text-secondary transition-colors border border-white/10"
@@ -309,6 +321,41 @@ const Reading = () => {
                     <p className="editorial-label text-sm tracking-[0.3em] font-bold mb-1 uppercase">Sua estante virtual está pronta</p>
                     <p className="text-xs opacity-60">Adicione seu primeiro livro para começar sua jornada intelectual.</p>
                   </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'collection' && (
+            <motion.div 
+              key="collection"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {books.filter(b => b.pdf_url).map(book => (
+                <GlassCard key={book.id} className="p-6 border-on-surface/5 flex items-center gap-4 hover:bg-on-surface/[0.03] transition-all group">
+                  <div className="w-14 h-14 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <FileText size={28} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-sm truncate group-hover:text-secondary transition-colors">{book.title}</h4>
+                    <p className="text-[10px] opacity-40 uppercase font-bold truncate">{book.author}</p>
+                  </div>
+                  <a 
+                    href={book.pdf_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-3 bg-secondary/10 text-secondary rounded-xl hover:bg-secondary hover:text-surface transition-all"
+                  >
+                    <ExternalLink size={18} />
+                  </a>
+                </GlassCard>
+              ))}
+              {books.filter(b => b.pdf_url).length === 0 && (
+                <div className="col-span-full py-20 text-center opacity-20 border-2 border-dashed border-on-surface/10 rounded-3xl">
+                  <p className="editorial-label text-xs">Seus arquivos PDF aparecerão aqui.</p>
                 </div>
               )}
             </motion.div>
