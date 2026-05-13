@@ -16,7 +16,7 @@ import Vitality from "./pages/Vitality";
 import Reading from "./pages/Reading";
 import Spirituality from "./pages/Spirituality";
 import Sleep from "./pages/Sleep";
-import { useAuth } from "./hooks/useAuth";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Projects from "./pages/Projects";
 import Habits from "./pages/Habits";
 import Nutrition from "./pages/Nutrition";
@@ -50,39 +50,41 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<TermsOfService />} />
-        
-        <Route element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/tasks/projects" element={<Projects />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/habits" element={<Habits />} />
-          <Route path="/finance/transactions" element={<FinanceTransactions />} />
-          <Route path="/finance/analytics" element={<FinanceAnalytics />} />
-          <Route path="/investments" element={<Investments />} />
-          <Route path="/goals" element={<Goals />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/focus" element={<Focus />} />
-          <Route path="/vitality" element={<Vitality />} />
-          <Route path="/reading" element={<Reading />} />
-          <Route path="/spirituality" element={<Spirituality />} />
-          <Route path="/sleep" element={<Sleep />} />
-          <Route path="/nutrition" element={<Nutrition />} />
-          <Route path="/health" element={<Health />} />
-          <Route path="/callback" element={<SpotifyCallback />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          
+          <Route element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/finance" element={<Finance />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/tasks/projects" element={<Projects />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/habits" element={<Habits />} />
+            <Route path="/finance/transactions" element={<FinanceTransactions />} />
+            <Route path="/finance/analytics" element={<FinanceAnalytics />} />
+            <Route path="/investments" element={<Investments />} />
+            <Route path="/goals" element={<Goals />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/focus" element={<Focus />} />
+            <Route path="/vitality" element={<Vitality />} />
+            <Route path="/reading" element={<Reading />} />
+            <Route path="/spirituality" element={<Spirituality />} />
+            <Route path="/sleep" element={<Sleep />} />
+            <Route path="/nutrition" element={<Nutrition />} />
+            <Route path="/health" element={<Health />} />
+            <Route path="/callback" element={<SpotifyCallback />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
