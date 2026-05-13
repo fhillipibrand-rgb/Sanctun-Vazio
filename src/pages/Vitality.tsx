@@ -71,6 +71,13 @@ const Vitality = () => {
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseGroup, setNewExerciseGroup] = useState("Geral");
 
+  const todayIdx = new Date().getDay();
+  const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const todayStr = daysMap[todayIdx];
+
+  const activeProgram = programs.find(p => p.is_active);
+  const todayRoutine = activeProgram?.routines?.find(r => r.days_of_week?.includes(todayStr));
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -222,6 +229,35 @@ const Vitality = () => {
           </div>
         </div>
       </header>
+
+      {/* Dashboard do Dia */}
+      {todayRoutine && activeTab === 'programs' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl shadow-primary/10"
+        >
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-primary text-surface rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
+              <Play size={32} fill="currentColor" className="ml-1" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">TREINO DE HOJE ({todayStr})</p>
+              <h3 className="text-2xl font-bold">{todayRoutine.name}</h3>
+              <p className="text-sm opacity-60 mt-1">{todayRoutine.description || "Divisão programada para hoje."}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setSelectedRoutine({ id: todayRoutine.id, name: todayRoutine.name });
+              setShowWorkoutModal(true);
+            }}
+            className="w-full md:w-auto px-8 py-4 bg-primary text-surface rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/30 flex items-center justify-center gap-2"
+          >
+            <Play size={16} fill="currentColor" /> INICIAR TREINO DE HOJE
+          </button>
+        </motion.div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="flex gap-4 p-1 bg-on-surface/5 rounded-2xl w-fit">
