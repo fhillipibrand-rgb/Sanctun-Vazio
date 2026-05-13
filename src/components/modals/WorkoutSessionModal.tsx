@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Play, Save, Plus, Trash2, Clock, Activity, ChevronRight, Dumbbell } from "lucide-react";
+import { X, Play, Save, Plus, Trash2, Clock, Activity, ChevronRight, Dumbbell, Check } from "lucide-react";
 import GlassCard from "../ui/GlassCard";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../../lib/supabase";
@@ -14,6 +14,7 @@ interface Exercise {
   weight: number;
   target_rest_seconds?: number;
   notes?: string;
+  completed_sets?: boolean[];
 }
 
 interface WorkoutSessionModalProps {
@@ -32,7 +33,7 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
   onSave 
 }) => {
   const { user } = useAuth();
-  const [exercises, setExercises] = useState<Exercise[]>([{ exercise_name: "", sets: 3, reps: 10, weight: 0 }]);
+  const [exercises, setExercises] = useState<Exercise[]>([{ exercise_name: "", sets: 3, reps: 10, weight: 0, completed_sets: [false, false, false] }]);
   const [duration, setDuration] = useState(0);
   const [notes, setNotes] = useState("");
   const [rating, setRating] = useState(3);
@@ -123,7 +124,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
         sets: ex.target_sets || 3,
         reps: ex.target_reps || 10,
         weight: ex.target_weight || 0,
-        target_rest_seconds: ex.target_rest_seconds || 90
+        target_rest_seconds: ex.target_rest_seconds || 90,
+        completed_sets: Array(ex.target_sets || 3).fill(false)
       })));
     }
   };
@@ -135,7 +137,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
       sets: 3,
       reps: 10,
       weight: lastWeights[type.name] || 0,
-      target_rest_seconds: 90
+      target_rest_seconds: 90,
+      completed_sets: [false, false, false]
     }]);
     setShowSearch(false);
     setSearchQuery("");
@@ -147,7 +150,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
       sets: 3, 
       reps: 10, 
       weight: 0,
-      target_rest_seconds: 90
+      target_rest_seconds: 90,
+      completed_sets: [false, false, false]
     }]);
     setShowSearch(false);
   };
@@ -158,8 +162,36 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
 
   const updateExercise = (index: number, field: keyof Exercise, value: any) => {
     const newExercises = [...exercises];
+    
+    // Se mudar a quantidade de séries, ajustamos o array de completed_sets
+    if (field === 'sets') {
+      const currentSets = newExercises[index].completed_sets || [];
+      const newCount = value as number;
+      if (newCount > currentSets.length) {
+        newExercises[index].completed_sets = [...currentSets, ...Array(newCount - currentSets.length).fill(false)];
+      } else {
+        newExercises[index].completed_sets = currentSets.slice(0, newCount);
+      }
+    }
+    
     newExercises[index] = { ...newExercises[index], [field]: value };
     setExercises(newExercises);
+  };
+
+  const toggleSet = (exIndex: number, setIndex: number) => {
+    const newExercises = [...exercises];
+    const currentCompleted = newExercises[exIndex].completed_sets || Array(newExercises[exIndex].sets).fill(false);
+    
+    const isNowCompleted = !currentCompleted[setIndex];
+    currentCompleted[setIndex] = isNowCompleted;
+    newExercises[exIndex].completed_sets = currentCompleted;
+    
+    setExercises(newExercises);
+
+    // Se acabou de marcar como feito (check), iniciar o cronômetro de descanso automaticamente!
+    if (isNowCompleted) {
+      setRestSecondsRemaining(newExercises[exIndex].target_rest_seconds || 90);
+    }
   };
 
   const handleSave = async () => {
@@ -418,21 +450,41 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-between items-center mt-2 pt-4 border-t border-[var(--glass-border)] w-full">
-                    <button 
-                      onClick={() => setRestSecondsRemaining(ex.target_rest_seconds || 90)}
-                      className="px-4 py-2 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
-                    >
-                      <Clock size={12} /> INICIAR DESCANSO ({ex.target_rest_seconds || 90}s)
-                    </button>
-                    <button 
-                      onClick={() => removeExercise(idx)}
-                      className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {/* Set Checkboxes */}
+                    <div className="md:col-span-12 mt-2 pt-4 border-t border-[var(--glass-border)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest mr-2">SÉRIES FEITAS:</span>
+                        {Array.from({ length: ex.sets || 0 }).map((_, setIdx) => (
+                          <button
+                            key={setIdx}
+                            onClick={() => toggleSet(idx, setIdx)}
+                            className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
+                              ex.completed_sets?.[setIdx] 
+                                ? 'bg-primary border-primary text-surface shadow-[0_0_10px_rgba(59,130,246,0.3)]' 
+                                : 'border-[var(--glass-border)] text-transparent hover:border-primary/50'
+                            }`}
+                          >
+                            <Check size={14} strokeWidth={4} className={ex.completed_sets?.[setIdx] ? 'text-surface' : 'text-transparent'} />
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setRestSecondsRemaining(ex.target_rest_seconds || 90)}
+                          className="px-4 py-2 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                        >
+                          <Clock size={12} /> ({ex.target_rest_seconds || 90}s)
+                        </button>
+                        <button 
+                          onClick={() => removeExercise(idx)}
+                          className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
