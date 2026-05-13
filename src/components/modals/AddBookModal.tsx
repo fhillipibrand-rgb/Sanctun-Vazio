@@ -4,6 +4,10 @@ import GlassCard from "../ui/GlassCard";
 import { motion } from "motion/react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../hooks/useAuth";
+import * as pdfjs from 'pdfjs-dist';
+
+// Configuração do worker do PDF.js via CDN para evitar problemas de build no Vite
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface BookItem {
   id: string;
@@ -44,7 +48,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     pdf_url: ""
   });
 
-  // Reset or fill form when modal opens
   useEffect(() => {
     if (isOpen) {
       if (bookToEdit) {
@@ -79,6 +82,17 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
 
   if (!isOpen) return null;
 
+  const countPdfPages = async (file: File): Promise<number> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      return pdf.numPages;
+    } catch (error) {
+      console.error("Erro ao contar páginas do PDF:", error);
+      return 0;
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -89,26 +103,20 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     }
 
     setUploadingImage(true);
-    
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/cover_${Date.now()}.${fileExt}`;
-
       const { data, error } = await supabase.storage
         .from('book-covers')
         .upload(fileName, file, { upsert: true });
 
       if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('book-covers')
-        .getPublicUrl(data.path);
-
+      const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(data.path);
       setFormData({ ...formData, cover_url: urlData.publicUrl });
       setImagePreview(URL.createObjectURL(file));
     } catch (err: any) {
-      console.error("Erro ao fazer upload da imagem:", err);
-      alert(`Erro ao enviar imagem: ${err?.message || 'Tente novamente.'}`);
+      console.error("Erro ao enviar imagem:", err);
+      alert(`Erro ao enviar imagem: ${err?.message}`);
     } finally {
       setUploadingImage(false);
     }
@@ -127,22 +135,23 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
     setPdfFileName(file.name);
     
     try {
-      const fileName = `${user.id}/book_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      // Contagem automática de páginas
+      const pageCount = await countPdfPages(file);
+      if (pageCount > 0) {
+        setFormData(prev => ({ ...prev, total_pages: pageCount }));
+      }
 
+      const fileName = `${user.id}/book_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const { data, error } = await supabase.storage
         .from('book-pdfs')
         .upload(fileName, file, { upsert: true });
 
       if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('book-pdfs')
-        .getPublicUrl(data.path);
-
-      setFormData({ ...formData, pdf_url: urlData.publicUrl });
+      const { data: urlData } = supabase.storage.from('book-pdfs').getPublicUrl(data.path);
+      setFormData(prev => ({ ...prev, pdf_url: urlData.publicUrl }));
     } catch (err: any) {
-      console.error("Erro ao fazer upload do PDF:", err);
-      alert(`Erro ao enviar PDF: ${err?.message || 'Tente novamente.'}`);
+      console.error("Erro ao enviar PDF:", err);
+      alert(`Erro ao enviar PDF: ${err?.message}`);
       setPdfFileName(null);
     } finally {
       setUploadingPdf(false);
@@ -160,7 +169,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
           .from('books')
           .update(formData)
           .eq('id', bookToEdit.id);
-        
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -170,15 +178,13 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
             user_id: user.id,
             current_page: 0
           });
-
         if (error) throw error;
       }
-
       if (onSave) onSave();
       onClose();
     } catch (error: any) {
-      console.error("Erro ao salvar livro:", error);
-      alert("Erro ao salvar livro: " + (error?.message || "Tente novamente."));
+      console.error("Erro ao salvar:", error);
+      alert("Erro ao salvar: " + error?.message);
     } finally {
       setLoading(false);
     }
@@ -208,7 +214,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
 
           <form onSubmit={handleSave} className="p-8 space-y-6">
             <div className="space-y-4">
-              {/* Título e Autor */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
@@ -237,12 +242,10 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 </div>
               </div>
 
-              {/* Capa do Livro - Upload */}
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
                   <ImageIcon size={10} /> CAPA DO LIVRO (ARQUIVO OU URL)
                 </label>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <input 
@@ -283,7 +286,6 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 </div>
               </div>
 
-              {/* Upload PDF — RE-INSERIDO COM MESMA LÓGICA */}
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
                   <FileText size={10} /> ARQUIVO PDF (OPCIONAL)
@@ -311,7 +313,7 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                        {pdfFileName ? 'PDF Vinculado' : 'Selecionar PDF'}
+                        {pdfFileName ? (uploadingPdf ? 'Contando páginas...' : 'PDF Vinculado') : 'Selecionar PDF'}
                       </p>
                       <p className="text-[11px] font-bold truncate opacity-60">
                         {pdfFileName || 'Máximo 50MB · Somente .pdf'}
@@ -324,18 +326,24 @@ const AddBookModal: React.FC<AddBookModalProps> = ({ isOpen, onClose, onSave, bo
                 </div>
               </div>
 
-              {/* Páginas e Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-2">
                     <Hash size={10} /> TOTAL DE PÁGINAS
                   </label>
-                  <input 
-                    type="number" 
-                    value={formData.total_pages}
-                    onChange={e => setFormData({...formData, total_pages: parseInt(e.target.value) || 0})}
-                    className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50 transition-colors"
-                  />
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={formData.total_pages}
+                      onChange={e => setFormData({...formData, total_pages: parseInt(e.target.value) || 0})}
+                      className="w-full bg-on-surface/5 border border-[var(--glass-border)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-secondary/50 transition-colors"
+                    />
+                    {uploadingPdf && (
+                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 size={14} className="animate-spin text-secondary opacity-50" />
+                       </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">STATUS ATUAL</label>
