@@ -14,6 +14,13 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { isDemoMode } from "../lib/demoMode";
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const INITIAL_HABITS: Habit[] = [
   { id: "meditation", title: "Meditação Diária", icon: "sparkles", color: "text-purple-400", active_days: [0,1,2,3,4,5,6] },
   { id: "reading", title: "Leitura 30 min", icon: "book", color: "text-blue-400", active_days: [0,1,2,3,4,5,6] },
@@ -92,7 +99,7 @@ const Habits = () => {
   const last7Days = useMemo(() => Array.from({length: 7}).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   }), []);
   
   const currentDayOfWeek = new Date().getDay();
@@ -111,7 +118,7 @@ const Habits = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateString(today);
     const isCompletedToday = habitLogs.filter(d => d === todayStr).length >= target;
     
     let checkDate = new Date(today);
@@ -123,7 +130,7 @@ const Habits = () => {
     let iterations = 0;
     while (iterations < 1000) {
       iterations++;
-      const dateStr = checkDate.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(checkDate);
       const dayOfWeek = checkDate.getDay();
       const isActiveDay = habitActiveDays.includes(dayOfWeek);
       const dayCompletions = habitLogs.filter(d => d === dateStr).length;
@@ -146,7 +153,7 @@ const Habits = () => {
 
   const fetchHabitsData = async () => {
     setLoading(true);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     
     if (isDemoMode()) {
       setHabits(INITIAL_HABITS);
@@ -265,7 +272,7 @@ const Habits = () => {
       return newHist;
     });
 
-    if (date === new Date().toISOString().split('T')[0]) {
+    if (date === getLocalDateString()) {
       const isNowDone = updatedHistory.filter(d => d === date).length >= target;
       if (isNowDone) {
         if (!completedToday.includes(habitId)) setCompletedToday(prev => [...prev, habitId]);
@@ -432,7 +439,7 @@ const Habits = () => {
     
     todayHabits.forEach(h => {
       const target = h.target_frequency || 1;
-      const current = (history[h.id] || []).filter(d => d === new Date().toISOString().split('T')[0]).length;
+      const current = (history[h.id] || []).filter(d => d === getLocalDateString()).length;
       totalTarget += target;
       totalCurrent += Math.min(current, target);
     });
@@ -485,7 +492,7 @@ const Habits = () => {
   const weekDateStrings = useMemo(() => Array.from({length: 7}).map((_, i) => {
     const d = new Date(startOfWeekDate);
     d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   }), [startOfWeekDate]);
 
   const weekDaysShortLabels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
@@ -503,7 +510,7 @@ const Habits = () => {
     for (let i = 0; i < firstDay.getDay(); i++) dates.push(null);
     // Month days
     for (let i = 1; i <= lastDay.getDate(); i++) {
-      dates.push(new Date(year, month, i).toISOString().split('T')[0]);
+      dates.push(getLocalDateString(new Date(year, month, i)));
     }
     return dates;
   }, []);
@@ -690,7 +697,7 @@ const Habits = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {habits.map(habit => {
-                      const todayDate = new Date().toISOString().split('T')[0];
+                      const todayDate = getLocalDateString();
                       const currentDayOfWeek = new Date().getDay();
                       const isActiveToday = !habit.active_days || habit.active_days.includes(currentDayOfWeek);
                       
