@@ -22,6 +22,13 @@ import WorkoutSessionModal from "../components/modals/WorkoutSessionModal";
 import CreateRoutineModal from "../components/modals/CreateRoutineModal";
 import CreateProgramModal from "../components/modals/CreateProgramModal";
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface RoutineExercise {
   id: string;
   routine_id: string;
@@ -246,7 +253,7 @@ const Vitality = () => {
                 const trainedDays = Array.from({length: 7}).filter((_, i) => {
                   const d = new Date(startOfWeek);
                   d.setDate(d.getDate() + i);
-                  return logs.some(log => log.date.startsWith(d.toISOString().split('T')[0]));
+                  return logs.some(log => log.date.startsWith(getLocalDateString(d)));
                 }).length;
                 return `${trainedDays} Treinos`;
               })()}

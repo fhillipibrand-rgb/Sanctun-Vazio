@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export interface DailyData {
   name: string; 
   v: number;    
@@ -100,7 +107,7 @@ export const useSystemStats = () => {
       const lowStockCount = medsData.filter(m => Number(m.stock || 0) <= Number(m.min_stock || 0)).length;
 
       // 5. NUTRIÇÃO
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateString();
       const { data: rawWater } = await supabase.from('nutrition_water').select('*').eq('date', todayStr);
       const waterData = rawWater?.[0] || null;
       const waterProgress = waterData ? (Number(waterData.amount || 0) / Number(waterData.target || 2000)) * 100 : 0;
@@ -125,7 +132,7 @@ export const useSystemStats = () => {
       for (let i = 0; i <= 6; i++) {
         const d = new Date(sundayHabits);
         d.setDate(sundayHabits.getDate() + i);
-        const dStr = d.toISOString().split('T')[0];
+        const dStr = getLocalDateString(d);
         const dDay = d.getDay();
         
         const scheduled = hData.filter(h => !h.active_days || h.active_days.includes(dDay));
@@ -157,7 +164,7 @@ export const useSystemStats = () => {
       for (let i = 0; i <= 6; i++) {
         const d = new Date(sundayHistory);
         d.setDate(sundayHistory.getDate() + i);
-        const dStr = d.toISOString().split('T')[0];
+        const dStr = getLocalDateString(d);
         
         const tasksOnDay = tasksData.filter((t: any) => 
           t.is_completed && t.completed_at && typeof t.completed_at === 'string' && t.completed_at.startsWith(dStr)
