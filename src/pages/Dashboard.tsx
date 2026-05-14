@@ -364,7 +364,7 @@ const Dashboard = () => {
           <GlassCard className="p-8 border-violet-500/10">
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.habits.weeklyHistory} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+                <AreaChart data={stats.habits.weeklyHistory} margin={{ top: 60, right: 30, left: 30, bottom: 0 }}>
                   <defs>
                     <linearGradient id="habitsGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
@@ -387,7 +387,7 @@ const Dashboard = () => {
                     fill="url(#habitsGradient)" 
                     dot={{ r: 4, fill: '#a855f7', strokeWidth: 0 }}
                   />
-                  <YAxis domain={[0, 100]} hide />
+                  <YAxis domain={[0, 110]} hide />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -609,7 +609,7 @@ const Dashboard = () => {
               </div>
               <div className={`h-44 w-full transition-all duration-700 ${!showMetrics ? 'blur-xl opacity-20 scale-95 pointer-events-none' : ''}`}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartDataSource} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+                  <AreaChart data={chartDataSource} margin={{ top: 60, right: 30, left: 30, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#5e9eff" stopOpacity={0.35}/>
@@ -617,7 +617,7 @@ const Dashboard = () => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 9 }} dy={10} />
-                    <YAxis domain={[0, 100]} hide />
+                    <YAxis domain={[0, 110]} hide />
                     <Tooltip
                       cursor={{ stroke: isLight ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       contentStyle={tooltipStyle}
@@ -641,7 +641,7 @@ const Dashboard = () => {
               </div>
               <div className={`h-44 w-full transition-all duration-700 ${!showMetrics ? 'blur-xl opacity-20 scale-95 pointer-events-none' : ''}`}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartDataSource} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+                  <AreaChart data={chartDataSource} margin={{ top: 60, right: 30, left: 30, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorFinance" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
@@ -649,7 +649,7 @@ const Dashboard = () => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.3, fontSize: 9 }} dy={10} />
-                    <YAxis hide domain={['auto', 'auto']} />
+                    <YAxis hide domain={['auto', 'dataMax + 500']} />
                     <Tooltip
                       cursor={{ stroke: isLight ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                       contentStyle={tooltipStyle}
