@@ -406,8 +406,9 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
 
               {exercises.map((ex, idx) => (
                 <div key={idx} className="p-6 rounded-3xl bg-on-surface/[0.02] border border-[var(--glass-border)] space-y-4 group relative hover:bg-on-surface/[0.04] transition-all">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-                    <div className="lg:col-span-4 space-y-1.5">
+                  <div className="flex flex-wrap items-end gap-4 w-full">
+                    {/* Nome do Exercício */}
+                    <div className="flex-[2] min-w-[200px] space-y-1.5">
                       <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">NOME DO EXERCÍCIO</label>
                       <input 
                         type="text" 
@@ -419,7 +420,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                       />
                     </div>
                     
-                    <div className="lg:col-span-4 grid grid-cols-3 gap-2">
+                    {/* Séries / Reps / Peso */}
+                    <div className="flex-1 min-w-[220px] grid grid-cols-3 gap-2">
                       <div className="space-y-1.5 text-center">
                         <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest">SÉRIES</label>
                         <input 
@@ -441,7 +443,7 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                       <div className="space-y-1.5 text-center">
                         <label className="text-[9px] font-bold opacity-40 uppercase tracking-widest text-primary flex items-center justify-center flex-col gap-0.5">
                           <span>PESO (KG)</span>
-                          <span className="text-[7px] lowercase">(último: {lastWeights[ex.exercise_name] || '--'}kg)</span>
+                          <span className="text-[7px] lowercase whitespace-nowrap">(últ: {lastWeights[ex.exercise_name] || '--'})</span>
                         </label>
                         <input 
                           type="number" 
@@ -452,14 +454,14 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Set Checkboxes - Agora ao lado/embaixo na mesma linha principal */}
-                    <div className="lg:col-span-4 flex items-center justify-between bg-on-surface/5 rounded-xl p-2 border border-[var(--glass-border)] h-[46px] mt-1 lg:mt-0">
-                      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar px-1">
+                    {/* Checkboxes e Lixeira */}
+                    <div className="flex-[1.5] min-w-[200px] flex items-center justify-between bg-on-surface/5 rounded-xl p-2 border border-[var(--glass-border)] h-[46px]">
+                      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar px-1 max-w-full">
                         {Array.from({ length: ex.sets || 0 }).map((_, setIdx) => (
                           <button
                             key={setIdx}
                             onClick={() => toggleSet(idx, setIdx)}
-                            className={`min-w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all ${
+                            className={`min-w-8 h-8 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
                               ex.completed_sets?.[setIdx] 
                                 ? 'bg-primary border-primary text-surface shadow-md shadow-primary/30' 
                                 : 'bg-surface border-[var(--glass-border)] text-transparent hover:border-primary/50'
