@@ -3,7 +3,8 @@ import {
   Calendar, Zap, Wallet, CheckCircle2, ArrowUpRight, Plus, Target, Clock, 
   ShieldCheck, Sparkles, Sun, Moon, Pill, AlertTriangle, 
   Play, Pause, Rocket, FolderKanban,
-  ChevronRight, Eye, EyeOff, Bell, Search
+  ChevronRight, Eye, EyeOff, Bell, Search,
+  BookOpen, Dumbbell, Check
 } from "lucide-react";
 import GlassCard from "../components/ui/GlassCard";
 import { useAuth } from "../hooks/useAuth";
@@ -42,12 +43,119 @@ const Dashboard = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [focusState, setFocusState] = useState<FocusState | null>(null);
   
+  const [dashboardHabits, setDashboardHabits] = useState<any[]>([]);
+  const [completedHabitsToday, setCompletedHabitsToday] = useState<string[]>([]);
+  const [habitsLoading, setHabitsLoading] = useState(false);
+
+  useEffect(() => {
+    if (focusState?.id === 'routine' && user) {
+      const fetchHabits = async () => {
+        setHabitsLoading(true);
+        const { data: habitsData } = await supabase
+          .from('habits')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (habitsData) {
+          setDashboardHabits(habitsData);
+          
+          const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+          const { data: logsData } = await supabase
+            .from('habit_logs')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('date', todayStr)
+            .eq('completed', true);
+          
+          if (logsData) {
+            setCompletedHabitsToday(logsData.map(log => log.habit_id));
+          }
+        }
+        setHabitsLoading(false);
+      };
+      fetchHabits();
+    }
+  }, [focusState?.id, user]);
+
+  const handleToggleHabit = async (habitId: string) => {
+    const isDone = completedHabitsToday.includes(habitId);
+    const todayStr = new Date().toLocaleDateString('en-CA');
+
+    // Otimista
+    if (isDone) {
+      setCompletedHabitsToday(prev => prev.filter(id => id !== habitId));
+    } else {
+      setCompletedHabitsToday(prev => [...prev, habitId]);
+    }
+
+    try {
+      if (isDone) {
+        await supabase
+          .from('habit_logs')
+          .delete()
+          .eq('user_id', user?.id)
+          .eq('date', todayStr)
+          .eq('habit_id', habitId);
+      } else {
+        await supabase
+          .from('habit_logs')
+          .insert({
+            user_id: user?.id,
+            date: todayStr,
+            habit_id: habitId,
+            completed: true
+          });
+      }
+      stats.refresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getIcon = (iconName: string, className: string) => {
+    switch(iconName) {
+      case "sparkles": return <Sparkles className={className} />;
+      case "book": return <BookOpen className={className} />;
+      case "dumbbell": return <Dumbbell className={className} />;
+      case "zap": return <Zap className={className} />;
+      case "clock": return <Clock className={className} />;
+      default: return <Target className={className} />;
+    }
+  };
+  
   // Força a atualização do perfil ao entrar no Dashboard para garantir que a foto nova apareça
   useEffect(() => {
     refreshProfile?.();
   }, []);
 
   const [localTimeLeft, setLocalTimeLeft] = useState<number | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => localStorage.getItem('sanctum_focus_task_id'));
+
+  useEffect(() => {
+    const syncTaskId = () => {
+      setSelectedTaskId(localStorage.getItem('sanctum_focus_task_id'));
+    };
+    window.addEventListener('storage', syncTaskId);
+    const interval = setInterval(syncTaskId, 1000);
+    return () => {
+      window.removeEventListener('storage', syncTaskId);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const getTargetTask = () => {
+    if (selectedTaskId) {
+      const foundInUrgent = stats.tasks.urgentTasks?.find((t: any) => t.id === selectedTaskId || t.id.replace('task-', '') === selectedTaskId);
+      if (foundInUrgent) return foundInUrgent;
+      return { id: selectedTaskId, title: localStorage.getItem('sanctum_focus_task_title') || "Tarefa Intencional" };
+    }
+    if (stats.tasks.urgentTasks && stats.tasks.urgentTasks[0]) {
+      return stats.tasks.urgentTasks[0];
+    }
+    return null;
+  };
+
+  const targetTask = getTargetTask();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [showMetrics, setShowMetrics] = useState(() => {
@@ -226,6 +334,21 @@ const Dashboard = () => {
     }
   };
 
+  const handleCompleteTarget = async (taskId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    await handleResolveTask(taskId, e);
+    
+    const rawId = taskId.replace('task-', '');
+    const savedId = localStorage.getItem('sanctum_focus_task_id');
+    if (savedId === taskId || savedId === rawId) {
+      localStorage.removeItem('sanctum_focus_task_id');
+      localStorage.removeItem('sanctum_focus_task_title');
+      setSelectedTaskId(null);
+    }
+  };
+
   const resolveNotification = (route: string) => {
     setIsNotificationsOpen(false);
     navigate(route);
@@ -273,30 +396,56 @@ const Dashboard = () => {
         {/* Estado de Foco Card */}
         <Link to="/focus" className="group h-full">
           <GlassCard 
-            className="p-6 h-full transition-all"
+            className="p-6 h-full transition-all flex flex-col justify-between"
             style={{ 
               background: focusState ? `linear-gradient(135deg, ${focusState.color}15, transparent)` : 'rgba(var(--color-on-surface), 0.03)',
               borderColor: focusState ? `${focusState.color}30` : 'rgba(255,255,255,0.05)'
             }}
           >
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: focusState ? `${focusState.color}20` : 'rgba(var(--color-primary), 0.1)', color: focusState?.color || 'var(--color-primary)' }}>
-                <Zap size={20} fill="currentColor" />
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: focusState ? `${focusState.color}20` : 'rgba(var(--color-primary), 0.1)', color: focusState?.color || 'var(--color-primary)' }}>
+                  <Zap size={20} fill="currentColor" />
+                </div>
+                <div className="flex items-center gap-2">
+                  {focusState?.isRunning && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                  <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">
+                    {focusState?.isRunning ? 'Ativo' : 'Em Espera'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {focusState?.isRunning && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-                <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">
-                  {focusState?.isRunning ? 'Ativo' : 'Em Espera'}
-                </span>
-              </div>
+              <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-2">Estado de Imersão</p>
+              <h4 className="text-lg font-bold truncate mb-1">
+                {focusState ? focusState.name.toUpperCase() : 'MODO PROFUNDO'}
+              </h4>
+              <p className="text-xs opacity-50 font-mono">
+                {localTimeLeft ? formatTime(localTimeLeft) : "Pronto para iniciar"}
+              </p>
             </div>
-            <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-2">Estado de Imersão</p>
-            <h4 className="text-lg font-bold truncate mb-1">
-              {focusState ? focusState.name.toUpperCase() : 'MODO PROFUNDO'}
-            </h4>
-            <p className="text-xs opacity-50 font-mono">
-              {localTimeLeft ? formatTime(localTimeLeft) : "Pronto para iniciar"}
-            </p>
+            
+            {targetTask && (
+              <div 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-3 cursor-default"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8px] font-bold opacity-45 uppercase tracking-widest mb-0.5">Alvo de Foco</p>
+                  <p className="text-xs font-bold truncate" style={{ color: focusState?.color || 'var(--color-primary)' }}>
+                    {targetTask.title}
+                  </p>
+                </div>
+                <button 
+                  onClick={(e) => handleCompleteTarget(targetTask.id, e)}
+                  className="px-3 py-1.5 rounded-xl text-surface font-bold text-[9px] uppercase tracking-widest hover:scale-105 transition-all shrink-0 shadow-md animate-fade-in"
+                  style={{ backgroundColor: focusState?.color || 'var(--color-primary)' }}
+                >
+                  Concluir
+                </button>
+              </div>
+            )}
           </GlassCard>
         </Link>
 
@@ -347,10 +496,138 @@ const Dashboard = () => {
         </GlassCard>
       </div>
 
+      {/* BANDEIRA ADAPTATIVA DE MODOS DE FOCO */}
+      <AnimatePresence mode="wait">
+        {focusState?.id === 'deep-work' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full"
+            key="deep-work-banner"
+          >
+            <GlassCard className="p-8 border-purple-500/20 bg-gradient-to-r from-purple-900/10 via-transparent to-transparent flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-purple-500/[0.02] pointer-events-none blur-3xl rounded-full" />
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="w-14 h-14 rounded-3xl bg-purple-500/20 text-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
+                  <Zap size={28} className="animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                    <p className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em]">IMERSÃO PROFUNDA ATIVA</p>
+                  </div>
+                  <h3 className="text-xl font-bold">O Vácuo</h3>
+                  <p className="text-sm opacity-50">Você está em modo de eliminação de distrações. Concentre-se no seu propósito.</p>
+                </div>
+              </div>
+              {targetTask && (
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                    <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest mb-1">Alvo Principal</p>
+                    <p className="text-sm font-bold max-w-[200px] truncate">{targetTask.title}</p>
+                  </div>
+                  <button 
+                    onClick={(e) => handleCompleteTarget(targetTask.id, e)}
+                    className="px-6 py-4 rounded-2xl bg-purple-500 text-surface font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-purple-500/30"
+                  >
+                    Concluir Alvo
+                  </button>
+                </div>
+              )}
+            </GlassCard>
+          </motion.div>
+        )}
+
+        {focusState?.id === 'creative' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full"
+            key="creative-banner"
+          >
+            <GlassCard className="p-8 border-blue-500/20 bg-gradient-to-r from-blue-900/10 via-transparent to-transparent flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-blue-500/[0.02] pointer-events-none blur-3xl rounded-full" />
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="w-14 h-14 rounded-3xl bg-blue-500/20 text-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <BookOpen size={28} className="animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">FLUXO CRIATIVO ATIVO</p>
+                  </div>
+                  <h3 className="text-xl font-bold">O Éter</h3>
+                  <p className="text-sm opacity-50">Sua mente está livre para criar e planejar. Seus projetos estão priorizados abaixo.</p>
+                </div>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
+
+        {focusState?.id === 'routine' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full space-y-6"
+            key="routine-banner"
+          >
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Seus Hábitos de Hoje</h3>
+              </div>
+              <Link to="/habits" className="text-[10px] font-bold text-emerald-400 hover:underline flex items-center gap-1 uppercase tracking-widest">
+                VER TODOS <ChevronRight size={12} />
+              </Link>
+            </div>
+            
+            <GlassCard className="p-8 border-emerald-500/10 bg-gradient-to-br from-emerald-950/10 to-transparent">
+              {habitsLoading ? (
+                <div className="text-center py-8 opacity-30 text-xs uppercase animate-pulse">Sincronizando hábitos...</div>
+              ) : dashboardHabits.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dashboardHabits.map((habit) => {
+                    const isDone = completedHabitsToday.includes(habit.id);
+                    return (
+                      <div 
+                        key={habit.id}
+                        onClick={() => handleToggleHabit(habit.id)}
+                        className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all duration-300 ${
+                          isDone 
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 animate-fade-in' 
+                            : 'bg-on-surface/5 border-transparent hover:bg-on-surface/10 hover:border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDone ? 'bg-emerald-500 text-surface' : 'bg-on-surface/5'}`}>
+                            {getIcon(habit.icon, "w-4.5 h-4.5")}
+                          </div>
+                          <span className="text-sm font-bold truncate max-w-[150px]">{habit.title}</span>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isDone ? 'bg-emerald-500 border-emerald-500' : 'border-on-surface/20'
+                        }`}>
+                          {isDone && <Check size={12} className="text-surface" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 opacity-30 text-xs uppercase">Nenhum hábito cadastrado ou ativo hoje</div>
+              )}
+            </GlassCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* SECTION 3: THE EXECUTION PULSE (O que estou construindo?) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Habit Consistency (Analytics Preview) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${focusState?.id === 'deep-work' || focusState?.id === 'creative' ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6`}>
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-6 bg-violet-500 rounded-full" />
@@ -395,53 +672,56 @@ const Dashboard = () => {
         </div>
 
         {/* Financial Pulse */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-6 bg-secondary rounded-full" />
-              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Patrimônio</h3>
+        {focusState?.id !== 'deep-work' && focusState?.id !== 'creative' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-secondary rounded-full" />
+                <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Patrimônio</h3>
+              </div>
+              <Link to="/finance" className="text-[10px] font-bold text-secondary hover:underline flex items-center gap-1 uppercase tracking-widest">
+                GESTÃO <ChevronRight size={12} />
+              </Link>
             </div>
-            <Link to="/finance" className="text-[10px] font-bold text-secondary hover:underline flex items-center gap-1 uppercase tracking-widest">
-              GESTÃO <ChevronRight size={12} />
-            </Link>
-          </div>
 
-          <GlassCard className="p-8 h-[calc(100%-2rem)] flex flex-col justify-between border-secondary/10">
-            <div>
-              <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-4">Saldo Consolidado</p>
-              <h3 className="text-4xl font-bold font-mono tracking-tighter">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(stats.finance.balance)}
-              </h3>
-            </div>
-            <div className="mt-8 space-y-4">
-              <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
-                <span className="text-[10px] font-bold opacity-40 uppercase">Entradas</span>
-                <span className="text-xs font-bold text-secondary">+{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.income)}</span>
+            <GlassCard className="p-8 h-[calc(100%-2rem)] flex flex-col justify-between border-secondary/10">
+              <div>
+                <p className="editorial-label text-[9px] tracking-widest font-bold opacity-40 uppercase mb-4">Saldo Consolidado</p>
+                <h3 className="text-4xl font-bold font-mono tracking-tighter">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(stats.finance.balance)}
+                </h3>
               </div>
-              <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
-                <span className="text-[10px] font-bold opacity-40 uppercase">Saídas</span>
-                <span className="text-xs font-bold text-red-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.expenses)}</span>
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-bold opacity-40 uppercase">Entradas</span>
+                  <span className="text-xs font-bold text-secondary">+{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.income)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-on-surface/5 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-bold opacity-40 uppercase">Saídas</span>
+                  <span className="text-xs font-bold text-red-400">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.finance.expenses)}</span>
+                </div>
               </div>
-            </div>
-          </GlassCard>
-        </div>
+            </GlassCard>
+          </div>
+        )}
       </div>
 
       {/* SECTION 4: PROJECTS GRID */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-            <div className="w-1.5 h-6 bg-primary rounded-full" />
-            <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Arquitetura de Projetos</h3>
+      {focusState?.id !== 'deep-work' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-primary rounded-full" />
+              <h3 className="editorial-label text-xs tracking-[0.3em] font-bold opacity-60 dark:opacity-40 uppercase">Arquitetura de Projetos</h3>
+            </div>
+            <Link to="/tasks/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
+              EXPLORAR <ChevronRight size={12} />
+            </Link>
           </div>
-          <Link to="/tasks/projects" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 uppercase tracking-widest">
-            EXPLORAR <ChevronRight size={12} />
-          </Link>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.projects.active.slice(0, 4).map((proj: any, idx: number) => {
-            const IconComp = iconOptions.find(i => i.name === proj.icon)?.icon || FolderKanban;
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.projects.active.slice(0, focusState?.id === 'creative' ? 8 : 4).map((proj: any, idx: number) => {
+              const IconComp = iconOptions.find(i => i.name === proj.icon)?.icon || FolderKanban;
             return (
               <motion.div 
                 key={proj.id}
@@ -495,9 +775,10 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      )}
 
       {/* Alertas Críticos */}
-      {stats.health.lowStockMeds > 0 && (
+      {stats.health.lowStockMeds > 0 && focusState?.id !== 'deep-work' && focusState?.id !== 'creative' && (
         <Link to="/health">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-red-400/10 border border-red-400/20 p-4 rounded-3xl flex items-center justify-between group hover:bg-red-400/20 transition-all">
              <div className="flex items-center gap-4">

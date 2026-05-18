@@ -111,10 +111,51 @@ const Focus = () => {
   const [interruptions, setInterruptions] = useState(0);
   const [sessionResults, setSessionResults] = useState<any>(null);
   const [modes, setModes] = useState<FocusMode[]>(FOCUS_MODES);
-  const [activeMode, setActiveMode] = useState<FocusMode>(FOCUS_MODES[0]);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isBreakMode, setIsBreakMode] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [activeMode, setActiveMode] = useState<FocusMode>(() => {
+    const saved = localStorage.getItem('sanctum_active_focus');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const mode = FOCUS_MODES.find(m => m.id === parsed.id);
+        if (mode) return mode;
+      } catch {}
+    }
+    return FOCUS_MODES[0];
+  });
+  const [isTimerRunning, setIsTimerRunning] = useState(() => {
+    const saved = localStorage.getItem('sanctum_active_focus');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.isRunning || false;
+      } catch {}
+    }
+    return false;
+  });
+  const [isBreakMode, setIsBreakMode] = useState(() => {
+    const saved = localStorage.getItem('sanctum_active_focus');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.isBreak || false;
+      } catch {}
+    }
+    return false;
+  });
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem('sanctum_active_focus');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.isRunning && parsed.targetEndTime) {
+          return Math.max(0, Math.floor((parsed.targetEndTime - Date.now()) / 1000));
+        } else if (parsed.timeLeft !== undefined) {
+          return parsed.timeLeft;
+        }
+      } catch {}
+    }
+    return 25 * 60;
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pomodoroConfig, setPomodoroConfig] = useState({ work: 25, break: 5 });
   const [activeTrack, setActiveTrack] = useState(AMBIENT_PLAYLIST[0]);
@@ -126,6 +167,33 @@ const Focus = () => {
   const alarmRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    const focusStateObj = {
+      id: activeMode.id,
+      name: activeMode.name,
+      color: activeMode.color,
+      isRunning: isTimerRunning,
+      isBreak: isBreakMode,
+      timeLeft: timeLeft,
+      targetEndTime: isTimerRunning ? Date.now() + timeLeft * 1000 : null
+    };
+    localStorage.setItem('sanctum_active_focus', JSON.stringify(focusStateObj));
+  }, [activeMode, isTimerRunning, isBreakMode, timeLeft]);
+
+  useEffect(() => {
+    (window as any).__focusMounted = true;
+    
+    const handleToggle = () => {
+      setIsTimerRunning(prev => !prev);
+    };
+    
+    window.addEventListener('sanctum:focus-toggle', handleToggle);
+    return () => {
+      (window as any).__focusMounted = false;
+      window.removeEventListener('sanctum:focus-toggle', handleToggle);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchTasks = async () => {
       if (!user) return;
       const { data } = await supabase.from('tasks').select('*').eq('is_completed', false).order('priority', { ascending: false });
@@ -135,8 +203,30 @@ const Focus = () => {
   }, [user]);
 
   useEffect(() => {
-    if (selectedTaskId) localStorage.setItem('sanctum_focus_task_id', selectedTaskId);
-    else localStorage.removeItem('sanctum_focus_task_id');
+    if (selectedTaskId) {
+      localStorage.setItem('sanctum_focus_task_id', selectedTaskId);
+      const title = tasks.find(t => t.id === selectedTaskId)?.title || "";
+      if (title) localStorage.setItem('sanctum_focus_task_title', title);
+    } else {
+      localStorage.removeItem('sanctum_focus_task_id');
+      localStorage.removeItem('sanctum_focus_task_title');
+    }
+  }, [selectedTaskId, tasks]);
+
+  // Sincronizar de forma bidirecional se a tarefa for concluída em outro componente (como o Dashboard)
+  useEffect(() => {
+    const syncTaskId = () => {
+      const savedId = localStorage.getItem('sanctum_focus_task_id');
+      if (savedId !== selectedTaskId) {
+        setSelectedTaskId(savedId);
+      }
+    };
+    window.addEventListener('storage', syncTaskId);
+    const interval = setInterval(syncTaskId, 1000);
+    return () => {
+      window.removeEventListener('storage', syncTaskId);
+      clearInterval(interval);
+    };
   }, [selectedTaskId]);
 
   useEffect(() => {
@@ -163,6 +253,8 @@ const Focus = () => {
       setTasks(prev => prev.filter(t => t.id !== selectedTaskId));
       setSelectedTaskId(null);
       setSessionResults(null);
+      localStorage.removeItem('sanctum_focus_task_id');
+      localStorage.removeItem('sanctum_focus_task_title');
     }
   };
 

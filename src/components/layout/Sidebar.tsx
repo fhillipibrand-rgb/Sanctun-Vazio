@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useActiveFocus } from "../../hooks/useActiveFocus";
+
 import { 
   Home, Wallet, CheckSquare, Calendar, Zap, LogOut, Plus, HelpCircle, 
   Settings, ChevronLeft, LayoutList, Target, Activity, PieChart, 
@@ -21,7 +23,23 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
   const location = useLocation();
   const { isSidebarOpen, openOnboarding, theme, toggleTheme } = useLayout();
   const { profile, user } = useAuth();
+  const focusState = useActiveFocus();
   const [collapsedSections, setCollapsedSections] = useState<string[]>(['DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
+
+  const focusName = focusState?.name || "Modo Profundo";
+  const focusColor = focusState?.color || "var(--color-primary)";
+
+  useEffect(() => {
+    if (!focusState) return;
+    
+    if (focusState.id === 'deep-work') {
+      setCollapsedSections(['DESENVOLVIMENTO', 'CONTROLE FINANCEIRO']);
+    } else if (focusState.id === 'creative') {
+      setCollapsedSections(['CONTROLE FINANCEIRO']);
+    } else if (focusState.id === 'routine') {
+      setCollapsedSections(['PRODUTIVIDADE', 'CONTROLE FINANCEIRO']);
+    }
+  }, [focusState?.id]);
 
   // Gera avatar com fallback elegante via DiceBear
   const getAvatar = () => {
@@ -95,7 +113,12 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
           {isSidebarOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <h1 className="editorial-display text-lg leading-tight text-white">Sanctum</h1>
-              <p className="editorial-label text-[9px] text-primary uppercase tracking-widest font-bold">Modo Profundo</p>
+              <p 
+                className="editorial-label text-[9px] uppercase tracking-widest font-bold transition-colors duration-500"
+                style={{ color: focusColor }}
+              >
+                {focusName}
+              </p>
             </motion.div>
           )}
         </div>
@@ -130,61 +153,84 @@ const Sidebar = ({ onClose, onSignOut, onQuickCapture, isCollapsible }: SidebarP
 
       {/* Navigation Area */}
       <nav className="flex-1 overflow-y-auto w-full space-y-8 sidebar-nav-scroll overflow-x-hidden">
-        {menuSections.map((section, idx) => (
-          <div key={idx} className="space-y-3 w-full">
-            {isSidebarOpen && (
-              <p className="px-6 editorial-label opacity-30 tracking-[0.3em] text-[9px] uppercase font-bold text-white mb-4">
-                {section.title}
-              </p>
-            )}
+        {menuSections.map((section, idx) => {
+          const isCollapsed = collapsedSections.includes(section.title);
+          
+          return (
+            <div key={idx} className="space-y-3 w-full">
+              {isSidebarOpen && (
+                <button 
+                  onClick={() => toggleSection(section.title)}
+                  className="px-6 w-full flex items-center justify-between group/title text-left focus:outline-none"
+                >
+                  <p className="editorial-label opacity-30 tracking-[0.3em] text-[9px] uppercase font-bold text-white group-hover/title:opacity-60 transition-opacity">
+                    {section.title}
+                  </p>
+                  <ChevronLeft 
+                    size={10} 
+                    className={`text-white/20 group-hover/title:text-white/60 transition-all duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-90'}`} 
+                  />
+                </button>
+              )}
 
-            <div className="space-y-2 w-full">
-              {section.items.map((item) => {
-                const active = isActive(item.id);
-                return (
-                  <Link 
-                    key={item.id}
-                    to={item.id}
-                    className={`relative flex items-center transition-all duration-300 group
-                      ${isSidebarOpen 
-                        ? `px-6 py-3 rounded-2xl gap-4 ${active ? 'bg-primary/10 text-primary' : 'text-white/40 hover:bg-white/5 hover:text-white'}` 
-                        : `h-12 w-12 mx-auto justify-center rounded-xl ${active ? 'text-primary' : 'text-white/40 hover:text-white'}`
-                      }`}
+              <AnimatePresence initial={false}>
+                {(!isCollapsed || !isSidebarOpen) && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="space-y-2 w-full overflow-hidden"
                   >
-                    {active && !isSidebarOpen && (
-                      <motion.div 
-                        layoutId="active-pill-mini"
-                        className="absolute inset-0 bg-primary/20 rounded-xl z-0"
-                        style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}
-                      />
-                    )}
+                    {section.items.map((item) => {
+                      const active = isActive(item.id);
+                      return (
+                        <Link 
+                          key={item.id}
+                          to={item.id}
+                          className={`relative flex items-center transition-all duration-300 group
+                            ${isSidebarOpen 
+                              ? `px-6 py-3 rounded-2xl gap-4 ${active ? 'bg-primary/10 text-primary' : 'text-white/40 hover:bg-white/5 hover:text-white'}` 
+                              : `h-12 w-12 mx-auto justify-center rounded-xl ${active ? 'text-primary' : 'text-white/40 hover:text-white'}`
+                            }`}
+                        >
+                          {active && !isSidebarOpen && (
+                            <motion.div 
+                              layoutId="active-pill-mini"
+                              className="absolute inset-0 bg-primary/20 rounded-xl z-0"
+                              style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}
+                            />
+                          )}
 
-                    <div className={`relative z-10 flex items-center justify-center ${active && !isSidebarOpen ? 'drop-shadow-[0_0_8px_#3b82f6] scale-110' : ''}`}>
-                      <item.icon size={isSidebarOpen ? 20 : 22} strokeWidth={active ? 2.5 : 2} />
-                    </div>
+                          <div className={`relative z-10 flex items-center justify-center ${active && !isSidebarOpen ? 'drop-shadow-[0_0_8px_#3b82f6] scale-110' : ''}`}>
+                            <item.icon size={isSidebarOpen ? 20 : 22} strokeWidth={active ? 2.5 : 2} />
+                          </div>
 
-                    {isSidebarOpen && (
-                      <span className="editorial-label tracking-widest text-[11px] font-bold relative z-10">
-                        {item.label}
-                      </span>
-                    )}
+                          {isSidebarOpen && (
+                            <span className="editorial-label tracking-widest text-[11px] font-bold relative z-10">
+                              {item.label}
+                            </span>
+                          )}
 
-                    {!isSidebarOpen && active && (
-                      <div className="absolute -left-4 w-1.5 h-6 bg-primary rounded-r-full shadow-[0_0_10px_#3b82f6]" />
-                    )}
+                          {!isSidebarOpen && active && (
+                            <div className="absolute -left-4 w-1.5 h-6 bg-primary rounded-r-full shadow-[0_0_10px_#3b82f6]" />
+                          )}
 
-                    {/* Tooltip */}
-                    {!isSidebarOpen && (
-                      <div className="absolute left-16 px-4 py-2 bg-surface border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none translate-x-[-10px] group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
-                        <p className="editorial-label text-[10px] tracking-widest text-white font-bold uppercase">{item.label}</p>
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
+                          {/* Tooltip */}
+                          {!isSidebarOpen && (
+                            <div className="absolute left-16 px-4 py-2 bg-surface border border-white/10 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none translate-x-[-10px] group-hover:translate-x-0 transition-all z-[100] whitespace-nowrap shadow-2xl">
+                              <p className="editorial-label text-[10px] tracking-widest text-white font-bold uppercase">{item.label}</p>
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer Area */}
